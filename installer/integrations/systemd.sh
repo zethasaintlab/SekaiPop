@@ -53,9 +53,17 @@ sp_setup_services() {
 
     local service
     local -a system_services=(NetworkManager.service bluetooth.service upower.service)
-    if [[ "$SP_DISTRO_ID" == fedora ]] && sp_fedora_tuned_ppd_installed; then
-        if ! systemctl is-active --quiet power-profiles-daemon.service; then
+    if [[ "$SP_DISTRO_ID" == fedora ]]; then
+        if sp_fedora_tlp_pd_installed; then
+            system_services+=(tlp.service tlp-pd.service)
+        elif sp_fedora_tuned_ppd_installed; then
             system_services+=(tuned-ppd.service)
+        elif sp_have rpm && rpm -q power-profiles-daemon >/dev/null 2>&1; then
+            system_services+=(power-profiles-daemon.service)
+        elif sp_have rpm && rpm -q tlp >/dev/null 2>&1; then
+            sp_warn 'TLP is installed without tlp-pd; no PowerProfiles D-Bus provider is configured. The installer will not add a conflicting power-profile daemon.'
+        else
+            system_services+=(power-profiles-daemon.service)
         fi
     else
         system_services+=(power-profiles-daemon.service)
