@@ -80,7 +80,7 @@ URIs: https://archive.kali.org/kali/
 Suites: kali-rolling
 Components: main contrib non-free non-free-firmware
 SRC
-assert_true 'Canonical Kali archive mirror is accepted' sp_kali_apt_sources_are_safe
+assert_false 'Non-default archive host is rejected in favor of Kali official load balancer' sp_kali_apt_sources_are_safe
 
 cat >> "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 
