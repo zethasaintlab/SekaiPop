@@ -38,7 +38,7 @@ sp_load_distro_profile() {
 sp_runtime_requirement_present() {
     local req="$1" version
     case "$req" in
-        quickshell) sp_have qs && sp_have quickshell ;;
+        quickshell) sp_have qs ;;
         hyprland)
             version="$(sp_hyprland_version 2>/dev/null || true)"
             [[ -n "$version" ]] && sp_version_ge "$version" 0.55.0
