@@ -109,6 +109,7 @@ The multi-distro installer is designed for a **mutable, systemd-based x86_64 des
 | Fedora | 44 | DNF5 | Compatible Hyprland >= 0.55 must already be installed; no COPR is enabled. |
 | Debian | 13 (trixie) | APT | Official <code>trixie-backports</code> must already be configured for Quickshell and Hyprland. |
 | Ubuntu | 26.10 (Stonking Stingray) | APT | Universe must already be enabled. |
+| Kali Linux | Rolling (`kali-rolling`) | APT | Only canonical Kali sources are accepted; mixed Debian/Ubuntu/third-party sources are rejected. |
 
 **Not supported:** openSUSE, Gentoo, NixOS, Fedora Atomic/ostree variants, other unverified derivatives, and architectures other than x86_64.
 
