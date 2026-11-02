@@ -148,9 +148,16 @@ sp_kali_apt_sources_are_safe() {
 }
 
 sp_fedora_power_profile_api_available() {
-    local owner interfaces
+    local owner interfaces service active=0
     [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
-    sp_have busctl || return 1
+    sp_have systemctl && sp_have busctl || return 1
+    for service in tuned-ppd.service tlp-pd.service power-profiles-daemon.service; do
+        if systemctl is-active --quiet "$service"; then
+            active=1
+            break
+        fi
+    done
+    (( active )) || return 1
 
     owner="$(busctl --system call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus NameHasOwner s org.freedesktop.UPower.PowerProfiles 2>/dev/null)" || return 1
     [[ "$owner" == 'b true' ]] || return 1
