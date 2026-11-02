@@ -122,8 +122,8 @@ sp_kali_apt_sources_are_safe() {
                         if ($0 ~ /^#/ || $1 != "deb") next
                         count = split($0, fields, /[[:space:]]+/)
                         field_index = 2
-                        if (fields[field_index] ~ /^\\[/) {
-                            while (field_index <= count && fields[field_index] !~ /\\]$/) field_index++
+                        if (fields[field_index] ~ /^\[/) {
+                            while (field_index <= count && fields[field_index] !~ /\]$/) field_index++
                             field_index++
                         }
                         if (field_index + 1 <= count) print fields[field_index] "|" fields[field_index + 1]
