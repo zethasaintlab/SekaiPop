@@ -16,6 +16,12 @@ contains "$ROOT/installer/core/detect.sh" 'arch|endeavouros|cachyos' && pass 'Ar
 contains "$ROOT/installer/core/detect.sh" 'fedora)' && pass 'Fedora ID has an explicit backend route' || fail 'Fedora ID has an explicit backend route'
 contains "$ROOT/installer/core/detect.sh" 'debian)' && pass 'Debian ID has an explicit backend route' || fail 'Debian ID has an explicit backend route'
 contains "$ROOT/installer/core/detect.sh" 'ubuntu)' && pass 'Ubuntu ID has an explicit backend route' || fail 'Ubuntu ID has an explicit backend route'
+contains "$ROOT/installer/core/detect.sh" 'kali) SP_BACKEND=apt; SP_PROFILE_ID=kali ;;' && pass 'Kali has a dedicated APT profile route' || fail 'Kali has a dedicated APT profile route'
+contains "$ROOT/installer/core/detect.sh" 'kali:*:kali-rolling' && pass 'Kali release gate requires kali-rolling' || fail 'Kali release gate requires kali-rolling'
+contains "$ROOT/installer/distros/kali/packages.sh" 'quickshell/kali-rolling' && pass 'Kali Quickshell package is pinned to kali-rolling' || fail 'Kali Quickshell package is pinned to kali-rolling'
+contains "$ROOT/installer/distros/kali/packages.sh" 'hyprland/kali-rolling' && pass 'Kali Hyprland package is pinned to kali-rolling' || fail 'Kali Hyprland package is pinned to kali-rolling'
+not_contains "$ROOT/installer/distros/kali/packages.sh" 'trixie-backports' && pass 'Kali package profile does not inherit Debian backports' || fail 'Kali package profile does not inherit Debian backports'
+contains "$ROOT/installer/core/plan.sh" 'sp_kali_apt_sources_are_safe' && pass 'Kali APT source policy is implemented' || fail 'Kali APT source policy is implemented'
 contains "$ROOT/installer/core/detect.sh" 'ID_LIKE is informational only' && pass 'ID_LIKE never triggers implicit fallback' || fail 'ID_LIKE never triggers implicit fallback'
 contains "$ROOT/installer/core/detect.sh" 'silverblue|kinoite|sericea|onyx|sway-atomic|budgie-atomic' && pass 'Fedora Atomic variants are rejected' || fail 'Fedora Atomic variants are rejected'
 not_contains "$ROOT/installer/core/detect.sh" 'opensuse)' && pass 'openSUSE is not in the supported ID allowlist' || fail 'openSUSE is not in the supported ID allowlist'
@@ -43,5 +49,6 @@ for legacy in install-fedora.sh install-deps-fedora.sh check-deps-fedora.sh; do
     [[ ! -e "$ROOT/$legacy" ]] && pass "Legacy root wrapper absent: $legacy" || fail "Legacy root wrapper must be absent: $legacy"
 done
 if bash "$ROOT/tests/test-hyprland-autostart.sh"; then pass 'Hyprland autostart regression fixtures'; else fail 'Hyprland autostart regression fixtures'; fi
+if bash "$ROOT/tests/test-kali-routing.sh"; then pass 'Kali routing and repository policy fixtures'; else fail 'Kali routing and repository policy fixtures'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
