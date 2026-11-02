@@ -25,6 +25,8 @@ contains "$ROOT/installer/core/plan.sh" 'ffmpeg) sp_have ffmpeg ;;' && pass 'FFm
 contains "$ROOT/installer/distros/fedora/packages.sh" "[qt6-base]='qt6-qtbase'" && pass 'Fedora Qt runtime map excludes development headers' || fail 'Fedora Qt runtime map excludes development headers'
 not_contains "$ROOT/installer/distros/fedora/packages.sh" 'qt6-qtbase-devel' && pass 'Fedora Qt runtime map does not install qtbase development files' || fail 'Fedora Qt runtime map does not install qtbase development files'
 contains "$ROOT/installer/core/plan.sh" 'tuned-ppd.service' && pass 'Fedora tuned-ppd compatibility provider is recognized' || fail 'Fedora tuned-ppd compatibility provider is recognized'
+contains "$ROOT/installer/core/plan.sh" 'NameHasOwner' && pass 'Fedora TuneD provider verifies D-Bus name ownership' || fail 'Fedora TuneD provider verifies D-Bus name ownership'
+contains "$ROOT/installer/core/plan.sh" '/org/freedesktop/UPower/PowerProfiles' && pass 'Fedora TuneD provider verifies the PowerProfiles API object' || fail 'Fedora TuneD provider verifies the PowerProfiles API object'
 contains "$ROOT/installer/catalog/requirements.sh" 'qt6-shadertools' && pass 'Shader Tools has a documented logical capability' || fail 'Shader Tools has a documented logical capability'
 contains "$ROOT/installer/integrations/hyprland.sh" '0.55.0' && pass 'Hyprland Lua minimum version is checked' || fail 'Hyprland Lua minimum version is checked'
 contains "$ROOT/installer/integrations/quickshell.sh" 'Quickshell/Services/SystemTray' && pass 'Quickshell QML modules are checked' || fail 'Quickshell QML modules are checked'

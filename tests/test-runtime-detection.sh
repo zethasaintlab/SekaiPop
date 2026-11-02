@@ -24,11 +24,24 @@ cat > "$TMP/bin/systemctl" <<'MOCK'
 #!/usr/bin/env bash
 [[ "${1:-}" == is-active && "${2:-}" == --quiet && "${3:-}" == tuned-ppd.service && "${MOCK_TUNED_PPD_ACTIVE:-0}" == 1 ]]
 MOCK
+cat > "$TMP/bin/busctl" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "${1:-}" == --system && "${2:-}" == call ]]; then
+    [[ "${3:-}" == org.freedesktop.DBus && "${4:-}" == /org/freedesktop/DBus && "${5:-}" == org.freedesktop.DBus && "${6:-}" == NameHasOwner && "${7:-}" == s && "${8:-}" == org.freedesktop.UPower.PowerProfiles ]] || exit 2
+    if [[ "${MOCK_DBUS_OWNER:-0}" == 1 ]]; then printf 'b true\\n'; else printf 'b false\\n'; fi
+elif [[ "${1:-}" == --system && "${2:-}" == --no-pager && "${3:-}" == introspect ]]; then
+    [[ "${4:-}" == org.freedesktop.UPower.PowerProfiles && "${5:-}" == /org/freedesktop/UPower/PowerProfiles ]] || exit 2
+    [[ "${MOCK_DBUS_OBJECT:-0}" == 1 ]] || exit 1
+    printf 'org.freedesktop.UPower.PowerProfiles interface\\n'
+else
+    exit 2
+fi
+MOCK
 cat > "$TMP/native-bin/powerprofilesctl" <<'MOCK'
 #!/usr/bin/env bash
 exit 0
 MOCK
-chmod +x "$TMP/bin/qs" "$TMP/bin/ffmpeg" "$TMP/bin/rpm" "$TMP/bin/systemctl" "$TMP/native-bin/powerprofilesctl"
+chmod +x "$TMP/bin/qs" "$TMP/bin/ffmpeg" "$TMP/bin/rpm" "$TMP/bin/systemctl" "$TMP/bin/busctl" "$TMP/native-bin/powerprofilesctl"
 ln -s "$(command -v bash)" "$TMP/bin/bash"
 PATH="$TMP/bin"
 export PATH
@@ -55,10 +68,16 @@ assert_absent() {
 assert_present quickshell 'Quickshell is detected from qs executable'
 assert_present ffmpeg 'FFmpeg is detected from executable without package-name coupling'
 
-export SP_DISTRO_ID=fedora MOCK_TUNED_PPD_INSTALLED=1 MOCK_TUNED_PPD_ACTIVE=1
-assert_present power-profiles-daemon 'Active Fedora tuned-ppd satisfies the power-profile capability'
+export SP_DISTRO_ID=fedora MOCK_TUNED_PPD_INSTALLED=1 MOCK_TUNED_PPD_ACTIVE=1 MOCK_DBUS_OWNER=1 MOCK_DBUS_OBJECT=1
+assert_present power-profiles-daemon 'Active Fedora tuned-ppd with the owned D-Bus name and exported API satisfies the power-profile capability'
 
-export MOCK_TUNED_PPD_ACTIVE=0
+export MOCK_DBUS_OWNER=0
+assert_absent power-profiles-daemon 'Active tuned-ppd without the canonical D-Bus name does not satisfy the capability'
+
+export MOCK_DBUS_OWNER=1 MOCK_DBUS_OBJECT=0
+assert_absent power-profiles-daemon 'Owned D-Bus name without the expected PowerProfiles API object does not satisfy the capability'
+
+export MOCK_DBUS_OBJECT=1 MOCK_TUNED_PPD_ACTIVE=0
 assert_absent power-profiles-daemon 'Inactive tuned-ppd does not satisfy the power-profile capability'
 
 export MOCK_TUNED_PPD_ACTIVE=1 MOCK_TUNED_PPD_INSTALLED=0

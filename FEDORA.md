@@ -14,4 +14,4 @@ The Fedora profile is mock-tested, not VM-certified. Confirm package candidates 
 
 The standard profile accepts the `ffmpeg` executable as the FFmpeg capability regardless of the RPM package name that owns it; it does not install a second FFmpeg provider when the executable is already present. The Qt base mapping installs the runtime package only, not `qt6-qtbase-devel`.
 
-On Fedora, an installed and active `tuned-ppd.service` is accepted as the Power Profiles D-Bus compatibility provider. The installer does not enable or replace TuneD, `tuned-ppd`, TLP, or `power-profiles-daemon` automatically when that capability is already provided.
+On Fedora, `tuned-ppd` is accepted as the Power Profiles provider only when its RPM is installed, `tuned-ppd.service` is active, the canonical `org.freedesktop.UPower.PowerProfiles` D-Bus name is owned, and the `/org/freedesktop/UPower/PowerProfiles` object exports that interface. The installer does not enable or replace TuneD, `tuned-ppd`, TLP, or `power-profiles-daemon` automatically when that capability is already provided.
