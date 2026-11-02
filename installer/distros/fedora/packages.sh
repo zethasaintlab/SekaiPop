@@ -3,7 +3,7 @@
 # from a repository the user independently selected and trusts.
 declare -Ag DISTRO_PACKAGE_MAP=(
     [quickshell]='quickshell' [hyprland]=''
-    [qt6-base]='qt6-qtbase qt6-qtbase-devel' [qt6-declarative]='qt6-qtdeclarative' [qt6-multimedia]='qt6-qtmultimedia'
+    [qt6-base]='qt6-qtbase' [qt6-declarative]='qt6-qtdeclarative' [qt6-multimedia]='qt6-qtmultimedia'
     [qt6-svg]='qt6-qtsvg' [qt6-imageformats]='qt6-qtimageformats' [qt6-wayland]='qt6-qtwayland' [qt6-shadertools]='qt6-qtshadertools'
     [dbus]='dbus-daemon' [polkit]='polkit' [graphics-egl]='libglvnd-egl' [pipewire]='pipewire' [wireplumber]='wireplumber'
     [pipewire-pulse]='pipewire-pulseaudio pulseaudio-utils' [network-manager]='NetworkManager' [bluetooth]='bluez' [upower]='upower'

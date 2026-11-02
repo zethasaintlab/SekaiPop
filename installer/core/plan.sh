@@ -35,10 +35,25 @@ sp_load_distro_profile() {
     return 0
 }
 
+sp_fedora_tuned_ppd_available() {
+    local owner interfaces
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_have rpm && rpm -q tuned-ppd >/dev/null 2>&1 || return 1
+    sp_have systemctl && systemctl is-active --quiet tuned-ppd.service || return 1
+    sp_have busctl || return 1
+
+    owner="$(busctl --system call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus NameHasOwner s org.freedesktop.UPower.PowerProfiles 2>/dev/null)" || return 1
+    [[ "$owner" == 'b true' ]] || return 1
+
+    interfaces="$(busctl --system --no-pager introspect org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles 2>/dev/null)" || return 1
+    [[ "$interfaces" == *'org.freedesktop.UPower.PowerProfiles'* ]]
+}
+
 sp_runtime_requirement_present() {
     local req="$1" version
     case "$req" in
         quickshell) sp_have qs ;;
+        ffmpeg) sp_have ffmpeg ;;
         hyprland)
             version="$(sp_hyprland_version 2>/dev/null || true)"
             [[ -n "$version" ]] && sp_version_ge "$version" 0.55.0
@@ -57,7 +72,10 @@ sp_runtime_requirement_present() {
         hypridle) sp_have hypridle ;;
         nodejs) sp_have node ;;
         pnpm) sp_have pnpm ;;
-        power-profiles-daemon) sp_have powerprofilesctl ;;
+        power-profiles-daemon)
+            if sp_have powerprofilesctl; then return 0; fi
+            sp_fedora_tuned_ppd_available
+            ;;
         material-symbols) sp_have fc-match && fc-match -f '%{family}\n' 'Material Symbols Rounded' 2>/dev/null | grep -qi 'Material Symbols' ;;
         google-sans-flex) sp_have fc-match && fc-match -f '%{family}\n' 'Google Sans Flex' 2>/dev/null | grep -qi 'Google Sans Flex' ;;
         graphics-egl)
