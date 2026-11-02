@@ -112,6 +112,7 @@ if sp_runtime_requirement_present power-profiles-daemon; then
     exit 1
 fi
 SP_PROFILE_REQS=(power-profiles-daemon)
+declare -gA DISTRO_PACKAGE_MAP=()
 DISTRO_PACKAGE_MAP[power-profiles-daemon]='power-profiles-daemon'
 sp_build_package_plan
 (("${#SP_MISSING_OPTIONAL[@]}" == 1)) &&
