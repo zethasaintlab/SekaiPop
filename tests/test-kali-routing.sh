@@ -115,4 +115,13 @@ deb http://deb.debian.org/debian trixie main
 SRC
 assert_false 'Mixed legacy Kali and Debian sources.list entries are rejected' sp_kali_apt_sources_are_safe
 
+mkdir -p "$TMP/bin"
+cat > "$TMP/bin/apt-config" <<'APT'
+#!/usr/bin/env bash
+printf '%s\\n' 'Dir::Etc "etc/apt";' 'Dir::Etc::sourcelist "custom.list";' 'Dir::Etc::sourceparts "sources.list.d";'
+APT
+chmod +x "$TMP/bin/apt-config"
+PATH="$TMP/bin:$PATH"
+assert_false 'Non-default APT source path overrides are rejected' sp_kali_apt_sources_are_safe
+
 printf '\nKali routing and repository policy fixtures passed.\n'
