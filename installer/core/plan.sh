@@ -306,6 +306,9 @@ sp_print_package_plan() {
     if [[ "$SP_DISTRO_ID" == debian ]]; then
         printf '  APT pinning  : Quickshell and Hyprland target trixie-backports individually; other packages use normal APT priorities.\n'
     fi
+    if [[ "$SP_DISTRO_ID" == kali ]]; then
+        printf '  APT pinning  : every mapped package candidate targets kali-rolling; only canonical Kali sources are accepted.\n'
+    fi
     printf '\nAlready installed (%d):\n' "${#SP_ALREADY_INSTALLED[@]}"
     printf '  %s\n' "${SP_ALREADY_INSTALLED[@]:-none}"
     printf '\nRuntime-provided (%d):\n' "${#SP_RUNTIME_SATISFIED[@]}"
