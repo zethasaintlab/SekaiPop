@@ -60,6 +60,11 @@ case "$1" in
         else
             service="$2"
         fi
+        if [[ "${FAKE_POWERPROFILE_API:-0}" == 1 ]] &&
+            [[ "$service" == tuned.service || "$service" == tuned-ppd.service || "$service" == tlp.service || "$service" == tlp-pd.service || "$service" == power-profiles-daemon.service ]]; then
+            [[ "$2" == --quiet ]] || printf 'active\n'
+            exit 0
+        fi
         printf 'inactive\n'
         exit 3
         ;;
@@ -166,11 +171,19 @@ sp_runtime_requirement_present power-profiles-daemon || {
 }
 : > "$SP_TEST_SYSTEMCTL_LOG"
 sp_setup_services
-if grep -Eq 'cat (tuned|tlp|power-profiles-daemon)' "$SP_TEST_SYSTEMCTL_LOG"; then
-    printf '[FAIL] Do not reconcile another provider while a PowerProfiles D-Bus owner is active\n' >&2
+grep -Fq 'cat tuned.service' "$SP_TEST_SYSTEMCTL_LOG" || {
+    printf '[FAIL] Keep the selected TuneD backend under service-state reconciliation\n' >&2
+    exit 1
+}
+grep -Fq 'cat tuned-ppd.service' "$SP_TEST_SYSTEMCTL_LOG" || {
+    printf '[FAIL] Keep the selected TuneD PPD service under service-state reconciliation\n' >&2
+    exit 1
+}
+if grep -Eq 'cat (tlp|power-profiles-daemon)\.service|^(enable|start) ' "$SP_TEST_SYSTEMCTL_LOG"; then
+    printf '[FAIL] Do not start a competing provider or change already-active TuneD services\n' >&2
     exit 1
 fi
-printf '[PASS] An active PowerProfiles D-Bus API prevents a second provider service from starting\n'
+printf '[PASS] Active TuneD provider is reconciled without starting a competing provider or changing active units\n'
 
 FAKE_RPM_PACKAGES='power-profiles-daemon'
 FAKE_POWERPROFILE_API=0
