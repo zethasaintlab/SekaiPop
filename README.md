@@ -110,7 +110,9 @@ The multi-distro installer is designed for a **mutable, systemd-based x86_64 des
 | Debian | 13 (trixie) | APT | Official <code>trixie-backports</code> must already be configured for Quickshell and Hyprland. |
 | Ubuntu | 26.10 (Stonking Stingray) | APT | Universe must already be enabled. |
 
-**Not supported:** openSUSE, Gentoo, NixOS, Kali Linux, Fedora Atomic/ostree variants, other unverified derivatives, and architectures other than x86_64. The installer uses exact <code>ID</code>, <code>VERSION_ID</code>, and release-codename checks. <code>ID_LIKE</code> is informational only and does not route Linux Mint or another derivative to Debian/Arch/Fedora.
+**Not supported:** openSUSE, Gentoo, NixOS, Fedora Atomic/ostree variants, other unverified derivatives, and architectures other than x86_64.
+
+Kali is supported only on its `kali-rolling` branch with the canonical `http.kali.org` or `archive.kali.org` APT source. The installer refuses mixed Debian/Ubuntu suites and third-party APT sources, does not add repositories, and targets package candidates explicitly to `kali-rolling`. Kali disables some network services by default; any service activation remains an explicit confirmation. Kali is primarily a penetration-testing distribution, not a general-purpose desktop recommendation. The installer uses exact <code>ID</code>, <code>VERSION_ID</code>, and release-codename checks. <code>ID_LIKE</code> is informational only and does not route Linux Mint or another derivative to Debian/Arch/Fedora.
 
 ### Runtime requirements
 
@@ -151,7 +153,7 @@ The complete repository is required: the installer deploys the existing <code>se
 
 ### Package source and desktop safety
 
-Only repositories already configured by the user are queried. No AUR helper, COPR, PPA, arbitrary RPM/DEB source, or source build is enabled. The installer does not alter GPU drivers, global portal defaults, KDE settings, or unrelated Quickshell processes. It uses path-scoped Quickshell instance operations.
+Only repositories already configured by the user are queried. On Kali, only the canonical `kali-rolling` sources are accepted. No AUR helper, COPR, PPA, arbitrary RPM/DEB source, or source build is enabled. The installer does not alter GPU drivers, global portal defaults, KDE settings, or unrelated Quickshell processes. It uses path-scoped Quickshell instance operations.
 
 ### Checking and restoring
 
