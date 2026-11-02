@@ -95,8 +95,9 @@ assert_present power-profiles-daemon 'Active power-profiles-daemon with the Powe
 export MOCK_PPD_ACTIVE=0 MOCK_TLP_PD_ACTIVE=1
 assert_present power-profiles-daemon 'Active TLP PPD service with the PowerProfiles D-Bus API satisfies the capability'
 
+SP_DISTRO_ID=debian
 PATH="$TMP/native-bin:$TMP/bin"
 export PATH
-assert_present power-profiles-daemon 'Native powerprofilesctl satisfies the power-profile capability'
+assert_present power-profiles-daemon 'Native powerprofilesctl satisfies the non-Fedora power-profile capability'
 
 printf '\nRuntime detection fixtures passed.\n'
