@@ -55,9 +55,18 @@ sp_setup_services() {
     local -a system_services=(NetworkManager.service bluetooth.service upower.service)
     if [[ "$SP_DISTRO_ID" == fedora ]]; then
         if sp_fedora_tlp_pd_installed; then
-            system_services+=(tlp.service tlp-pd.service)
+            if systemctl is-active --quiet power-profiles-daemon.service ||
+                systemctl is-active --quiet tuned-ppd.service; then
+                sp_warn 'Another PowerProfiles provider is already active; TLP profile services were left untouched.'
+            else
+                system_services+=(tlp.service tlp-pd.service)
+            fi
         elif sp_fedora_tuned_ppd_installed; then
-            system_services+=(tuned-ppd.service)
+            if systemctl is-active --quiet power-profiles-daemon.service; then
+                sp_warn 'power-profiles-daemon is already active; tuned-ppd was left untouched.'
+            else
+                system_services+=(tuned-ppd.service)
+            fi
         elif sp_have rpm && rpm -q power-profiles-daemon >/dev/null 2>&1; then
             system_services+=(power-profiles-daemon.service)
         elif sp_have rpm && rpm -q tlp >/dev/null 2>&1; then
