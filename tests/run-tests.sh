@@ -7,7 +7,7 @@ pass() { printf '[PASS] %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf '[FAIL] %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 contains() { grep -Fq -- "$2" "$1"; }
 not_contains() { ! grep -RFq -- "$2" "$1"; }
-for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-kali-routing.sh "$ROOT"/tests/test-fedora-power-provider.sh; do
+for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-kali-routing.sh "$ROOT"/tests/test-fedora-power-provider.sh "$ROOT"/tests/test-deployment-transaction.sh; do
     if bash -n "$script"; then pass "Bash syntax: $(basename "$script")"; else fail "Bash syntax: $(basename "$script")"; fi
 done
 if env SEKAIPOP_INSTALLER_ROOT="$ROOT" "$ROOT/install.sh" --help >/dev/null; then pass 'Help works without distro detection'; else fail 'Help works without distro detection'; fi
@@ -36,6 +36,8 @@ contains "$ROOT/installer/integrations/systemd.sh" 'tuned-ppd.service' && pass '
 contains "$ROOT/installer/core/plan.sh" 'sp_fedora_tlp_pd_installed' && pass 'Fedora TLP profile daemon provider is recognized' || fail 'Fedora TLP profile daemon provider is recognized'
 contains "$ROOT/installer/core/plan.sh" 'TLP is installed without tlp-pd' && pass 'Fedora TLP-only conflict is reported instead of installing another provider' || fail 'Fedora TLP-only conflict is reported instead of installing another provider'
 contains "$ROOT/installer/integrations/systemd.sh" 'tlp-pd.service' && pass 'Fedora TLP profile service is reconciled when installed' || fail 'Fedora TLP profile service is reconciled when installed'
+contains "$ROOT/installer/core/deployment.sh" 'sp_prepare_shaders "$stage/shaders"' && pass 'Shaders are prepared in staging before Quickshell replacement' || fail 'Shaders are prepared in staging before Quickshell replacement'
+contains "$ROOT/installer/core/main.sh" 'sp_rollback_failed_deployment' && pass 'Failed deployment phases have automatic configuration rollback' || fail 'Failed deployment phases have automatic configuration rollback'
 contains "$ROOT/installer/core/detect.sh" 'ID_LIKE is informational only' && pass 'ID_LIKE never triggers implicit fallback' || fail 'ID_LIKE never triggers implicit fallback'
 contains "$ROOT/installer/core/detect.sh" 'silverblue|kinoite|sericea|onyx|sway-atomic|budgie-atomic' && pass 'Fedora Atomic variants are rejected' || fail 'Fedora Atomic variants are rejected'
 not_contains "$ROOT/installer/core/detect.sh" 'opensuse)' && pass 'openSUSE is not in the supported ID allowlist' || fail 'openSUSE is not in the supported ID allowlist'
@@ -66,5 +68,6 @@ done
 if bash "$ROOT/tests/test-hyprland-autostart.sh"; then pass 'Hyprland autostart regression fixtures'; else fail 'Hyprland autostart regression fixtures'; fi
 if bash "$ROOT/tests/test-kali-routing.sh"; then pass 'Kali routing and repository policy fixtures'; else fail 'Kali routing and repository policy fixtures'; fi
 if bash "$ROOT/tests/test-fedora-power-provider.sh"; then pass 'Fedora power-provider regression fixtures'; else fail 'Fedora power-provider regression fixtures'; fi
+if bash "$ROOT/tests/test-deployment-transaction.sh"; then pass 'Deployment staging and rollback regression fixtures'; else fail 'Deployment staging and rollback regression fixtures'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
