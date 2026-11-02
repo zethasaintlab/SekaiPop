@@ -165,6 +165,20 @@ sp_fedora_tuned_ppd_installed() {
     sp_have rpm && rpm -q tuned-ppd >/dev/null 2>&1
 }
 
+sp_fedora_tlp_pd_installed() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_have rpm && rpm -q tlp-pd >/dev/null 2>&1
+}
+
+sp_fedora_power_profile_provider_installed() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_have rpm || return 1
+    rpm -q tuned-ppd >/dev/null 2>&1 ||
+        rpm -q tlp-pd >/dev/null 2>&1 ||
+        rpm -q power-profiles-daemon >/dev/null 2>&1 ||
+        rpm -q tlp >/dev/null 2>&1
+}
+
 sp_runtime_requirement_present() {
     local req="$1" version
     case "$req" in
@@ -190,7 +204,7 @@ sp_runtime_requirement_present() {
         pnpm) sp_have pnpm ;;
         power-profiles-daemon)
             if sp_have powerprofilesctl; then return 0; fi
-            sp_fedora_tuned_ppd_available || sp_fedora_tuned_ppd_installed
+            sp_fedora_tuned_ppd_available || sp_fedora_power_profile_provider_installed
             ;;
         material-symbols) sp_have fc-match && fc-match -f '%{family}\n' 'Material Symbols Rounded' 2>/dev/null | grep -qi 'Material Symbols' ;;
         google-sans-flex) sp_have fc-match && fc-match -f '%{family}\n' 'Google Sans Flex' 2>/dev/null | grep -qi 'Google Sans Flex' ;;
