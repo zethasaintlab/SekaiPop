@@ -52,7 +52,14 @@ sp_setup_services() {
     [[ "$SP_INIT" == systemd ]] || { sp_warn 'systemd is not active; service setup is skipped.'; return 0; }
 
     local service
-    local -a system_services=(NetworkManager.service bluetooth.service upower.service power-profiles-daemon.service)
+    local -a system_services=(NetworkManager.service bluetooth.service upower.service)
+    if [[ "$SP_DISTRO_ID" == fedora ]] && sp_fedora_tuned_ppd_installed; then
+        if ! systemctl is-active --quiet power-profiles-daemon.service; then
+            system_services+=(tuned-ppd.service)
+        fi
+    else
+        system_services+=(power-profiles-daemon.service)
+    fi
     for service in "${system_services[@]}"; do
         sp_reconcile_service system "$service"
     done
