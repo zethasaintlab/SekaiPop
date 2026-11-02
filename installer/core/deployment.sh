@@ -14,6 +14,10 @@ sp_deploy_quickshell() {
     for item in settings.json user_config.json; do
         if [[ -e "$SP_QS_DEST/$item" || -L "$SP_QS_DEST/$item" ]]; then rm -f -- "$stage/$item"; sp_preserve_path "$SP_QS_DEST/$item" "$stage/$item"; fi
     done
+    if ! (sp_prepare_shaders "$stage/shaders"); then
+        rm -rf -- "$stage"
+        sp_die 'Shader preparation failed in the staged Quickshell tree; the current installation was not replaced.'
+    fi
     if sp_have git && git -C "$source" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         { printf 'commit=%s\n' "$(git -C "$source" rev-parse HEAD 2>/dev/null || echo unknown)"; printf 'repo=%s\n' "$(git -C "$source" config --get remote.origin.url 2>/dev/null || echo unknown)"; printf 'ref=%s\n' "$(git -C "$source" rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"; } > "$stage/.source"
     fi
