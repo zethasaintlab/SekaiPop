@@ -24,7 +24,11 @@ cat > "$TMP/bin/systemctl" <<'MOCK'
 #!/usr/bin/env bash
 [[ "${1:-}" == is-active && "${2:-}" == --quiet && "${3:-}" == tuned-ppd.service && "${MOCK_TUNED_PPD_ACTIVE:-0}" == 1 ]]
 MOCK
-chmod +x "$TMP/bin/qs" "$TMP/bin/ffmpeg" "$TMP/bin/rpm" "$TMP/bin/systemctl"
+cat > "$TMP/bin/powerprofilesctl" <<'MOCK'
+#!/usr/bin/env bash
+exit 0
+MOCK
+chmod +x "$TMP/bin/qs" "$TMP/bin/ffmpeg" "$TMP/bin/rpm" "$TMP/bin/systemctl" "$TMP/bin/powerprofilesctl"
 ln -s "$(command -v bash)" "$TMP/bin/bash"
 PATH="$TMP/bin"
 export PATH
@@ -60,11 +64,6 @@ assert_absent power-profiles-daemon 'Inactive tuned-ppd does not satisfy the pow
 export MOCK_TUNED_PPD_ACTIVE=1 MOCK_TUNED_PPD_INSTALLED=0
 assert_absent power-profiles-daemon 'Uninstalled tuned-ppd does not satisfy the power-profile capability'
 
-cat > "$TMP/bin/powerprofilesctl" <<'MOCK'
-#!/usr/bin/env bash
-exit 0
-MOCK
-chmod +x "$TMP/bin/powerprofilesctl"
 assert_present power-profiles-daemon 'Native powerprofilesctl satisfies the power-profile capability'
 
 printf '\nRuntime detection fixtures passed.\n'
