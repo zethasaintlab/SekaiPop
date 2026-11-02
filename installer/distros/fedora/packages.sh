@@ -15,7 +15,7 @@ declare -Ag DISTRO_PACKAGE_MAP=(
     [noto-fonts-emoji]='google-noto-emoji-fonts' [jetbrains-mono]='jetbrains-mono-fonts' [cava]='cava' [grim]='grim' [slurp]='slurp'
     [cliphist]='cliphist' [wtype]='wtype' [hyprpicker]='hyprpicker' [imagemagick]='ImageMagick' [tesseract]='tesseract'
     [swappy]='swappy' [wf-recorder]='wf-recorder' [ffmpeg]='ffmpeg-free' [brightnessctl]='brightnessctl' [ddcutil]='ddcutil'
-    [kitty]='kitty' [playerctl]='playerctl' [easyeffects]='easyeffects' [matugen]='matugen' [power-profiles-daemon]='power-profiles-daemon'
+    [kitty]='kitty' [playerctl]='playerctl' [easyeffects]='easyeffects' [matugen]='matugen' [power-profiles-daemon]='tuned-ppd'
     [gvfs]='gvfs' [keyring]='gnome-keyring' [libsecret]='libsecret' [pipewire-alsa]='pipewire-alsa' [blueman]='blueman'
     [python-aubio]='python3-aubio' [songrec]='' [mpvpaper]='' [nwg-displays]='nwg-displays'
     [hypridle]='hypridle' [nodejs]='nodejs' [pnpm]='pnpm'
