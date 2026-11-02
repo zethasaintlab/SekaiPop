@@ -90,185 +90,75 @@ Most shells pick one look and theme it. SekaiPop starts from a single design lan
 </tr>
 <tr>
 <td valign="top"><b>A full desktop</b><br>On-screen display, polkit prompt, notifications, screen snip (region, OCR to clipboard, Google Lens, screen record, colour picker), Game Mode, Focus Mode, Overview, on-screen keyboard and a welcome tour. Bar and dock work on any edge in four styles: Float, Straight, Transparent and Capsule.</td>
-<td valign="top"><b>An installer for a bare system</b><br><code>./install.sh</code> turns a minimal Hyprland install into the complete desktop: packages, fonts, services, groups, the shell and a ready Hyprland config, with backups and a one-command restore.</td>
+<td valign="top"><b>A conservative multi-distro installer</b><br>One shared installer supports explicitly allowlisted Arch-family, Fedora, Debian and Ubuntu baselines, with native package backends, read-only planning, scoped desktop integration, and configuration backup/restore.</td>
 </tr>
 </table>
 
 <img src="assets/divider.svg" alt="" width="100%">
 
+
 <h2 id="requirements"><img src="assets/tag-requirements.svg" alt="Requirements" height="80"></h2>
 
-| Need | Notes |
-|---|---|
-| **Arch-based distro** (Arch, CachyOS, EndeavourOS) | The installer uses `pacman` and the AUR |
-| **Hyprland 0.55+** | The config is **Lua** (`hyprland.lua`); older versions can't read it |
-| **Quickshell** | `quickshell` or `quickshell-git` |
-| **Qt 6.7+** | Shaders ship built for Qt 6.12. On older Qt the installer rebuilds them once (needs `qt6-shadertools`) |
-| **A normal user with `sudo`** | Don't run the installer as root |
-| **An AUR helper** (`yay` or `paru`) | The installer can build `yay-bin` for you if you have none |
+The multi-distro installer is designed for a **mutable, systemd-based x86_64 desktop**. It requires a normal user account with <code>sudo</code> access. Do not run it as root.
 
-> [!IMPORTANT]
-> GPU drivers are **never** touched by the installer. Install your own (especially NVIDIA) before you start.
+| Distribution | Supported baseline | Package backend | Conditions |
+|---|---|---|---|
+| Arch Linux | Rolling | pacman | A stale sync database requires explicit <code>--system-upgrade</code> authorization for a full system upgrade. |
+| EndeavourOS | Rolling | pacman | Uses the Arch package profile. |
+| CachyOS | Rolling | pacman | Uses the Arch package profile. |
+| Fedora | 44 | DNF5 | Compatible Hyprland >= 0.55 must already be installed; no COPR is enabled. |
+| Debian | 13 (trixie) | APT | Official <code>trixie-backports</code> must already be configured for Quickshell and Hyprland. |
+| Ubuntu | 26.10 (Stonking Stingray) | APT | Universe must already be enabled. |
 
-<details>
-<summary><b>Core packages</b> (the shell can't start without these)</summary>
-<br>
+**Not supported:** openSUSE, Gentoo, NixOS, Kali Linux, Fedora Atomic/ostree variants, other unverified derivatives, and architectures other than x86_64. The installer uses exact <code>ID</code>, <code>VERSION_ID</code>, and release-codename checks. <code>ID_LIKE</code> is informational only and does not route Linux Mint or another derivative to Debian/Arch/Fedora.
 
-`hyprland` `quickshell` `qt6-base` `qt6-declarative` `qt6-multimedia-ffmpeg` `qt6-svg` `qt6-imageformats` `qt6-wayland` `qt6-shadertools` `dbus` `polkit` `mesa` `pipewire` `wireplumber` `pipewire-pulse` `libpulse` `networkmanager` `bluez` `bluez-utils` `upower` `power-profiles-daemon` `libnotify` `wl-clipboard` `jq` `curl` `git` `xdg-utils` `xdg-user-dirs` `fontconfig` `python` `python-numpy` `ttf-material-symbols-variable`
+### Runtime requirements
 
-</details>
-
-<details>
-<summary><b>Feature packages</b></summary>
-<br>
-
-| For | Packages |
-|---|---|
-| Themes | `matugen` `adw-gtk-theme` `dconf` `glib2` `xorg-xrdb` |
-| Music | `cava` `easyeffects` |
-| Screenshots, OCR, recording | `grim` `slurp` `swappy` `tesseract` `tesseract-data-eng` `imagemagick` `wf-recorder` `ffmpeg` `hyprpicker` |
-| Clipboard, emoji, typing | `cliphist` `wtype` |
-| Night light, brightness | `hyprsunset` `brightnessctl` `ddcutil` |
-| Dialogs, terminal | `zenity` `kitty` |
-| Wi-Fi / Bluetooth "Advanced" buttons | `plasma-nm` `kde-cli-tools` `blueman` |
-| Sounds, updates | `libcanberra` `sound-theme-freedesktop` `pacman-contrib` |
-| Media keys | `playerctl` |
-
-</details>
-
-<details>
-<summary><b>Desktop layer</b> (skip with <code>--no-desktop-layer</code> if you already have a desktop)</summary>
-<br>
-
-`xorg-xwayland` `xdg-desktop-portal` `xdg-desktop-portal-hyprland` `xdg-desktop-portal-gtk` `gvfs` `adwaita-icon-theme` `noto-fonts` `noto-fonts-cjk` `noto-fonts-emoji` `ttf-jetbrains-mono-nerd` `gnome-keyring` `libsecret` `pipewire-alsa`, plus a file manager (Dolphin on KDE, Thunar otherwise) and `qt6ct` where nothing else themes Qt.
-
-The portals are what make screen sharing work in Discord, browsers and OBS.
-
-</details>
-
-<details>
-<summary><b>Optional</b> (<code>--with-optional</code>)</summary>
-<br>
-
-`python-aubio` `songrec` (song recognition), `mpvpaper` (video wallpapers), `nwg-displays`, `hypridle`, `nodejs` `pnpm` (Vencord plugin build), `cloudflare-warp-bin`
-
-</details>
-
-<details>
-<summary><b>Fonts and services</b></summary>
-<br>
-
-**Fonts:** Google Sans Flex (the installer fetches it into `~/.local/share/fonts`) and Material Symbols Rounded for icons.
-
-**Services the installer enables:** `NetworkManager`, `bluetooth`, `upower`, `power-profiles-daemon`, and the PipeWire user services (`pipewire`, `pipewire-pulse`, `wireplumber`). You are also added to the `video` group.
-
-</details>
+- **Hyprland 0.55+** for SekaiPop's Lua configuration/API.
+- **Qt 6.7+**.
+- Quickshell with SekaiPop's required QML modules: Hyprland, Wayland, IO, Widgets, PAM, Polkit, Notifications, UPower, PipeWire, MPRIS and SystemTray.
+- Shaders in the repository are built with Qt 6.12. Qt Shader Tools / <code>qsb</code> is required only when the effective Qt runtime is older than 6.12 and shader recompilation is needed.
+- Install and configure GPU drivers yourself. The installer never changes GPU drivers, kernel modules or Secure Boot.
 
 <img src="assets/divider.svg" alt="" width="100%">
 
 <h2 id="installation"><img src="assets/tag-installation.svg" alt="Installation" height="80"></h2>
 
-### 1. Install
+Clone the complete fork and inspect the package/deployment plan first:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Blapples/SekaiPop/main/get.sh | bash
-```
-
-That is the whole install. It downloads SekaiPop, then does three jobs:
-
-1. **Dependencies:** packages (repos and AUR), Google Sans Flex, services, groups.
-2. **The shell:** copied to `~/.config/quickshell/sekaipop` (an older copy is kept as `.bak-<time>`).
-3. **Hyprland:** a ready Lua config in `~/.config/hypr` (keybinds, rules, autostart, idle lock) and a `monitors.lua` made for the screens connected right now. Inside a running Hyprland it picks the highest refresh rate your screen offers at its preferred size.
-
-> [!WARNING]
-> Run it as your normal user, not root. It calls `sudo` itself where needed.
-
-Want to look first? Add `--dry-run`: it prints everything it would do and changes nothing.
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Blapples/SekaiPop/main/get.sh | bash -s -- --dry-run
-```
-
-Options go after the command (see [Installer options](#installer-options)), for example `--yes` or `--hypr merge`.
-
-<details>
-<summary>Prefer to clone it yourself?</summary>
-
-```bash
-git clone https://github.com/Blapples/SekaiPop.git
+<pre><code>git clone https://github.com/zethasaintlab/SekaiPop.git
 cd SekaiPop
-./install.sh --dry-run      # look first
-./install.sh                # install
-```
+./install.sh --plan
+./install.sh</code></pre>
 
-```
-install.sh   install-deps.sh   check-deps.sh
-hypr/        Hyprland (Lua) config
-sekaipop/    the shell itself
-```
-
-</details>
-
-### 2. Start it
-
-Log out and back in, choosing the plain **Hyprland** session (**not** "uwsm"). The shell starts by itself. Inside an already running Hyprland the installer offers to reload and start it for you.
-
-### 3. Check everything
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Blapples/SekaiPop/main/get.sh | bash -s -- --check
-```
-
-It is read-only: it lists what is installed and what is missing, and changes nothing.
+The complete repository is required: the installer deploys the existing <code>sekaipop/</code> shell and <code>hypr/</code> configuration. It does not duplicate or download a separate runtime tree.
 
 ### Installer options
 
-| Option | What it does |
+| Option | Purpose |
 |---|---|
-| `--dry-run` | Show everything, change nothing |
-| `--yes` | No questions |
-| `--hypr full` | Install the preconfigured Hyprland config (default on a new setup) |
-| `--hypr merge` | **Keep your config**, only add a small `sekaipop_session` file |
-| `--hypr skip` | Don't touch Hyprland at all |
-| `--no-deps` | Only copy files, install no packages |
-| `--rice DIR` | Install a different copy of the `sekaipop` folder |
-| `--restore` | Put back the Hyprland config backed up by the last run |
-| `-- <options>` | Pass options on to `install-deps.sh` |
+| <code>--plan</code> / <code>--dry-run</code> | Read-only package and deployment plan; no repository refresh or configuration writes. |
+| <code>--check</code> | Read-only runtime, Qt, QML, plugin and Quickshell checks. |
+| <code>--profile minimal|standard|full</code> | Select core, standard, or expanded optional dependencies. |
+| <code>--deps-only</code> | Install selected dependencies and system integration without copying the shell. |
+| <code>--no-deps</code> | Deploy configuration without a package transaction. |
+| <code>--no-update</code> | Skip APT/DNF metadata refresh. |
+| <code>--no-desktop-layer</code> | Omit optional portals, font bundles and desktop convenience packages. |
+| <code>--hypr merge|full|skip</code> | Add a session hook to the existing config, deploy the complete SekaiPop Hyprland config, or leave Hyprland untouched. |
+| <code>--restore</code> | Restore the most recent configuration snapshot. |
+| <code>--system-upgrade</code> | Arch-family only; explicitly authorizes a full <code>pacman -Syu</code> transaction. |
+| <code>--yes</code> | Accept ordinary confirmations; does not authorize external repositories. |
 
-`install-deps.sh` extras (pass them after `--`): `--core-only`, `--with-optional`, `--no-desktop-layer`, `--gpu amd|intel|nvidia|skip`, `--ddc`, `--file-manager dolphin|thunar|none`, `--no-update`, `--no-aur`.
+### Package source and desktop safety
 
-```bash
-./install.sh --hypr merge                          # I already have a Hyprland config
-./install.sh -- --with-optional --gpu amd          # everything, AMD GPU
-./install.sh --yes -- --core-only                  # bare minimum, no questions
-```
+Only repositories already configured by the user are queried. No AUR helper, COPR, PPA, arbitrary RPM/DEB source, or source build is enabled. The installer does not alter GPU drivers, global portal defaults, KDE settings, or unrelated Quickshell processes. It uses path-scoped Quickshell instance operations.
 
-### Safety
+### Checking and restoring
 
-- Your old Hyprland config is moved to `~/.config/hypr.sekaipop-backup-<time>`, **never deleted**. `./install.sh --restore` brings it back.
-- Your `monitors.lua`, `workspaces.lua`, `sekaipop_overrides.lua` and `custom/` folder are carried over.
-- `monitors.lua` is **never shipped**. It is generated for your screens, so a config written for someone else's monitors can't give you a black screen.
-- A mistake in any config file is written to `~/.cache/sekaipop/hypr-errors.log`; the other files still load.
+<pre><code>./check-deps.sh
+./install.sh --restore</code></pre>
 
-### Updating
-
-Run the install command again. Settings and state live in `~/.local/state/sekaipop`, so your choices are kept. If you cloned the repo instead, `git pull` and run `./install.sh` again.
-
-### Your own changes
-
-Edit the files in `~/.config/hypr/custom/` (`keybinds.lua`, `rules.lua`, `variables.lua`, `env.lua`, `execs.lua`, `general.lua`). They load after the defaults and are never overwritten. Give a keybind a description like `"Apps: My thing"` and the cheatsheet lists it.
-
-### Plugins
-
-A plugin is a desktop widget, an entry in the bar with a card under it, or both, kept in its own folder, usually its own repo: put one in `~/.config/sekaipop/plugins/` (most come with an `install.sh` that does it), run `qs -c sekaipop ipc call plugins reload`, then add its widget from Edit Desktop and switch its bar entry on in Settings > Bar > Modules. A plugin runs with the shell's full rights, so install only what you would run as your own script. Writing one, and the interface it gets: [Plugins](docs/PLUGINS.md); the smallest examples are [hello clock](examples/plugins/hello-clock/) (a widget) and [hello bar](examples/plugins/hello-bar/) (a bar entry).
-
-<!-- plugin-list -->
-| Plugin | What it adds |
-| ------ | ------------ |
-| [Tailscale](https://github.com/masshirodev/sekaipop-tailscale) | A bar entry with whether this machine is on your tailnet and how many devices are up (`5/6`); a click lists every device with a status dot and copies its IP. The same list as a desktop widget. |
-<!-- /plugin-list -->
-
-Made one? Give its repository the GitHub topic [`sekaipop-plugin`](https://github.com/topics/sekaipop-plugin) and open a pull request adding it to the list above.
+The installer snapshots existing configuration before replacement and keeps persistent <code>~/.local/state/sekaipop</code> application state separate from the replaceable shell deployment. Mocked tests do not constitute a live distro or graphical-session certification; see <code>MULTI-DISTRO.md</code> for the support matrix and validation boundary.
 
 <img src="assets/divider.svg" alt="" width="100%">
 
