@@ -52,7 +52,7 @@ sp_generate_monitors_lua() {
 sp_hyprland_lua_qs_alias_targets_sekaipop() {
     local hypr_dir="$1" variables="$1/hyprland/variables.lua" custom_variables="$1/custom/variables.lua"
 
-    if [[ -f "$custom_variables" ]] && awk '
+    if [[ -f "$custom_variables" ]] && grep -Fq 'load("custom.variables"' "$hypr_dir/hyprland.lua" && awk '
         /^[[:space:]]*--/ { next }
         /^[[:space:]]*QS[[:space:]]*=/ { found=1 }
         END { exit !found }
@@ -106,7 +106,8 @@ sp_hyprland_has_quickshell_autostart() {
                 /(qs|quickshell)[[:space:]]+-c[[:space:]]+sekaipop|qs[[:space:]]+-p[[:space:]].*sekaipop/ { found=1 }
                 END { exit !found }
             ' "$file" && return 0
-            if [[ "$file" == "$hypr_dir/hyprland/execs.lua" ]] &&
+            if [[ "$file" == "$hypr_dir/hyprland/execs.lua" || "$file" == "$hypr_dir/custom/execs.lua" ]] &&
+                grep -Fq 'load("hyprland.variables")' "$root" &&
                 grep -Eq 'hl\.exec_cmd\([[:space:]]*QS[[:space:]]*\)' "$file" &&
                 sp_hyprland_lua_qs_alias_targets_sekaipop "$hypr_dir"; then
                 return 0
