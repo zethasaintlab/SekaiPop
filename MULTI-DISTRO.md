@@ -12,7 +12,7 @@
 | Ubuntu | APT | Ubuntu 26.10 (Stonking Stingray), x86_64 | Universe must already be enabled. |
 | Kali Linux | APT | kali-rolling, x86_64 | Canonical Kali sources only; every package candidate is targeted to kali-rolling. |
 
-The installer requires a mutable systemd desktop and x86_64. It detects /etc/os-release by exact ID, VERSION_ID, and (where applicable) VERSION_CODENAME. ID_LIKE is informational only: it does not make Linux Mint, Kali, or another derivative eligible.
+The installer requires a mutable systemd desktop and x86_64. It detects /etc/os-release by exact ID, VERSION_ID, and (where applicable) VERSION_CODENAME. ID_LIKE is informational only: it does not make Linux Mint or another derivative eligible.
 
 Explicitly excluded: openSUSE, Gentoo, NixOS, Fedora Atomic/ostree variants, other unverified derivatives, and architectures other than x86_64.
 
