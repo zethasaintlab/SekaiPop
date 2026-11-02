@@ -28,11 +28,11 @@ cat > "$TMP/bin/busctl" <<'MOCK'
 #!/usr/bin/env bash
 if [[ "${1:-}" == --system && "${2:-}" == call ]]; then
     [[ "${3:-}" == org.freedesktop.DBus && "${4:-}" == /org/freedesktop/DBus && "${5:-}" == org.freedesktop.DBus && "${6:-}" == NameHasOwner && "${7:-}" == s && "${8:-}" == org.freedesktop.UPower.PowerProfiles ]] || exit 2
-    if [[ "${MOCK_DBUS_OWNER:-0}" == 1 ]]; then printf 'b true\\n'; else printf 'b false\\n'; fi
+    if [[ "${MOCK_DBUS_OWNER:-0}" == 1 ]]; then printf 'b true'; else printf 'b false'; fi
 elif [[ "${1:-}" == --system && "${2:-}" == --no-pager && "${3:-}" == introspect ]]; then
     [[ "${4:-}" == org.freedesktop.UPower.PowerProfiles && "${5:-}" == /org/freedesktop/UPower/PowerProfiles ]] || exit 2
     [[ "${MOCK_DBUS_OBJECT:-0}" == 1 ]] || exit 1
-    printf 'org.freedesktop.UPower.PowerProfiles interface\\n'
+    printf 'org.freedesktop.UPower.PowerProfiles interface'
 else
     exit 2
 fi
