@@ -19,7 +19,7 @@ declare -Ag DISTRO_PACKAGE_MAP=(
     [portal]='xdg-desktop-portal/kali-rolling' [portal-hyprland]='xdg-desktop-portal-hyprland/kali-rolling'
     [portal-gtk]='xdg-desktop-portal-gtk/kali-rolling' [xwayland]='xwayland/kali-rolling'
     [noto-fonts]='fonts-noto-core/kali-rolling' [noto-fonts-cjk]='fonts-noto-cjk/kali-rolling'
-    [noto-fonts-emoji]='fonts-noto-color-emoji/kali-rolling' [nerd-font]='fonts-jetbrains-mono/kali-rolling'
+    [noto-fonts-emoji]='fonts-noto-color-emoji/kali-rolling' [jetbrains-mono]='fonts-jetbrains-mono/kali-rolling'
     [cava]='cava/kali-rolling' [grim]='grim/kali-rolling' [slurp]='slurp/kali-rolling'
     [cliphist]='cliphist/kali-rolling' [wtype]='wtype/kali-rolling' [hyprpicker]='hyprpicker/kali-rolling'
     [imagemagick]='imagemagick/kali-rolling' [tesseract]='tesseract-ocr/kali-rolling tesseract-ocr-eng/kali-rolling'
