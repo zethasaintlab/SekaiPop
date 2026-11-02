@@ -38,6 +38,7 @@ contains "$ROOT/installer/core/plan.sh" 'TLP is installed without tlp-pd' && pas
 contains "$ROOT/installer/integrations/systemd.sh" 'tlp-pd.service' && pass 'Fedora TLP profile service is reconciled when installed' || fail 'Fedora TLP profile service is reconciled when installed'
 contains "$ROOT/installer/core/deployment.sh" 'sp_prepare_shaders "$stage/shaders"' && pass 'Shaders are prepared in staging before Quickshell replacement' || fail 'Shaders are prepared in staging before Quickshell replacement'
 contains "$ROOT/installer/core/main.sh" 'sp_rollback_failed_deployment' && pass 'Failed deployment phases have automatic configuration rollback' || fail 'Failed deployment phases have automatic configuration rollback'
+contains "$ROOT/installer/core/main.sh" 'Post-deployment runtime validation failed; Quickshell activation was skipped' && pass 'Mandatory runtime validation gates Quickshell activation' || fail 'Mandatory runtime validation gates Quickshell activation'
 contains "$ROOT/installer/core/detect.sh" 'ID_LIKE is informational only' && pass 'ID_LIKE never triggers implicit fallback' || fail 'ID_LIKE never triggers implicit fallback'
 contains "$ROOT/installer/core/detect.sh" 'silverblue|kinoite|sericea|onyx|sway-atomic|budgie-atomic' && pass 'Fedora Atomic variants are rejected' || fail 'Fedora Atomic variants are rejected'
 not_contains "$ROOT/installer/core/detect.sh" 'opensuse)' && pass 'openSUSE is not in the supported ID allowlist' || fail 'openSUSE is not in the supported ID allowlist'
