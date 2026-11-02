@@ -70,7 +70,7 @@ sp_kali_apt_sources_are_safe() {
                         host="${host%%/*}"
                         host="${host%%:*}"
                         case "$host" in
-                            http.kali.org|archive.kali.org) ;;
+                            http.kali.org) ;;
                             *) invalid=1 ;;
                         esac
                     done
@@ -123,7 +123,7 @@ sp_kali_apt_sources_are_safe() {
                     host="${host%%/*}"
                     host="${host%%:*}"
                     case "$host" in
-                        http.kali.org|archive.kali.org) ;;
+                        http.kali.org) ;;
                         *) invalid=1 ;;
                     esac
                     [[ "$suite" == kali-rolling ]] || invalid=1
