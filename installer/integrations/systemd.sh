@@ -69,6 +69,11 @@ sp_setup_services() {
     for service in "${system_services[@]}"; do
         sp_reconcile_service system "$service"
     done
+    if [[ "${SP_DISTRO_ID:-}" == fedora ]] &&
+        sp_fedora_power_profile_provider_installed &&
+        ! sp_fedora_power_profile_api_available; then
+        sp_warn 'A Fedora power-profile provider package is installed, but the PowerProfiles D-Bus API is not active. Power-profile controls may remain unavailable; inspect the selected provider service.'
+    fi
 
     if [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" || -S "${XDG_RUNTIME_DIR:-/nonexistent}/bus" ]]; then
         for service in pipewire.service pipewire-pulse.service wireplumber.service; do
