@@ -39,6 +39,7 @@ sp_runtime_requirement_present() {
     local req="$1" version
     case "$req" in
         quickshell) sp_have qs ;;
+        ffmpeg) sp_have ffmpeg ;;
         hyprland)
             version="$(sp_hyprland_version 2>/dev/null || true)"
             [[ -n "$version" ]] && sp_version_ge "$version" 0.55.0
@@ -57,7 +58,13 @@ sp_runtime_requirement_present() {
         hypridle) sp_have hypridle ;;
         nodejs) sp_have node ;;
         pnpm) sp_have pnpm ;;
-        power-profiles-daemon) sp_have powerprofilesctl ;;
+        power-profiles-daemon)
+            if sp_have powerprofilesctl; then return 0; fi
+            if [[ "$SP_DISTRO_ID" == fedora ]] && sp_have rpm && rpm -q tuned-ppd >/dev/null 2>&1 && sp_have systemctl && systemctl is-active --quiet tuned-ppd.service; then
+                return 0
+            fi
+            return 1
+            ;;
         material-symbols) sp_have fc-match && fc-match -f '%{family}\n' 'Material Symbols Rounded' 2>/dev/null | grep -qi 'Material Symbols' ;;
         google-sans-flex) sp_have fc-match && fc-match -f '%{family}\n' 'Google Sans Flex' 2>/dev/null | grep -qi 'Google Sans Flex' ;;
         graphics-egl)
