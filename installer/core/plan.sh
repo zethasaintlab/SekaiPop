@@ -43,9 +43,10 @@ sp_kali_apt_sources_are_safe() {
         apt_root="$SEKAIPOP_TEST_APT_ROOT"
     fi
 
-    shopt -s nullglob
-    source_files=("$apt_root/sources.list" "$apt_root"/sources.list.d/*.list "$apt_root"/sources.list.d/*.sources)
-    shopt -u nullglob
+    source_files=("$apt_root/sources.list")
+    for file in "$apt_root"/sources.list.d/*.list "$apt_root"/sources.list.d/*.sources; do
+        [[ -f "$file" ]] && source_files+=("$file")
+    done
 
     for file in "${source_files[@]}"; do
         [[ -f "$file" && -r "$file" ]] || continue
