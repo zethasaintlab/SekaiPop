@@ -20,6 +20,7 @@ contains "$ROOT/installer/core/detect.sh" 'ID_LIKE is informational only' && pas
 contains "$ROOT/installer/core/detect.sh" 'silverblue|kinoite|sericea|onyx|sway-atomic|budgie-atomic' && pass 'Fedora Atomic variants are rejected' || fail 'Fedora Atomic variants are rejected'
 not_contains "$ROOT/installer/core/detect.sh" 'opensuse)' && pass 'openSUSE is not in the supported ID allowlist' || fail 'openSUSE is not in the supported ID allowlist'
 contains "$ROOT/installer/core/plan.sh" '6.12.0' && pass 'Qt 6.12 shader baseline is encoded in planning' || fail 'Qt 6.12 shader baseline is encoded in planning'
+contains "$ROOT/installer/core/plan.sh" 'quickshell) sp_have qs ;;' && pass 'Quickshell runtime detection uses the actual qs executable' || fail 'Quickshell runtime detection uses the actual qs executable'
 contains "$ROOT/installer/catalog/requirements.sh" 'qt6-shadertools' && pass 'Shader Tools has a documented logical capability' || fail 'Shader Tools has a documented logical capability'
 contains "$ROOT/installer/integrations/hyprland.sh" '0.55.0' && pass 'Hyprland Lua minimum version is checked' || fail 'Hyprland Lua minimum version is checked'
 contains "$ROOT/installer/integrations/quickshell.sh" 'Quickshell/Services/SystemTray' && pass 'Quickshell QML modules are checked' || fail 'Quickshell QML modules are checked'
