@@ -42,5 +42,6 @@ not_contains "$ROOT/installer" 'curl -fsSL' && pass 'Installer does not pipe rem
 for legacy in install-fedora.sh install-deps-fedora.sh check-deps-fedora.sh; do
     [[ ! -e "$ROOT/$legacy" ]] && pass "Legacy root wrapper absent: $legacy" || fail "Legacy root wrapper must be absent: $legacy"
 done
+if bash "$ROOT/tests/test-hyprland-autostart.sh"; then pass 'Hyprland autostart regression fixtures'; else fail 'Hyprland autostart regression fixtures'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
