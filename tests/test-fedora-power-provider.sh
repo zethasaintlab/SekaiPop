@@ -172,8 +172,8 @@ fi
 printf '[PASS] Existing active PowerProfiles service prevents a second provider start\n'
 
 FAKE_RPM_PACKAGES='power-profiles-daemon'
-FAKE_ACTIVE_SERVICES=''
-export FAKE_RPM_PACKAGES FAKE_ACTIVE_SERVICES
+FAKE_POWERPROFILE_API=0
+export FAKE_RPM_PACKAGES FAKE_POWERPROFILE_API
 : > "$SP_TEST_SYSTEMCTL_LOG"
 sp_setup_services
 grep -Fq 'cat power-profiles-daemon.service' "$SP_TEST_SYSTEMCTL_LOG" || {
