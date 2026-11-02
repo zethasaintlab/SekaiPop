@@ -43,6 +43,15 @@ sp_kali_apt_sources_are_safe() {
         apt_root="$SEKAIPOP_TEST_APT_ROOT"
     fi
 
+    sp_have apt-config || return 1
+    local apt_config root_dir
+    apt_config="$(apt-config dump 2>/dev/null)" || return 1
+    grep -Fqx 'Dir::Etc "etc/apt";' <<< "$apt_config" || return 1
+    grep -Fqx 'Dir::Etc::sourcelist "sources.list";' <<< "$apt_config" || return 1
+    grep -Fqx 'Dir::Etc::sourceparts "sources.list.d";' <<< "$apt_config" || return 1
+    root_dir="$(awk '$1 == "Dir::RootDir" { gsub(/[";]/, "", $2); print $2; exit }' <<< "$apt_config")"
+    [[ -z "$root_dir" || "$root_dir" == / ]] || return 1
+
     source_files=("$apt_root/sources.list")
     for file in "$apt_root"/sources.list.d/*.list "$apt_root"/sources.list.d/*.sources; do
         [[ -f "$file" ]] && source_files+=("$file")
