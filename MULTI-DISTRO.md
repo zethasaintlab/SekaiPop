@@ -10,10 +10,17 @@
 | Fedora | DNF5 | Fedora 44, x86_64 | Compatible Hyprland >= 0.55 must already exist; no COPR is enabled. |
 | Debian | APT | Debian 13 (trixie), x86_64 | Configure official trixie-backports yourself; only Quickshell and Hyprland are suite-targeted. |
 | Ubuntu | APT | Ubuntu 26.10 (Stonking Stingray), x86_64 | Universe must already be enabled. |
+| Kali Linux | APT | kali-rolling, x86_64 | Canonical Kali sources only; every package candidate is targeted to kali-rolling. |
 
 The installer requires a mutable systemd desktop and x86_64. It detects /etc/os-release by exact ID, VERSION_ID, and (where applicable) VERSION_CODENAME. ID_LIKE is informational only: it does not make Linux Mint, Kali, or another derivative eligible.
 
-Explicitly excluded: openSUSE, Gentoo, NixOS, Kali Linux, Fedora Atomic/ostree variants, other unverified derivatives, and architectures other than x86_64. An unverified release is not silently routed to a nearby package backend.
+Explicitly excluded: openSUSE, Gentoo, NixOS, Fedora Atomic/ostree variants, other unverified derivatives, and architectures other than x86_64.
+
+### Kali repository and service policy
+
+Kali is accepted only when `ID=kali` and `VERSION_CODENAME=kali-rolling`. Its APT source configuration must contain at least one active binary source and every active binary source must use the canonical `http.kali.org` or `archive.kali.org` host with the `kali-rolling` suite. Mixed Debian/Ubuntu suites, `kali-last-snapshot`, and third-party APT sources are rejected before metadata refresh or package transactions. Kali package specifications explicitly target `kali-rolling`; the installer does not add, rewrite, or switch repositories and never performs `apt full-upgrade`.
+
+Kali disables some network services by default, including Bluetooth-related services. SekaiPop may offer to start/enable its required services, but each change remains subject to explicit confirmation. Kali is primarily designed for penetration testing and security auditing; desktop use is an advanced, user-managed configuration. An unverified release is not silently routed to a nearby package backend.
 
 ## Runtime requirements
 
