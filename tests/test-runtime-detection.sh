@@ -80,8 +80,8 @@ assert_absent power-profiles-daemon 'Owned D-Bus name without the expected Power
 export MOCK_DBUS_OBJECT=1 MOCK_TUNED_PPD_ACTIVE=0
 assert_absent power-profiles-daemon 'Inactive tuned-ppd does not satisfy the power-profile capability'
 
-export MOCK_TUNED_PPD_ACTIVE=1 MOCK_TUNED_PPD_INSTALLED=0
-assert_absent power-profiles-daemon 'Uninstalled tuned-ppd does not satisfy the power-profile capability'
+export MOCK_TUNED_PPD_ACTIVE=0 MOCK_TUNED_PPD_INSTALLED=0
+assert_absent power-profiles-daemon 'Uninstalled and inactive tuned-ppd does not satisfy the power-profile capability'
 
 PATH="$TMP/native-bin:$TMP/bin"
 export PATH
