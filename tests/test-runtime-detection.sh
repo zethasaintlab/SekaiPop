@@ -4,7 +4,7 @@ ROOT="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
 ORIGINAL_PATH="$PATH"
 TMP="$(mktemp -d /tmp/sekaipop-runtime.XXXXXX)"
 trap 'PATH="$ORIGINAL_PATH"; rm -rf -- "$TMP"' EXIT
-mkdir -p "$TMP/bin"
+mkdir -p "$TMP/bin" "$TMP/native-bin"
 export SEKAIPOP_INSTALLER_ROOT="$ROOT"
 source "$ROOT/installer/core/main.sh"
 
@@ -24,12 +24,11 @@ cat > "$TMP/bin/systemctl" <<'MOCK'
 #!/usr/bin/env bash
 [[ "${1:-}" == is-active && "${2:-}" == --quiet && "${3:-}" == tuned-ppd.service && "${MOCK_TUNED_PPD_ACTIVE:-0}" == 1 ]]
 MOCK
-cat > "$TMP/bin/powerprofilesctl" <<'MOCK'
+cat > "$TMP/native-bin/powerprofilesctl" <<'MOCK'
 #!/usr/bin/env bash
 exit 0
 MOCK
-chmod +x "$TMP/bin/qs" "$TMP/bin/ffmpeg" "$TMP/bin/rpm" "$TMP/bin/systemctl"
-CHMOD="$(command -v chmod)"
+chmod +x "$TMP/bin/qs" "$TMP/bin/ffmpeg" "$TMP/bin/rpm" "$TMP/bin/systemctl" "$TMP/native-bin/powerprofilesctl"
 ln -s "$(command -v bash)" "$TMP/bin/bash"
 PATH="$TMP/bin"
 export PATH
@@ -65,7 +64,8 @@ assert_absent power-profiles-daemon 'Inactive tuned-ppd does not satisfy the pow
 export MOCK_TUNED_PPD_ACTIVE=1 MOCK_TUNED_PPD_INSTALLED=0
 assert_absent power-profiles-daemon 'Uninstalled tuned-ppd does not satisfy the power-profile capability'
 
-"$CHMOD" +x "$TMP/bin/powerprofilesctl"
+PATH="$TMP/native-bin:$TMP/bin"
+export PATH
 assert_present power-profiles-daemon 'Native powerprofilesctl satisfies the power-profile capability'
 
 printf '\nRuntime detection fixtures passed.\n'
