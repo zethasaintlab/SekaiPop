@@ -133,15 +133,35 @@ sp_plan_and_install_dependencies() {
     pm_install "${SP_INSTALL_PKGS[@]}"
     sp_ok 'Native package transaction completed.'
 }
+sp_rollback_failed_deployment() {
+    local reason="$1" original_yes="${SP_YES:-0}"
+    sp_error "$reason"
+    SP_YES=1
+    if sp_restore_latest; then
+        SP_YES="$original_yes"
+        sp_die "$reason The previous Quickshell/Hyprland configuration was restored automatically; the recovery snapshot is retained under $SP_BACKUP_ROOT."
+    fi
+    SP_YES="$original_yes"
+    sp_die "$reason Automatic rollback failed. The installer backup remains available; run ./install.sh --restore after inspecting the log."
+}
+
 sp_deploy_application() {
     sp_find_rice_source
     sp_create_backup 1 "$([[ "$SP_HYPR" == skip ]] && echo 0 || echo 1)"
-    sp_deploy_quickshell "$SP_RICE"
-    [[ "$SP_HYPR" == skip ]] || sp_integrate_hyprland "$SP_HYPR_SOURCE"
-    sp_prepare_shaders "$SP_QS_DEST/shaders"
+    if ! (sp_deploy_quickshell "$SP_RICE"); then
+        sp_rollback_failed_deployment 'Quickshell deployment failed.'
+    fi
+    if [[ "$SP_HYPR" != skip ]] && ! (sp_integrate_hyprland "$SP_HYPR_SOURCE"); then
+        sp_rollback_failed_deployment 'Hyprland integration failed.'
+    fi
+    if ! (sp_check_all); then
+        sp_rollback_failed_deployment 'Post-deployment runtime validation failed; Quickshell activation was skipped.'
+    fi
+    if ! (sp_write_state_manifest); then
+        sp_rollback_failed_deployment 'Could not write the installer state manifest.'
+    fi
     sp_setup_services
     sp_activate_sekaipop || true
-    sp_write_state_manifest
     sp_ok 'SekaiPop deployment phase completed.'
 }
 sp_dependency_only_setup() {
@@ -173,5 +193,4 @@ sekaipop_main() {
     fi
     (( SP_NO_DEPS )) && sp_info 'Package transactions skipped (--no-deps); post-install verification will still run.'
     sp_deploy_application
-    sp_check_all
 }
