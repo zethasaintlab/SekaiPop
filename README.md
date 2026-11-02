@@ -113,7 +113,7 @@ The multi-distro installer is designed for a **mutable, systemd-based x86_64 des
 
 **Not supported:** openSUSE, Gentoo, NixOS, Fedora Atomic/ostree variants, other unverified derivatives, and architectures other than x86_64.
 
-Kali is supported only on its `kali-rolling` branch with the canonical `http.kali.org` or `archive.kali.org` APT source. The installer refuses mixed Debian/Ubuntu suites and third-party APT sources, does not add repositories, and targets package candidates explicitly to `kali-rolling`. Kali disables some network services by default; any service activation remains an explicit confirmation. Kali is primarily a penetration-testing distribution, not a general-purpose desktop recommendation. The installer uses exact <code>ID</code>, <code>VERSION_ID</code>, and release-codename checks. <code>ID_LIKE</code> is informational only and does not route Linux Mint or another derivative to Debian/Arch/Fedora.
+Kali is supported only on its `kali-rolling` branch with the canonical `http.kali.org` APT source. The installer refuses mixed Debian/Ubuntu suites and third-party APT sources, does not add repositories, and targets package candidates explicitly to `kali-rolling`. Kali disables some network services by default; any service activation remains an explicit confirmation. Kali is primarily a penetration-testing distribution, not a general-purpose desktop recommendation. The installer uses exact <code>ID</code>, <code>VERSION_ID</code>, and release-codename checks. <code>ID_LIKE</code> is informational only and does not route Linux Mint or another derivative to Debian/Arch/Fedora.
 
 ### Runtime requirements
 
