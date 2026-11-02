@@ -49,6 +49,27 @@ sp_generate_monitors_lua() {
         fi
     } > "$target"
 }
+sp_hyprland_lua_qs_alias_targets_sekaipop() {
+    local hypr_dir="$1" variables="$1/hyprland/variables.lua" custom_variables="$1/custom/variables.lua"
+
+    if [[ -f "$custom_variables" ]] && grep -Fq 'load("custom.variables"' "$hypr_dir/hyprland.lua" && awk '
+        /^[[:space:]]*--/ { next }
+        /^[[:space:]]*QS[[:space:]]*=/ { found=1 }
+        END { exit !found }
+    ' "$custom_variables"; then
+        variables="$custom_variables"
+    fi
+    [[ -f "$variables" ]] || return 1
+
+    awk '
+        /^[[:space:]]*--/ { next }
+        /qsConfig[[:space:]]*=[[:space:]]*"sekaipop"/ { config=1 }
+        /QS[[:space:]]*=[[:space:]]*"qs -c sekaipop"/ { direct=1 }
+        /QS[[:space:]]*=[[:space:]]*"qs -c "[[:space:]]*\.\.[[:space:]]*qsConfig/ { alias=1 }
+        END { exit !(direct || (config && alias)) }
+    ' "$variables"
+}
+
 sp_hyprland_has_quickshell_autostart() {
     local mode="$1" hypr_dir="$2" root file
     local -a files=()
@@ -67,10 +88,18 @@ sp_hyprland_has_quickshell_autostart() {
         conf)
             root="$hypr_dir/hyprland.conf"
             files+=("$root")
-            if [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*hyprland/' "$root"; then
+            if [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*hyprland/.*\*' "$root"; then
+                for file in "$hypr_dir"/hyprland/*.conf; do
+                    [[ -f "$file" ]] && files+=("$file")
+                done
+            elif [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*hyprland/execs\.conf' "$root"; then
                 files+=("$hypr_dir/hyprland/execs.conf")
             fi
-            if [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*custom/' "$root"; then
+            if [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*custom/.*\*' "$root"; then
+                for file in "$hypr_dir"/custom/*.conf; do
+                    [[ -f "$file" ]] && files+=("$file")
+                done
+            elif [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*custom/execs\.conf' "$root"; then
                 files+=("$hypr_dir/custom/execs.conf")
             fi
             ;;
@@ -85,6 +114,12 @@ sp_hyprland_has_quickshell_autostart() {
                 /(qs|quickshell)[[:space:]]+-c[[:space:]]+sekaipop|qs[[:space:]]+-p[[:space:]].*sekaipop/ { found=1 }
                 END { exit !found }
             ' "$file" && return 0
+            if [[ "$file" == "$hypr_dir/hyprland/execs.lua" || "$file" == "$hypr_dir/custom/execs.lua" ]] &&
+                grep -Fq 'load("hyprland.variables")' "$root" &&
+                grep -Eq 'hl\.exec_cmd\([[:space:]]*QS[[:space:]]*\)' "$file" &&
+                sp_hyprland_lua_qs_alias_targets_sekaipop "$hypr_dir"; then
+                return 0
+            fi
         else
             awk '
                 /^[[:space:]]*#/ { next }
