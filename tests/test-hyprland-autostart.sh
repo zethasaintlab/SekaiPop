@@ -10,8 +10,16 @@ source "$ROOT/installer/core/main.sh"
 
 pass() { printf '[PASS] %s\n' "$1"; }
 fail() { printf '[FAIL] %s\n' "$1" >&2; exit 1; }
-assert_true() { "$@" && pass "$2" || fail "$2"; }
-assert_false() { if "$@"; then fail "$2"; else pass "$2"; fi; }
+assert_true() {
+    local label="$1"
+    shift
+    "$@" && pass "$label" || fail "$label"
+}
+assert_false() {
+    local label="$1"
+    shift
+    if "$@"; then fail "$label"; else pass "$label"; fi
+}
 
 LUA="$TMP/lua"
 mkdir -p "$LUA/hyprland" "$LUA/custom"
@@ -35,8 +43,8 @@ cat > "$LUA/sekaipop-session.conf" <<'CONF'
 exec-once = qs -c sekaipop
 CONF
 
-assert_false sp_hyprland_has_quickshell_autostart lua "$LUA" \
-    'Lua mode ignores README, hypridle IPC commands, unreferenced conf files, and Lua comments'
+assert_false 'Lua mode ignores README, hypridle IPC commands, unreferenced conf files, and Lua comments' \
+    sp_hyprland_has_quickshell_autostart lua "$LUA"
 
 sp_write_session_file lua "$LUA"
 if grep -Fq 'hl.exec_cmd("qs -c sekaipop")' "$LUA/sekaipop_session.lua"; then
@@ -48,8 +56,8 @@ fi
 cat >> "$LUA/hyprland/execs.lua" <<'LUA'
 hl.exec_cmd("qs -c sekaipop")
 LUA
-assert_true sp_hyprland_has_quickshell_autostart lua "$LUA" \
-    'Lua mode recognizes an active command in the loaded hyprland.execs module'
+assert_true 'Lua mode recognizes an active command in the loaded hyprland.execs module' \
+    sp_hyprland_has_quickshell_autostart lua "$LUA"
 
 CONF="$TMP/conf"
 mkdir -p "$CONF/hyprland" "$CONF/custom"
@@ -74,13 +82,13 @@ cat > "$CONF/sekaipop-session.conf" <<'CONF'
 exec-once = qs -c sekaipop
 CONF
 
-assert_false sp_hyprland_has_quickshell_autostart conf "$CONF" \
-    'Conf mode ignores documentation, hypridle IPC commands, unreferenced session files, and comments'
+assert_false 'Conf mode ignores documentation, hypridle IPC commands, unreferenced session files, and comments' \
+    sp_hyprland_has_quickshell_autostart conf "$CONF"
 
 cat >> "$CONF/hyprland/execs.conf" <<'CONF'
 exec-once = qs -c sekaipop
 CONF
-assert_true sp_hyprland_has_quickshell_autostart conf "$CONF" \
-    'Conf mode recognizes an exec-once directive in a sourced execs.conf'
+assert_true 'Conf mode recognizes an exec-once directive in a sourced execs.conf' \
+    sp_hyprland_has_quickshell_autostart conf "$CONF"
 
 printf '\nHyprland autostart fixtures passed.\n'
