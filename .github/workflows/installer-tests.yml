@@ -1,0 +1,23 @@
+name: Installer validation
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  shell-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Validate shell syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' script; do
+            bash -n "$script"
+          done < <(find installer tests -type f -name '*.sh' -print0)
+          bash -n install.sh install-deps.sh check-deps.sh install-multi.sh
+      - name: Run installer smoke tests
+        run: bash tests/run-tests.sh
+      - name: Run integration fixtures
+        run: bash tests/test-integrations.sh

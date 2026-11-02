@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+source "$SEKAIPOP_INSTALLER_ROOT/installer/core/common.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/core/detect.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/core/cli.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/catalog/requirements.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/package-managers/interface.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/core/plan.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/core/backup.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/integrations/quickshell.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/integrations/shaders.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/integrations/systemd.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/integrations/hyprland.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/core/deployment.sh"
+
+sp_pacman_sync_db_fresh() {
+    local newest=0 file mtime now
+    shopt -s nullglob
+    local -a databases=(/var/lib/pacman/sync/*.db)
+    shopt -u nullglob
+    (("${#databases[@]}")) || return 1
+    now="$(date +%s)"
+    for file in "${databases[@]}"; do
+        mtime="$(stat -c %Y "$file" 2>/dev/null || echo 0)"
+        (( mtime > newest )) && newest="$mtime"
+    done
+    (( newest > 0 && now - newest < 604800 ))
+}
+sp_runtime_hyprland_check() {
+    local version
+    version="$(sp_hyprland_version || true)"
+    [[ -n "$version" ]] || { sp_error 'Hyprland executable/version could not be detected.'; return 1; }
+    sp_version_ge "$version" 0.55.0 || { sp_error "Hyprland $version is below SekaiPop's 0.55.0 Lua baseline."; return 1; }
+    sp_ok "Hyprland $version (minimum 0.55.0)"
+}
+sp_runtime_qt_qml_check() {
+    local root module failures=0
+    root="$(sp_qml_import_root || true)"
+    [[ -n "$root" ]] || { sp_error 'Qt QML import root not detected.'; return 1; }
+    local -a modules=(QtMultimedia QtQuick/Effects QtQuick/Shapes Qt/labs/folderlistmodel)
+    for module in "${modules[@]}"; do
+        if [[ -f "$root/$module/qmldir" ]]; then sp_ok "Qt QML module $module"
+        else sp_error "Missing Qt QML module $module (expected $root/$module/qmldir)"; failures=$((failures + 1)); fi
+    done
+    (( failures == 0 ))
+}
+sp_runtime_basic_check() {
+    local failures=0 bin
+    local -a required=(systemctl jq curl git xdg-open nmcli bluetoothctl upower notify-send wpctl pactl wl-copy wl-paste fc-list)
+    local -a optional=(xdg-user-dir python3 brightnessctl ddcutil grim slurp swappy wf-recorder playerctl cava matugen)
+    for bin in "${required[@]}"; do
+        if sp_have "$bin"; then sp_ok "Executable $bin"; else sp_error "Missing required executable $bin"; failures=$((failures + 1)); fi
+    done
+    if (( ! SP_CHECK_CORE )); then
+        for bin in "${optional[@]}"; do sp_have "$bin" && sp_ok "Optional executable $bin" || sp_warn "Optional executable $bin is unavailable."; done
+    fi
+    if (( ! SP_CHECK_CORE )) && sp_have matugen; then
+        local matugen_version
+        matugen_version="$(matugen --version 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+)+' | head -n1 || true)"
+        if [[ -n "$matugen_version" ]] && sp_version_ge "$matugen_version" 2.0.0; then sp_ok "matugen $matugen_version"
+        else sp_warn "matugen version ${matugen_version:-unknown}; SekaiPop expects matugen 2.x or newer."; fi
+    fi
+    if (( ! SP_CHECK_CORE )) && sp_have fc-match; then
+        fc-match -f '%{family}\n' 'Material Symbols Rounded' 2>/dev/null | grep -qi 'Material Symbols' && sp_ok 'Material Symbols Rounded font' || sp_warn 'Material Symbols Rounded font is missing; some icons may use a fallback glyph.'
+        fc-match -f '%{family}\n' 'Google Sans Flex' 2>/dev/null | grep -qi 'Google Sans Flex' && sp_ok 'Google Sans Flex font' || sp_warn 'Google Sans Flex font is missing; typography will use the fontconfig fallback.'
+    fi
+    if (( ! SP_CHECK_CORE )); then
+        if sp_have python3 && python3 -c 'import numpy' >/dev/null 2>&1; then sp_ok 'Python NumPy module'
+        else sp_warn 'Python NumPy is unavailable; the audio analyzer will use its fallback where supported.'; fi
+    fi
+    if [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" || -S "${XDG_RUNTIME_DIR:-/nonexistent}/bus" ]]; then sp_ok 'User D-Bus session bus'
+    else sp_warn 'No user D-Bus session bus in this process; run SekaiPop from a real desktop login.'; fi
+    if sp_have pkaction || [[ -x /usr/lib/polkit-1/polkitd || -x /usr/libexec/polkit-1/polkitd ]]; then sp_ok 'PolicyKit runtime'
+    else sp_error 'PolicyKit daemon/runtime was not found.'; failures=$((failures + 1)); fi
+    (( failures == 0 ))
+}
+sp_check_all() {
+    local failed=0
+    printf 'SekaiPop dependency/runtime check\n'
+    printf 'System: %s | %s %s | %s | %s\n\n' "$SP_DISTRO_NAME" "$SP_DISTRO_ID" "$SP_DISTRO_VERSION" "$SP_ARCH" "$SP_BACKEND"
+    sp_runtime_hyprland_check || failed=1
+    sp_verify_qt_runtime || failed=1
+    sp_runtime_qt_qml_check || failed=1
+    sp_verify_qt_plugins "$SP_CHECK_CORE" || failed=1
+    sp_verify_quickshell || failed=1
+    sp_runtime_basic_check || failed=1
+    if (( failed )); then sp_error 'One or more required SekaiPop runtime checks failed.'; return 1; fi
+    sp_ok 'All mandatory SekaiPop runtime checks passed.'
+}
+sp_validate_preflight() {
+    sp_require_normal_user
+    [[ "$SP_INIT" == systemd ]] || sp_die 'A systemd-based desktop environment is required. No service changes were attempted.'
+    (( SP_NO_DEPS )) || sp_have sudo || sp_die 'sudo is required for native package installation.'
+    if sp_have Hyprland || sp_have hyprctl; then
+        local version
+        version="$(sp_hyprland_version || true)"
+        [[ -n "$version" && "$version" != unknown ]] || sp_die 'An existing Hyprland executable was found, but its version could not be verified. Refusing to modify the desktop configuration.'
+        sp_version_ge "$version" 0.55.0 || sp_die "Installed Hyprland $version is incompatible with SekaiPop (requires >= 0.55.0). No automatic compositor replacement/downgrade is permitted."
+    fi
+    local qt_version
+    qt_version="$(sp_qt_version || true)"
+    if [[ -n "$qt_version" ]] && ! sp_version_ge "$qt_version" 6.7.0; then sp_die "Installed Qt $qt_version is below SekaiPop's 6.7.0 minimum. Upgrade Qt through the distribution's normal package management before installing SekaiPop."; fi
+}
+sp_plan_and_install_dependencies() {
+    sp_load_package_manager
+    sp_load_distro_profile
+    if (( SP_DRY_RUN )); then
+        sp_build_package_plan
+        sp_print_package_plan
+        (( ${#SP_MISSING_CORE[@]} == 0 )) || { sp_error 'Plan contains unsatisfied mandatory requirements; no installation would be attempted.'; return 1; }
+        sp_info 'Plan only: no repository refresh, package transaction, log, backup, directory, or service change was performed.'
+        return 0
+    fi
+    if [[ "$SP_BACKEND" == dnf5 || "$SP_BACKEND" == apt ]]; then
+        if (( ! SP_NO_UPDATE )); then sp_confirm "Refresh configured native repository metadata for $SP_DISTRO_NAME?" || sp_die 'Metadata refresh declined. Use --no-update to continue with the current package cache.'; pm_refresh_metadata
+        else sp_info 'Repository metadata refresh skipped (--no-update).'; fi
+    elif [[ "$SP_BACKEND" == arch && $SP_SYSTEM_UPGRADE -eq 0 ]]; then
+        sp_pacman_sync_db_fresh || sp_die 'Arch sync databases are missing or older than 7 days. Refusing an unsafe partial synchronization; rerun with --system-upgrade to authorize pacman -Syu --needed.'
+    fi
+    sp_build_package_plan
+    sp_print_package_plan
+    if (("${#SP_MISSING_CORE[@]}")); then
+        sp_error 'Native configured repositories do not provide every mandatory requirement.'
+        if [[ "$SP_DISTRO_ID" == fedora ]]; then sp_error 'Fedora 44 official repositories do not provide the required Hyprland >= 0.55 baseline in this verified package set. Install a compatible compositor from a source you independently trust, then rerun; this installer will not enable a COPR. The Hyprland portal remains an optional desktop feature unless a trusted provider is already configured.'
+        elif [[ "$SP_DISTRO_ID" == debian ]]; then sp_error 'Verify that official Debian 13 trixie-backports is already configured and that Quickshell/Hyprland candidates are visible; this installer will not edit APT sources.'; fi
+        return 1
+    fi
+    (("${#SP_MISSING_OPTIONAL[@]}")) || sp_warn 'Some optional feature packages are unavailable. Core installation can continue; those features will be listed in the final report.'
+    (("${#SP_INSTALL_PKGS[@]} == 0")) && { sp_ok 'All selected package requirements are already satisfied.'; return 0; }
+    sp_confirm "Install ${#SP_INSTALL_PKGS[@]} native package(s) on $SP_DISTRO_NAME?" || sp_die 'Package installation cancelled.'
+    pm_install "${SP_INSTALL_PKGS[@]}"
+    sp_ok 'Native package transaction completed.'
+}
+sp_deploy_application() {
+    sp_find_rice_source
+    sp_create_backup 1 "$([[ "$SP_HYPR" == skip ]] && echo 0 || echo 1)"
+    sp_deploy_quickshell "$SP_RICE"
+    [[ "$SP_HYPR" == skip ]] || sp_integrate_hyprland "$SP_HYPR_SOURCE"
+    sp_prepare_shaders "$SP_QS_DEST/shaders"
+    sp_setup_services
+    sp_activate_sekaipop || true
+    sp_write_state_manifest
+    sp_ok 'SekaiPop deployment phase completed.'
+}
+sp_dependency_only_setup() {
+    [[ "$SP_HYPR" != full ]] || sp_find_rice_source
+    sp_create_backup 0 "$([[ "$SP_HYPR" == skip ]] && echo 0 || echo 1)"
+    [[ "$SP_HYPR" == skip ]] || sp_integrate_hyprland "${SP_HYPR_SOURCE:-$SP_ROOT/hypr}"
+    sp_setup_services
+    sp_write_state_manifest
+}
+sekaipop_main() {
+    sp_parse_args "$@"
+    if (( SP_RESTORE )); then sp_require_normal_user; sp_restore_latest; return $?; fi
+    sp_detect_distribution
+    if (( SP_SYSTEM_UPGRADE )) && [[ "$SP_BACKEND" != arch ]]; then sp_die '--system-upgrade is only available on Arch Linux, EndeavourOS, and CachyOS.' 2; fi
+    if (( SP_CHECK )); then sp_load_package_manager; sp_check_all; return $?; fi
+    (( SP_DRY_RUN )) || sp_validate_preflight
+    sp_make_log
+    sp_info "Detected $SP_DISTRO_NAME | ID=$SP_DISTRO_ID | backend=$SP_BACKEND | release policy=$SP_RELEASE_POLICY"
+    (( SP_NO_DEPS )) || sp_plan_and_install_dependencies
+    if (( SP_DEPS_ONLY )); then sp_info 'Dependency-only mode: application source deployment is skipped.'; (( SP_DRY_RUN )) || sp_dependency_only_setup; return 0; fi
+    if (( SP_DRY_RUN )); then
+        sp_info 'Deployment plan:'
+        sp_info "  Quickshell destination: $SP_QS_DEST (staged replacement; preserves settings, presets, custom data; does not touch ~/.local/state/sekaipop)"
+        sp_info "  Hyprland destination: $SP_HYPR_DEST (mode=$SP_HYPR; existing config snapshot before modifications)"
+        sp_info '  Services: inspect existing systemd units; only enable existing, currently inactive/disabled units after confirmation.'
+        sp_info '  Activation: manage only the Quickshell instance addressed by its config path.'
+        [[ -d "$SP_ROOT/sekaipop" ]] || sp_warn 'This uploaded installer bundle does not include sekaipop/; full deployment requires the complete SekaiPop source checkout or --rice DIR.'
+        return 0
+    fi
+    (( SP_NO_DEPS )) && sp_info 'Package transactions skipped (--no-deps); post-install verification will still run.'
+    sp_deploy_application
+    sp_check_all
+}
