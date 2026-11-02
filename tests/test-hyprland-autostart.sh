@@ -109,6 +109,19 @@ CONF
 assert_false 'Conf mode ignores documentation, hypridle IPC commands, unreferenced session files, and comments' \
     sp_hyprland_has_quickshell_autostart conf "$CONF"
 
+cat > "$CONF/hyprland/startup.conf" <<'CONF'
+# exec-once = qs -c sekaipop
+exec = qs -c sekaipop ipc call lock lock
+CONF
+assert_false 'Conf mode ignores non-startup IPC commands in other sourced files' \
+    sp_hyprland_has_quickshell_autostart conf "$CONF"
+
+cat >> "$CONF/hyprland/startup.conf" <<'CONF'
+exec-once = qs -c sekaipop
+CONF
+assert_true 'Conf mode follows sourced config globs to find startup directives' \
+    sp_hyprland_has_quickshell_autostart conf "$CONF"
+
 cat >> "$CONF/hyprland/execs.conf" <<'CONF'
 exec-once = qs -c sekaipop
 CONF
