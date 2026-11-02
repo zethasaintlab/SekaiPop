@@ -94,6 +94,7 @@ sp_kali_apt_sources_are_safe() {
                         value = $0; sub(/^[[:space:]]*Enabled:[[:space:]]*/, "", value)
                         enabled = value; last = "Enabled"; next
                     }
+                    /^[^[:space:]]/ { last = ""; next }
                     /^[[:space:]]+/ {
                         value = $0; sub(/^[[:space:]]+/, "", value)
                         if (last == "URIs") uris = uris " " value
