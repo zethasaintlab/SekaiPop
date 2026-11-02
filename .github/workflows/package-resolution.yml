@@ -63,6 +63,21 @@ jobs:
                   pacman -Syyu --noconfirm
                   ;;
                 fedora)
+                  # Fedora 44 intentionally requires a compatible user-provided Hyprland.
+                  # Stub only its version probe so this job can resolve every other package.
+                  cat > /usr/local/bin/Hyprland <<'HYPRLAND'
+#!/usr/bin/env bash
+printf "Hyprland 0.56.2\\n"
+HYPRLAND
+                  cat > /usr/local/bin/hyprctl <<'HYPRCTL'
+#!/usr/bin/env bash
+case "$*" in
+  *-j*version*) printf '{"tag":"v0.56.2"}\\n' ;;
+  *version*) printf "Hyprland 0.56.2\\n" ;;
+  *) exit 1 ;;
+esac
+HYPRCTL
+                  chmod +x /usr/local/bin/Hyprland /usr/local/bin/hyprctl
                   dnf5 makecache --refresh
                   ;;
                 debian)
