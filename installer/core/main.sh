@@ -103,6 +103,9 @@ sp_validate_preflight() {
 sp_plan_and_install_dependencies() {
     sp_load_package_manager
     sp_load_distro_profile
+    if [[ "$SP_DISTRO_ID" == kali ]] && ! sp_kali_apt_sources_are_safe; then
+        sp_die 'Kali package operations require only the official http.kali.org or archive.kali.org kali-rolling APT sources. Disable foreign suites and third-party APT sources; the installer will not rewrite repository configuration.'
+    fi
     if (( SP_DRY_RUN )); then
         sp_build_package_plan
         sp_print_package_plan
