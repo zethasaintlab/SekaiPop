@@ -14,7 +14,7 @@ declare -ag SP_REQ_STANDARD=(
     brightnessctl ddcutil kitty playerctl easyeffects matugen hyprsunset power-profiles-daemon
 )
 declare -ag SP_REQ_DESKTOP=(
-    portal portal-hyprland portal-gtk xwayland noto-fonts noto-fonts-cjk noto-fonts-emoji nerd-font
+    portal portal-hyprland portal-gtk xwayland noto-fonts noto-fonts-cjk noto-fonts-emoji
     material-symbols google-sans-flex jetbrains-mono gvfs keyring libsecret pipewire-alsa blueman
 )
 declare -ag SP_REQ_FULL=(python-aubio songrec mpvpaper nwg-displays hypridle nodejs pnpm)
