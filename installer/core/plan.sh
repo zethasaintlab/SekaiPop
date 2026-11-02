@@ -46,6 +46,7 @@ sp_kali_apt_sources_are_safe() {
     sp_have apt-config || return 1
     local apt_config root_dir
     apt_config="$(apt-config dump 2>/dev/null)" || return 1
+    grep -Fqx 'Dir "/";' <<< "$apt_config" || return 1
     grep -Fqx 'Dir::Etc "etc/apt";' <<< "$apt_config" || return 1
     grep -Fqx 'Dir::Etc::sourcelist "sources.list";' <<< "$apt_config" || return 1
     grep -Fqx 'Dir::Etc::sourceparts "sources.list.d";' <<< "$apt_config" || return 1
