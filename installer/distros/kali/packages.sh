@@ -6,7 +6,7 @@ declare -Ag DISTRO_PACKAGE_MAP=(
     [qt6-base]='qt6-base-dev/kali-rolling qt6-base-dev-tools/kali-rolling'
     [qt6-declarative]='qt6-declarative-dev/kali-rolling qml6-module-qtquick/kali-rolling qml6-module-qtquick-effects/kali-rolling qml6-module-qtquick-shapes/kali-rolling qml6-module-qt-labs-folderlistmodel/kali-rolling'
     [qt6-multimedia]='qt6-multimedia-dev/kali-rolling qml6-module-qtmultimedia/kali-rolling'
-    [qt6-svg]='qt6-svg-dev/kali-rolling' [qt6-imageformats]='qt6-image-formats-plugins/kali-rolling'
+    [qt6-svg]='qt6-svg-plugins/kali-rolling' [qt6-imageformats]='qt6-image-formats-plugins/kali-rolling'
     [qt6-wayland]='qt6-wayland/kali-rolling' [qt6-shadertools]='qt6-shader-baker/kali-rolling'
     [dbus]='dbus-user-session/kali-rolling' [polkit]='polkitd/kali-rolling' [graphics-egl]='libegl1/kali-rolling libgl1/kali-rolling'
     [pipewire]='pipewire/kali-rolling' [wireplumber]='wireplumber/kali-rolling'
