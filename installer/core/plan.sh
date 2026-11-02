@@ -146,11 +146,9 @@ sp_kali_apt_sources_are_safe() {
     (( found > 0 && invalid == 0 ))
 }
 
-sp_fedora_tuned_ppd_available() {
+sp_fedora_power_profile_api_available() {
     local owner interfaces
     [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
-    sp_have rpm && rpm -q tuned-ppd >/dev/null 2>&1 || return 1
-    sp_have systemctl && systemctl is-active --quiet tuned-ppd.service || return 1
     sp_have busctl || return 1
 
     owner="$(busctl --system call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus NameHasOwner s org.freedesktop.UPower.PowerProfiles 2>/dev/null)" || return 1
@@ -158,6 +156,13 @@ sp_fedora_tuned_ppd_available() {
 
     interfaces="$(busctl --system --no-pager introspect org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles 2>/dev/null)" || return 1
     [[ "$interfaces" == *'org.freedesktop.UPower.PowerProfiles'* ]]
+}
+
+sp_fedora_tuned_ppd_available() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_fedora_tuned_ppd_installed || return 1
+    sp_have systemctl && systemctl is-active --quiet tuned-ppd.service || return 1
+    sp_fedora_power_profile_api_available
 }
 
 sp_fedora_tuned_ppd_installed() {
@@ -208,7 +213,7 @@ sp_runtime_requirement_present() {
         pnpm) sp_have pnpm ;;
         power-profiles-daemon)
             if sp_have powerprofilesctl; then return 0; fi
-            sp_fedora_tuned_ppd_available || sp_fedora_power_profile_provider_installed
+            sp_fedora_power_profile_api_available || sp_fedora_power_profile_provider_installed
             ;;
         material-symbols) sp_have fc-match && fc-match -f '%{family}\n' 'Material Symbols Rounded' 2>/dev/null | grep -qi 'Material Symbols' ;;
         google-sans-flex) sp_have fc-match && fc-match -f '%{family}\n' 'Google Sans Flex' 2>/dev/null | grep -qi 'Google Sans Flex' ;;
