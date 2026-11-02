@@ -24,6 +24,8 @@ assert_false() {
 LUA="$TMP/lua"
 mkdir -p "$LUA/hyprland" "$LUA/custom"
 cat > "$LUA/hyprland.lua" <<'LUA'
+load("hyprland.variables")
+load("custom.variables", true)
 load("hyprland.execs")
 load("custom.execs", true)
 LUA
@@ -57,6 +59,28 @@ cat >> "$LUA/hyprland/execs.lua" <<'LUA'
 hl.exec_cmd("qs -c sekaipop")
 LUA
 assert_true 'Lua mode recognizes an active command in the loaded hyprland.execs module' \
+    sp_hyprland_has_quickshell_autostart lua "$LUA"
+
+cat > "$LUA/hyprland/variables.lua" <<'LUA'
+qsConfig = "sekaipop"
+QS = "qs -c " .. qsConfig
+LUA
+cat > "$LUA/hyprland/execs.lua" <<'LUA'
+hl.exec_cmd(QS)
+LUA
+assert_true 'Lua mode recognizes the upstream QS variable alias used by hyprland.execs' \
+    sp_hyprland_has_quickshell_autostart lua "$LUA"
+
+cat > "$LUA/custom/variables.lua" <<'LUA'
+QS = "qs -c another-shell"
+LUA
+assert_false 'Lua mode does not treat a custom QS override for another shell as SekaiPop autostart' \
+    sp_hyprland_has_quickshell_autostart lua "$LUA"
+
+cat > "$LUA/custom/variables.lua" <<'LUA'
+QS = "qs -c sekaipop"
+LUA
+assert_true 'Lua mode recognizes a custom QS override targeting SekaiPop' \
     sp_hyprland_has_quickshell_autostart lua "$LUA"
 
 CONF="$TMP/conf"
