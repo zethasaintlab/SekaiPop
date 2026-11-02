@@ -7,7 +7,7 @@ pass() { printf '[PASS] %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf '[FAIL] %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 contains() { grep -Fq -- "$2" "$1"; }
 not_contains() { ! grep -RFq -- "$2" "$1"; }
-for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh; do
+for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh; do
     if bash -n "$script"; then pass "Bash syntax: $(basename "$script")"; else fail "Bash syntax: $(basename "$script")"; fi
 done
 if env SEKAIPOP_INSTALLER_ROOT="$ROOT" "$ROOT/install.sh" --help >/dev/null; then pass 'Help works without distro detection'; else fail 'Help works without distro detection'; fi
@@ -29,6 +29,8 @@ contains "$ROOT/installer/core/plan.sh" 'NameHasOwner' && pass 'Fedora TuneD pro
 contains "$ROOT/installer/core/plan.sh" '/org/freedesktop/UPower/PowerProfiles' && pass 'Fedora TuneD provider verifies the PowerProfiles API object' || fail 'Fedora TuneD provider verifies the PowerProfiles API object'
 contains "$ROOT/installer/catalog/requirements.sh" 'qt6-shadertools' && pass 'Shader Tools has a documented logical capability' || fail 'Shader Tools has a documented logical capability'
 contains "$ROOT/installer/integrations/hyprland.sh" '0.55.0' && pass 'Hyprland Lua minimum version is checked' || fail 'Hyprland Lua minimum version is checked'
+contains "$ROOT/installer/integrations/hyprland.sh" 'sp_hyprland_has_quickshell_autostart' && pass 'Hyprland startup detection uses mode-specific active config sources' || fail 'Hyprland startup detection uses mode-specific active config sources'
+not_contains "$ROOT/installer/integrations/hyprland.sh" 'grep -rqsE --exclude=' && pass 'Hyprland startup detection does not recursively scan documentation and unrelated configs' || fail 'Hyprland startup detection does not recursively scan documentation and unrelated configs'
 contains "$ROOT/installer/integrations/quickshell.sh" 'Quickshell/Services/SystemTray' && pass 'Quickshell QML modules are checked' || fail 'Quickshell QML modules are checked'
 contains "$ROOT/installer/package-managers/pacman.sh" 'pacman -Syu' && pass 'Arch full upgrade path is explicit' || fail 'Arch full upgrade path is explicit'
 contains "$ROOT/installer/package-managers/apt.sh" 'apt-cache -t' && pass 'APT package-specific suite targets are supported' || fail 'APT package-specific suite targets are supported'
