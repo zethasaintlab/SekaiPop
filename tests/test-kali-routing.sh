@@ -46,9 +46,10 @@ Types: deb
 URIs: http://http.kali.org/kali/
 Suites: kali-rolling
 Components: main contrib non-free non-free-firmware
-Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+Signed-By:
+  /usr/share/keyrings/kali-archive-keyring.gpg
 SRC
-assert_true 'Canonical Kali deb822 source is accepted' sp_kali_apt_sources_are_safe
+assert_true 'Canonical Kali deb822 source with a continued Signed-By field is accepted' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 Types: deb
