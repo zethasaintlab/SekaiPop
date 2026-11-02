@@ -107,8 +107,16 @@ printf '[PASS] Installed tlp-pd is reused with its TLP backend, not a second pro
 
 FAKE_RPM_PACKAGES='tlp'
 export FAKE_RPM_PACKAGES
-sp_runtime_requirement_present power-profiles-daemon || {
-    printf '[FAIL] TLP-only install should prevent an automatic conflicting provider transaction\n' >&2
+if sp_runtime_requirement_present power-profiles-daemon; then
+    printf '[FAIL] TLP without tlp-pd must not be misreported as a PowerProfiles provider\n' >&2
+    exit 1
+fi
+SP_PROFILE_REQS=(power-profiles-daemon)
+DISTRO_PACKAGE_MAP[power-profiles-daemon]='power-profiles-daemon'
+sp_build_package_plan
+(("${#SP_MISSING_OPTIONAL[@]}" == 1)) &&
+    [[ "${SP_MISSING_OPTIONAL[0]}" == *'TLP is installed without tlp-pd'* ]] || {
+    printf '[FAIL] Report TLP-only provider conflict as an unavailable optional capability\n' >&2
     exit 1
 }
 : > "$SP_TEST_SYSTEMCTL_LOG"
@@ -117,7 +125,7 @@ if grep -Eq 'cat (tuned-ppd|tlp-pd|power-profiles-daemon)\.service' "$SP_TEST_SY
     printf '[FAIL] Do not add a competing provider when TLP is installed without tlp-pd\n' >&2
     exit 1
 fi
-printf '[PASS] TLP without tlp-pd is left intact and no competing provider is added\n'
+printf '[PASS] TLP without tlp-pd is reported unavailable and no competing provider is added\n'
 
 FAKE_RPM_PACKAGES='tuned-ppd'
 FAKE_ACTIVE_SERVICES='power-profiles-daemon.service'
