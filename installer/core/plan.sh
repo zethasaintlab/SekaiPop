@@ -170,13 +170,17 @@ sp_fedora_tlp_pd_installed() {
     sp_have rpm && rpm -q tlp-pd >/dev/null 2>&1
 }
 
+sp_fedora_tlp_installed() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_have rpm && rpm -q tlp >/dev/null 2>&1
+}
+
 sp_fedora_power_profile_provider_installed() {
     [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
     sp_have rpm || return 1
     rpm -q tuned-ppd >/dev/null 2>&1 ||
         rpm -q tlp-pd >/dev/null 2>&1 ||
-        rpm -q power-profiles-daemon >/dev/null 2>&1 ||
-        rpm -q tlp >/dev/null 2>&1
+        rpm -q power-profiles-daemon >/dev/null 2>&1
 }
 
 sp_runtime_requirement_present() {
@@ -237,6 +241,14 @@ sp_build_package_plan() {
         # A compatible capability already present on the host wins over package-name
         # mapping. This avoids installing a second provider merely because its package
         # name differs from this profile's preferred native package.
+        if [[ "$req" == power-profiles-daemon && "$SP_DISTRO_ID" == fedora ]] &&
+            sp_fedora_tlp_installed &&
+            ! sp_fedora_tlp_pd_installed &&
+            ! sp_fedora_tuned_ppd_installed &&
+            ! { sp_have rpm && rpm -q power-profiles-daemon >/dev/null 2>&1; }; then
+            SP_MISSING_OPTIONAL+=("$req (TLP is installed without tlp-pd; provider installation was skipped to avoid a TLP/PPD conflict)")
+            continue
+        fi
         if sp_runtime_requirement_present "$req"; then
             SP_RUNTIME_SATISFIED+=("$req")
             continue
