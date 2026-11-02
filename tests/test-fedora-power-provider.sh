@@ -78,9 +78,12 @@ source "$ROOT/installer/core/main.sh"
 SP_DISTRO_ID=fedora
 SP_INIT=systemd
 SP_YES=0
+source "$ROOT/installer/distros/fedora/packages.sh"
+[[ "${DISTRO_PACKAGE_MAP[power-profiles-daemon]}" == tuned-ppd ]] || {
+    printf '[FAIL] Fedora 44 must default to its native tuned-ppd package provider\\n' >&2
+    exit 1
+}
 SP_PROFILE_REQS=(power-profiles-daemon)
-declare -gA DISTRO_PACKAGE_MAP=()
-DISTRO_PACKAGE_MAP[power-profiles-daemon]='power-profiles-daemon'
 
 assert_existing_provider_deferred() {
     sp_build_package_plan
