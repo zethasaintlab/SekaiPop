@@ -18,6 +18,23 @@ done
 exit 1
 RPM
 
+cat > "$TMP/bin/busctl" <<'BUSCTL'
+#!/usr/bin/env bash
+case "$*" in
+    *NameHasOwner*)
+        if [[ "${FAKE_POWERPROFILE_API:-0}" == 1 ]]; then
+            printf 'b true\\n'
+        else
+            printf 'b false\\n'
+        fi
+        ;;
+    *introspect*)
+        printf 'org.freedesktop.UPower.PowerProfiles interface\\n'
+        ;;
+    *) exit 1 ;;
+esac
+BUSCTL
+
 cat > "$TMP/bin/systemctl" <<'SYSTEMCTL'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$SP_TEST_SYSTEMCTL_LOG"
@@ -55,7 +72,7 @@ case "$1" in
 esac
 exit 1
 SYSTEMCTL
-chmod +x "$TMP/bin/rpm" "$TMP/bin/systemctl"
+chmod +x "$TMP/bin/rpm" "$TMP/bin/systemctl" "$TMP/bin/busctl"
 export PATH="$TMP/bin:/usr/bin:/bin"
 
 source "$ROOT/installer/core/main.sh"
@@ -133,8 +150,19 @@ fi
 printf '[PASS] TLP without tlp-pd is reported unavailable and no competing provider is added\n'
 
 FAKE_RPM_PACKAGES='tuned-ppd'
-FAKE_ACTIVE_SERVICES='power-profiles-daemon.service'
-export FAKE_RPM_PACKAGES FAKE_ACTIVE_SERVICES
+FAKE_POWERPROFILE_API=1
+export FAKE_RPM_PACKAGES FAKE_POWERPROFILE_API
+: > "$SP_TEST_SYSTEMCTL_LOG"
+sp_setup_services
+if grep -Eq 'cat (tuned|tlp|power-profiles-daemon)' "$SP_TEST_SYSTEMCTL_LOG"; then
+    printf '[FAIL] Do not reconcile another provider while a PowerProfiles D-Bus owner is active\n' >&2
+    exit 1
+fi
+printf '[PASS] An active PowerProfiles D-Bus API prevents a second provider service from starting\n'
+
+FAKE_RPM_PACKAGES='power-profiles-daemon'
+FAKE_POWERPROFILE_API=0
+export FAKE_RPM_PACKAGES FAKE_POWERPROFILE_API
 : > "$SP_TEST_SYSTEMCTL_LOG"
 sp_setup_services
 if grep -Fq 'cat tuned-ppd.service' "$SP_TEST_SYSTEMCTL_LOG"; then
