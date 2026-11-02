@@ -38,6 +38,29 @@ sp_detect_distribution
     && pass 'Kali requires the exact kali-rolling codename' \
     || fail 'Kali requires the exact kali-rolling codename'
 
+cat > "$TMP/kali-snapshot-os-release" <<'OS'
+ID=kali
+VERSION_ID="2026.3"
+VERSION_CODENAME=kali-last-snapshot
+PRETTY_NAME="Kali GNU/Linux snapshot"
+OS
+if SEKAIPOP_TEST_OS_RELEASE="$TMP/kali-snapshot-os-release" bash -c 'source "$SEKAIPOP_INSTALLER_ROOT/installer/core/main.sh"; sp_detect_distribution' >/dev/null 2>&1; then
+    fail 'Kali last-snapshot must not pass the rolling-only release gate'
+else
+    pass 'Kali last-snapshot is rejected by the rolling-only release gate'
+fi
+
+source "$ROOT/installer/distros/kali/packages.sh"
+for requirement in quickshell hyprland qt6-base qt6-declarative qt6-multimedia qt6-svg dbus polkit graphics-egl pipewire wireplumber pipewire-pulse network-manager bluetooth upower; do
+    [[ -n "${DISTRO_PACKAGE_MAP[$requirement]:-}" ]] || fail "Kali core mapping exists for $requirement"
+done
+for requirement in "${!DISTRO_PACKAGE_MAP[@]}"; do
+    for package_spec in ${DISTRO_PACKAGE_MAP[$requirement]}; do
+        [[ "$package_spec" == */kali-rolling ]] || fail "Kali package candidate is suite-pinned: $requirement -> $package_spec"
+    done
+done
+pass 'Every non-empty Kali package mapping is pinned to kali-rolling'
+
 APT_ROOT="$TMP/apt"
 mkdir -p "$APT_ROOT/sources.list.d"
 export SEKAIPOP_TEST_APT_ROOT="$APT_ROOT"
