@@ -213,8 +213,11 @@ sp_runtime_requirement_present() {
         nodejs) sp_have node ;;
         pnpm) sp_have pnpm ;;
         power-profiles-daemon)
-            if sp_have powerprofilesctl; then return 0; fi
-            sp_fedora_power_profile_api_available || sp_fedora_power_profile_provider_installed
+            if [[ "${SP_DISTRO_ID:-}" == fedora ]]; then
+                sp_fedora_power_profile_api_available
+            else
+                sp_have powerprofilesctl
+            fi
             ;;
         material-symbols) sp_have fc-match && fc-match -f '%{family}\n' 'Material Symbols Rounded' 2>/dev/null | grep -qi 'Material Symbols' ;;
         google-sans-flex) sp_have fc-match && fc-match -f '%{family}\n' 'Google Sans Flex' 2>/dev/null | grep -qi 'Google Sans Flex' ;;
@@ -233,7 +236,7 @@ sp_build_package_plan() {
     local -A seen_packages=() seen_requirements=()
     SP_INSTALL_PKGS=() SP_INSTALL_CORE=() SP_INSTALL_OPTIONAL=()
     SP_MISSING_CORE=() SP_MISSING_OPTIONAL=() SP_ALREADY_INSTALLED=()
-    SP_RUNTIME_SATISFIED=()
+    SP_RUNTIME_SATISFIED=() SP_PROVIDER_INSTALLED=()
 
     for req in "${SP_PROFILE_REQS[@]}"; do
         [[ -n "$req" ]] || continue
@@ -257,6 +260,11 @@ sp_build_package_plan() {
         fi
         if sp_runtime_requirement_present "$req"; then
             SP_RUNTIME_SATISFIED+=("$req")
+            continue
+        fi
+        if [[ "$req" == power-profiles-daemon && "${SP_DISTRO_ID:-}" == fedora ]] &&
+            sp_fedora_power_profile_provider_installed; then
+            SP_PROVIDER_INSTALLED+=("$req (an existing Fedora provider package is installed; service activation will be offered)")
             continue
         fi
         package_text="${DISTRO_PACKAGE_MAP[$req]-}"
@@ -319,6 +327,10 @@ sp_print_package_plan() {
     printf '  %s\n' "${SP_ALREADY_INSTALLED[@]:-none}"
     printf '\nRuntime-provided (%d):\n' "${#SP_RUNTIME_SATISFIED[@]}"
     printf '  %s\n' "${SP_RUNTIME_SATISFIED[@]:-none}"
+    if (("${#SP_PROVIDER_INSTALLED[@]}")); then
+        printf '\nExisting provider packages (%d; activation may be offered):\n' "${#SP_PROVIDER_INSTALLED[@]}"
+        printf '  %s\n' "${SP_PROVIDER_INSTALLED[@]}"
+    fi
     printf '\nTo install (%d):\n' "${#SP_INSTALL_PKGS[@]}"
     printf '  %s\n' "${SP_INSTALL_PKGS[@]:-none}"
     if (("${#SP_MISSING_CORE[@]}")); then
