@@ -88,18 +88,18 @@ sp_hyprland_has_quickshell_autostart() {
         conf)
             root="$hypr_dir/hyprland.conf"
             files+=("$root")
-            if [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*hyprland/.*\\*' "$root"; then
+            if [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*hyprland/.*\*' "$root"; then
                 for file in "$hypr_dir"/hyprland/*.conf; do
                     [[ -f "$file" ]] && files+=("$file")
                 done
-            elif [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*hyprland/execs\\.conf' "$root"; then
+            elif [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*hyprland/execs\.conf' "$root"; then
                 files+=("$hypr_dir/hyprland/execs.conf")
             fi
-            if [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*custom/.*\\*' "$root"; then
+            if [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*custom/.*\*' "$root"; then
                 for file in "$hypr_dir"/custom/*.conf; do
                     [[ -f "$file" ]] && files+=("$file")
                 done
-            elif [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*custom/execs\\.conf' "$root"; then
+            elif [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*custom/execs\.conf' "$root"; then
                 files+=("$hypr_dir/custom/execs.conf")
             fi
             ;;
