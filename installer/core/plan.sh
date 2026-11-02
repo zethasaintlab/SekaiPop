@@ -46,7 +46,7 @@ sp_fedora_tuned_ppd_available() {
     [[ "$owner" == 'b true' ]] || return 1
 
     interfaces="$(busctl --system --no-pager introspect org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles 2>/dev/null)" || return 1
-    grep -Fq 'org.freedesktop.UPower.PowerProfiles' <<< "$interfaces"
+    [[ "$interfaces" == *'org.freedesktop.UPower.PowerProfiles'* ]]
 }
 
 sp_runtime_requirement_present() {
