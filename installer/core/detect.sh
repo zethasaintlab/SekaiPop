@@ -41,6 +41,7 @@ sp_detect_distribution() {
 
     case "$SP_DISTRO_ID" in
         arch|endeavouros|cachyos) SP_BACKEND=arch; SP_PROFILE_ID=arch ;;
+        kali) SP_BACKEND=apt; SP_PROFILE_ID=kali ;;
         fedora) SP_BACKEND=dnf5; SP_PROFILE_ID=fedora ;;
         debian) SP_BACKEND=apt; SP_PROFILE_ID=debian ;;
         ubuntu) SP_BACKEND=apt; SP_PROFILE_ID=ubuntu ;;
@@ -55,7 +56,8 @@ sp_detect_distribution() {
         arch:*:*) SP_RELEASE_POLICY='Arch Linux rolling; package and runtime version checks apply' ;;
         endeavouros:*:*) SP_RELEASE_POLICY='EndeavourOS rolling; package and runtime version checks apply' ;;
         cachyos:*:*) SP_RELEASE_POLICY='CachyOS rolling; package and runtime version checks apply' ;;
-        *) sp_die "Unsupported or unverified release: $SP_DISTRO_NAME ($SP_DISTRO_VERSION ${SP_DISTRO_CODENAME:-}). Supported baselines: Fedora 44, Debian 13 trixie, Ubuntu 26.10 stonking, Arch Linux, EndeavourOS, and CachyOS rolling." 1 ;;
+        kali:*:kali-rolling) SP_RELEASE_POLICY='Kali Linux kali-rolling; official Kali APT sources only; package candidates are suite-targeted' ;;
+        *) sp_die "Unsupported or unverified release: $SP_DISTRO_NAME ($SP_DISTRO_VERSION ${SP_DISTRO_CODENAME:-}). Supported baselines: Fedora 44, Debian 13 trixie, Ubuntu 26.10 stonking, Kali kali-rolling, Arch Linux, EndeavourOS, and CachyOS rolling." 1 ;;
     esac
 
     sp_detect_package_manager
