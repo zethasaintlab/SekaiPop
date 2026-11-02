@@ -11,7 +11,11 @@ mkdir -p "$TMP/bin"
 
 cat > "$TMP/bin/rpm" <<'RPM'
 #!/usr/bin/env bash
-[[ "$1" == -q && "$2" == tuned-ppd ]]
+[[ "$1" == -q ]] || exit 1
+for package in ${FAKE_RPM_PACKAGES:-}; do
+    [[ "$package" == "$2" ]] && exit 0
+done
+exit 1
 RPM
 
 cat > "$TMP/bin/systemctl" <<'SYSTEMCTL'
@@ -19,25 +23,33 @@ cat > "$TMP/bin/systemctl" <<'SYSTEMCTL'
 printf '%s\n' "$*" >> "$SP_TEST_SYSTEMCTL_LOG"
 case "$1" in
     cat)
-        [[ "$2" == tuned-ppd.service ]]
+        case "$2" in
+            tuned-ppd.service|tlp.service|tlp-pd.service|power-profiles-daemon.service) exit 0 ;;
+            *) exit 1 ;;
+        esac
         ;;
     is-enabled)
-        if [[ "$2" == tuned-ppd.service ]]; then
-            printf 'disabled\n'
-            exit 0
-        fi
-        exit 1
+        case "$2" in
+            tuned-ppd.service|tlp.service|tlp-pd.service|power-profiles-daemon.service)
+                printf 'disabled\n'
+                exit 0
+                ;;
+            *) exit 1 ;;
+        esac
         ;;
     is-active)
         if [[ "$2" == --quiet ]]; then
-            [[ "${3:-}" == power-profiles-daemon.service && "${FAKE_PPD_ACTIVE:-0}" == 1 ]]
-            exit $?
+            service="${3:-}"
+        else
+            service="$2"
         fi
-        if [[ "$2" == tuned-ppd.service ]]; then
-            printf 'inactive\n'
-            exit 3
-        fi
-        printf 'inactive\n'
+        for active_service in ${FAKE_ACTIVE_SERVICES:-}; do
+            if [[ "$active_service" == "$service" ]]; then
+                [[ "$2" == --quiet ]] || printf 'active\n'
+                exit 0
+            fi
+        done
+        [[ "$2" == --quiet ]] || printf 'inactive\n'
         exit 3
         ;;
 esac
@@ -51,33 +63,82 @@ SP_DISTRO_ID=fedora
 SP_INIT=systemd
 SP_YES=0
 
+FAKE_RPM_PACKAGES='tuned-ppd'
+export FAKE_RPM_PACKAGES
 sp_fedora_tuned_ppd_installed || { printf '[FAIL] tuned-ppd package detection\n' >&2; exit 1; }
-printf '[PASS] Detect installed tuned-ppd provider even when its service is inactive\n'
-
 sp_runtime_requirement_present power-profiles-daemon || {
-    printf '[FAIL] Avoid planning a conflicting power-profiles-daemon package\n' >&2
+    printf '[FAIL] tuned-ppd should satisfy the provider package requirement\n' >&2
     exit 1
 }
-printf '[PASS] Treat installed tuned-ppd as the selected provider; do not plan a second provider\n'
-
 : > "$SP_TEST_SYSTEMCTL_LOG"
 sp_setup_services
 grep -Fq 'cat tuned-ppd.service' "$SP_TEST_SYSTEMCTL_LOG" || {
-    printf '[FAIL] Offer the existing tuned-ppd service for confirmation\n' >&2
+    printf '[FAIL] Offer the installed tuned-ppd service for confirmation\n' >&2
     exit 1
 }
 if grep -Fq 'cat power-profiles-daemon.service' "$SP_TEST_SYSTEMCTL_LOG"; then
-    printf '[FAIL] Do not reconcile power-profiles-daemon when tuned-ppd is installed\n' >&2
+    printf '[FAIL] Do not reconcile PPD alongside tuned-ppd\n' >&2
     exit 1
 fi
-printf '[PASS] Reconcile tuned-ppd only when its provider is installed and inactive\n'
+printf '[PASS] Installed inactive tuned-ppd is reused and offered for activation\n'
 
+FAKE_RPM_PACKAGES='tlp tlp-pd'
+export FAKE_RPM_PACKAGES
+sp_fedora_tlp_pd_installed || { printf '[FAIL] tlp-pd package detection\n' >&2; exit 1; }
+sp_runtime_requirement_present power-profiles-daemon || {
+    printf '[FAIL] tlp-pd should satisfy the provider package requirement\n' >&2
+    exit 1
+}
 : > "$SP_TEST_SYSTEMCTL_LOG"
-FAKE_PPD_ACTIVE=1 sp_setup_services
-if grep -Fq 'tuned-ppd.service' "$SP_TEST_SYSTEMCTL_LOG"; then
-    printf '[FAIL] Do not start tuned-ppd when power-profiles-daemon is already active\n' >&2
+sp_setup_services
+grep -Fq 'cat tlp.service' "$SP_TEST_SYSTEMCTL_LOG" || {
+    printf '[FAIL] Offer the TLP backend service for confirmation\n' >&2
+    exit 1
+}
+grep -Fq 'cat tlp-pd.service' "$SP_TEST_SYSTEMCTL_LOG" || {
+    printf '[FAIL] Offer the TLP profile API service for confirmation\n' >&2
+    exit 1
+}
+if grep -Eq 'cat (tuned-ppd|power-profiles-daemon)\.service' "$SP_TEST_SYSTEMCTL_LOG"; then
+    printf '[FAIL] Do not reconcile another provider alongside tlp-pd\n' >&2
     exit 1
 fi
-printf '[PASS] Do not start tuned-ppd when the PPD service is already active\n'
+printf '[PASS] Installed tlp-pd is reused with its TLP backend, not a second provider\n'
+
+FAKE_RPM_PACKAGES='tlp'
+export FAKE_RPM_PACKAGES
+sp_runtime_requirement_present power-profiles-daemon || {
+    printf '[FAIL] TLP-only install should prevent an automatic conflicting provider transaction\n' >&2
+    exit 1
+}
+: > "$SP_TEST_SYSTEMCTL_LOG"
+sp_setup_services
+if grep -Eq 'cat (tuned-ppd|tlp-pd|power-profiles-daemon)\.service' "$SP_TEST_SYSTEMCTL_LOG"; then
+    printf '[FAIL] Do not add a competing provider when TLP is installed without tlp-pd\n' >&2
+    exit 1
+fi
+printf '[PASS] TLP without tlp-pd is left intact and no competing provider is added\n'
+
+FAKE_RPM_PACKAGES='tuned-ppd'
+FAKE_ACTIVE_SERVICES='power-profiles-daemon.service'
+export FAKE_RPM_PACKAGES FAKE_ACTIVE_SERVICES
+: > "$SP_TEST_SYSTEMCTL_LOG"
+sp_setup_services
+if grep -Fq 'cat tuned-ppd.service' "$SP_TEST_SYSTEMCTL_LOG"; then
+    printf '[FAIL] Do not start tuned-ppd while the PPD service is active\n' >&2
+    exit 1
+fi
+printf '[PASS] Existing active PowerProfiles service prevents a second provider start\n'
+
+FAKE_RPM_PACKAGES='power-profiles-daemon'
+FAKE_ACTIVE_SERVICES=''
+export FAKE_RPM_PACKAGES FAKE_ACTIVE_SERVICES
+: > "$SP_TEST_SYSTEMCTL_LOG"
+sp_setup_services
+grep -Fq 'cat power-profiles-daemon.service' "$SP_TEST_SYSTEMCTL_LOG" || {
+    printf '[FAIL] Reconcile the installed power-profiles-daemon service\n' >&2
+    exit 1
+}
+printf '[PASS] Existing power-profiles-daemon is reconciled when it is the selected provider\n'
 
 printf '\nFedora power-provider fixtures passed.\n'
