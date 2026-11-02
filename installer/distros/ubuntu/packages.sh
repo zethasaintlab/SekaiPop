@@ -3,7 +3,7 @@
 declare -Ag DISTRO_PACKAGE_MAP=(
     [quickshell]='quickshell' [hyprland]='hyprland'
     [qt6-base]='qt6-base-dev qt6-base-dev-tools' [qt6-declarative]='qt6-declarative-dev qml6-module-qtquick qml6-module-qtquick-effects qml6-module-qtquick-shapes qml6-module-qt-labs-folderlistmodel'
-    [qt6-multimedia]='qt6-multimedia-dev qml6-module-qtmultimedia' [qt6-svg]='qt6-svg-dev' [qt6-imageformats]='qt6-image-formats-plugins'
+    [qt6-multimedia]='qt6-multimedia-dev qml6-module-qtmultimedia' [qt6-svg]='qt6-svg-plugins' [qt6-imageformats]='qt6-image-formats-plugins'
     [qt6-wayland]='qt6-wayland' [qt6-shadertools]='qt6-shader-baker'
     [dbus]='dbus-user-session' [polkit]='polkitd' [graphics-egl]='libegl1 libgl1' [pipewire]='pipewire' [wireplumber]='wireplumber'
     [pipewire-pulse]='pipewire-pulse pulseaudio-utils' [network-manager]='network-manager' [bluetooth]='bluez' [upower]='upower'
