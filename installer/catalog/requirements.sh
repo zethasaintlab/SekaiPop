@@ -15,7 +15,7 @@ declare -ag SP_REQ_STANDARD=(
 )
 declare -ag SP_REQ_DESKTOP=(
     portal portal-hyprland portal-gtk xwayland noto-fonts noto-fonts-cjk noto-fonts-emoji nerd-font
-    material-symbols google-sans-flex gvfs keyring libsecret pipewire-alsa blueman
+    material-symbols google-sans-flex jetbrains-mono gvfs keyring libsecret pipewire-alsa blueman
 )
 declare -ag SP_REQ_FULL=(python-aubio songrec mpvpaper nwg-displays hypridle nodejs pnpm)
 
@@ -59,6 +59,7 @@ declare -Ag SP_REQ_DESCRIPTION=(
     [hyprsunset]='Hyprland night-light / gamma utility'
     [material-symbols]='Material Symbols Rounded font used by SekaiPop icons'
     [google-sans-flex]='Google Sans Flex font used by the SekaiPop interface'
+    [jetbrains-mono]='JetBrains Mono developer font; this is not a Nerd Fonts patched build'
 )
 
 sp_describe_requirement() {
