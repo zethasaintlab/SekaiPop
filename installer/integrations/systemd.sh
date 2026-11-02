@@ -65,7 +65,7 @@ sp_setup_services() {
             if systemctl is-active --quiet power-profiles-daemon.service; then
                 sp_warn 'power-profiles-daemon is already active; tuned-ppd was left untouched.'
             else
-                system_services+=(tuned-ppd.service)
+                system_services+=(tuned.service tuned-ppd.service)
             fi
         elif sp_have rpm && rpm -q power-profiles-daemon >/dev/null 2>&1; then
             system_services+=(power-profiles-daemon.service)
