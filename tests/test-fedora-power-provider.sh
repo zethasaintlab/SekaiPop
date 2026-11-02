@@ -47,7 +47,7 @@ case "$1" in
         ;;
     is-enabled)
         case "$2" in
-            tuned-ppd.service|tlp.service|tlp-pd.service|power-profiles-daemon.service)
+            tuned.service|tuned-ppd.service|tlp.service|tlp-pd.service|power-profiles-daemon.service)
                 printf 'disabled\n'
                 exit 0
                 ;;
