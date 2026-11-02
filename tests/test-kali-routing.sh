@@ -82,6 +82,12 @@ Components: main contrib non-free non-free-firmware
 SRC
 assert_false 'Non-default archive host is rejected in favor of Kali official load balancer' sp_kali_apt_sources_are_safe
 
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Components: main contrib non-free non-free-firmware
+SRC
 cat >> "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 
 Types: deb
