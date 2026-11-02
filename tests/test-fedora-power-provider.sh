@@ -24,7 +24,7 @@ printf '%s\n' "$*" >> "$SP_TEST_SYSTEMCTL_LOG"
 case "$1" in
     cat)
         case "$2" in
-            tuned-ppd.service|tlp.service|tlp-pd.service|power-profiles-daemon.service) exit 0 ;;
+            tuned.service|tuned-ppd.service|tlp.service|tlp-pd.service|power-profiles-daemon.service) exit 0 ;;
             *) exit 1 ;;
         esac
         ;;
@@ -72,6 +72,10 @@ sp_runtime_requirement_present power-profiles-daemon || {
 }
 : > "$SP_TEST_SYSTEMCTL_LOG"
 sp_setup_services
+grep -Fq 'cat tuned.service' "$SP_TEST_SYSTEMCTL_LOG" || {
+    printf '[FAIL] Offer the TuneD backend service for confirmation\n' >&2
+    exit 1
+}
 grep -Fq 'cat tuned-ppd.service' "$SP_TEST_SYSTEMCTL_LOG" || {
     printf '[FAIL] Offer the installed tuned-ppd service for confirmation\n' >&2
     exit 1
