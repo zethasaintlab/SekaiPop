@@ -107,7 +107,7 @@ sp_hyprland_has_quickshell_autostart() {
                 END { exit !found }
             ' "$file" && return 0
             if [[ "$file" == "$hypr_dir/hyprland/execs.lua" ]] &&
-                grep -Eq 'hl\\.exec_cmd\\([[:space:]]*QS[[:space:]]*\\)' "$file" &&
+                grep -Eq 'hl\.exec_cmd\([[:space:]]*QS[[:space:]]*\\)' "$file" &&
                 sp_hyprland_lua_qs_alias_targets_sekaipop "$hypr_dir"; then
                 return 0
             fi
