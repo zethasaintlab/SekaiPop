@@ -25,6 +25,7 @@ cat > "$TMP/bin/systemctl" <<'MOCK'
 [[ "${1:-}" == is-active && "${2:-}" == --quiet && "${3:-}" == tuned-ppd.service && "${MOCK_TUNED_PPD_ACTIVE:-0}" == 1 ]]
 MOCK
 chmod +x "$TMP/bin/qs" "$TMP/bin/ffmpeg" "$TMP/bin/rpm" "$TMP/bin/systemctl"
+ln -s "$(command -v bash)" "$TMP/bin/bash"
 PATH="$TMP/bin"
 export PATH
 
