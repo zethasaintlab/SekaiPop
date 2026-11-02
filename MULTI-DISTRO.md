@@ -18,7 +18,7 @@ Explicitly excluded: openSUSE, Gentoo, NixOS, Fedora Atomic/ostree variants, oth
 
 ### Kali repository and service policy
 
-Kali is accepted only when `ID=kali` and `VERSION_CODENAME=kali-rolling`. Its APT source configuration must contain at least one active binary source and every active binary source must use the canonical `http.kali.org` or `archive.kali.org` host with the `kali-rolling` suite. Mixed Debian/Ubuntu suites, `kali-last-snapshot`, and third-party APT sources are rejected before metadata refresh or package transactions. Kali package specifications explicitly target `kali-rolling`; the installer does not add, rewrite, or switch repositories and never performs `apt full-upgrade`.
+Kali is accepted only when `ID=kali` and `VERSION_CODENAME=kali-rolling`. Its APT source configuration must contain at least one active binary source and every active binary source must use the canonical `http.kali.org` host with the `kali-rolling` suite. Mixed Debian/Ubuntu suites, `kali-last-snapshot`, and third-party APT sources are rejected before metadata refresh or package transactions. Kali package specifications explicitly target `kali-rolling`; the installer does not add, rewrite, or switch repositories and never performs `apt full-upgrade`.
 
 Kali disables some network services by default, including Bluetooth-related services. SekaiPop may offer to start/enable its required services, but each change remains subject to explicit confirmation. Kali is primarily designed for penetration testing and security auditing; desktop use is an advanced, user-managed configuration. An unverified release is not silently routed to a nearby package backend.
 
