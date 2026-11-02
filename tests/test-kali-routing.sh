@@ -58,6 +58,16 @@ Components: main contrib non-free non-free-firmware
 SRC
 assert_true 'Canonical Kali archive mirror is accepted' sp_kali_apt_sources_are_safe
 
+cat >> "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+
+Types: deb
+URIs: http://deb.debian.org/debian/
+Suites: trixie
+Components: main
+Enabled: no
+SRC
+assert_true 'Disabled foreign deb822 source does not invalidate Kali repositories' sp_kali_apt_sources_are_safe
+
 cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 Types: deb
 URIs: http://http.kali.org/kali/
@@ -92,6 +102,11 @@ cat > "$APT_ROOT/sources.list" <<'SRC'
 deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware
 SRC
 assert_true 'Canonical legacy Kali sources.list format is accepted' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list" <<'SRC'
+deb [arch=amd64 signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] http://http.kali.org/kali kali-rolling main
+SRC
+assert_true 'Canonical legacy source with APT options is accepted' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list" <<'SRC'
 deb http://http.kali.org/kali kali-rolling main
