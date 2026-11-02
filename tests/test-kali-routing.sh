@@ -144,7 +144,7 @@ SRC
 mkdir -p "$TMP/bin"
 cat > "$TMP/bin/apt-config" <<'APT'
 #!/usr/bin/env bash
-printf '%s\n' 'Dir::Etc "etc/apt";' 'Dir::Etc::sourcelist "custom.list";' 'Dir::Etc::sourceparts "sources.list.d";'
+printf '%s\n' 'Dir "/";' 'Dir::Etc "etc/apt";' 'Dir::Etc::sourcelist "custom.list";' 'Dir::Etc::sourceparts "sources.list.d";'
 APT
 chmod +x "$TMP/bin/apt-config"
 PATH="$TMP/bin:$PATH"
