@@ -12,7 +12,7 @@ declare -Ag DISTRO_PACKAGE_MAP=(
     [python-numpy]='python3-numpy'
     [portal]='xdg-desktop-portal' [portal-hyprland]='' [portal-gtk]='xdg-desktop-portal-gtk'
     [xwayland]='xorg-x11-server-Xwayland' [noto-fonts]='google-noto-sans-fonts' [noto-fonts-cjk]='google-noto-cjk-fonts'
-    [noto-fonts-emoji]='google-noto-emoji-fonts' [nerd-font]='jetbrains-mono-fonts' [cava]='cava' [grim]='grim' [slurp]='slurp'
+    [noto-fonts-emoji]='google-noto-emoji-fonts' [jetbrains-mono]='jetbrains-mono-fonts' [cava]='cava' [grim]='grim' [slurp]='slurp'
     [cliphist]='cliphist' [wtype]='wtype' [hyprpicker]='hyprpicker' [imagemagick]='ImageMagick' [tesseract]='tesseract'
     [swappy]='swappy' [wf-recorder]='wf-recorder' [ffmpeg]='ffmpeg-free' [brightnessctl]='brightnessctl' [ddcutil]='ddcutil'
     [kitty]='kitty' [playerctl]='playerctl' [easyeffects]='easyeffects' [matugen]='matugen' [power-profiles-daemon]='power-profiles-daemon'
