@@ -154,7 +154,7 @@ The complete repository is required: the installer deploys the existing <code>se
 
 ### Package source and desktop safety
 
-Only repositories already configured by the user are queried. On Kali, only the canonical `kali-rolling` sources are accepted. No AUR helper, COPR, PPA, arbitrary RPM/DEB source, or source build is enabled. The installer does not alter GPU drivers, global portal defaults, KDE settings, or unrelated Quickshell processes. It uses path-scoped Quickshell instance operations.
+Only repositories already configured by the user are queried. On Kali, only the canonical `kali-rolling` sources are accepted. No AUR helper, COPR, PPA, arbitrary RPM/DEB source, or source build is enabled. The installer does not alter GPU drivers, global portal defaults, KDE settings, or unrelated Quickshell processes. It uses path-scoped Quickshell instance operations. On Fedora, the installer reuses the installed power-profile provider (TuneD PPD, TLP PPD, or power-profiles-daemon) rather than installing a competing daemon. TLP without `tlp-pd` leaves the optional PowerProfiles integration unavailable instead of forcing a conflicting package transaction.
 
 ### Checking and restoring
 
