@@ -7,7 +7,7 @@ pass() { printf '[PASS] %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf '[FAIL] %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 contains() { grep -Fq -- "$2" "$1"; }
 not_contains() { ! grep -RFq -- "$2" "$1"; }
-for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-kali-routing.sh; do
+for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-kali-routing.sh "$ROOT"/tests/test-fedora-power-provider.sh; do
     if bash -n "$script"; then pass "Bash syntax: $(basename "$script")"; else fail "Bash syntax: $(basename "$script")"; fi
 done
 if env SEKAIPOP_INSTALLER_ROOT="$ROOT" "$ROOT/install.sh" --help >/dev/null; then pass 'Help works without distro detection'; else fail 'Help works without distro detection'; fi
@@ -31,6 +31,8 @@ contains "$ROOT/installer/distros/ubuntu/packages.sh" "[jetbrains-mono]='fonts-j
 contains "$ROOT/installer/distros/kali/packages.sh" "[jetbrains-mono]='fonts-jetbrains-mono/kali-rolling'" && pass 'Kali maps JetBrains Mono to the matching package' || fail 'Kali maps JetBrains Mono to the matching package'
 not_contains "$ROOT/installer/distros/kali/packages.sh" 'trixie-backports' && pass 'Kali package profile does not inherit Debian backports' || fail 'Kali package profile does not inherit Debian backports'
 contains "$ROOT/installer/core/plan.sh" 'sp_kali_apt_sources_are_safe' && pass 'Kali APT source policy is implemented' || fail 'Kali APT source policy is implemented'
+contains "$ROOT/installer/core/plan.sh" 'sp_fedora_tuned_ppd_installed' && pass 'Fedora TuneD PPD provider is recognized even when inactive' || fail 'Fedora TuneD PPD provider is recognized even when inactive'
+contains "$ROOT/installer/integrations/systemd.sh" 'tuned-ppd.service' && pass 'Fedora TuneD PPD service is reconciled without adding a second provider' || fail 'Fedora TuneD PPD service is reconciled without adding a second provider'
 contains "$ROOT/installer/core/detect.sh" 'ID_LIKE is informational only' && pass 'ID_LIKE never triggers implicit fallback' || fail 'ID_LIKE never triggers implicit fallback'
 contains "$ROOT/installer/core/detect.sh" 'silverblue|kinoite|sericea|onyx|sway-atomic|budgie-atomic' && pass 'Fedora Atomic variants are rejected' || fail 'Fedora Atomic variants are rejected'
 not_contains "$ROOT/installer/core/detect.sh" 'opensuse)' && pass 'openSUSE is not in the supported ID allowlist' || fail 'openSUSE is not in the supported ID allowlist'
@@ -60,5 +62,6 @@ for legacy in install-fedora.sh install-deps-fedora.sh check-deps-fedora.sh; do
 done
 if bash "$ROOT/tests/test-hyprland-autostart.sh"; then pass 'Hyprland autostart regression fixtures'; else fail 'Hyprland autostart regression fixtures'; fi
 if bash "$ROOT/tests/test-kali-routing.sh"; then pass 'Kali routing and repository policy fixtures'; else fail 'Kali routing and repository policy fixtures'; fi
+if bash "$ROOT/tests/test-fedora-power-provider.sh"; then pass 'Fedora power-provider regression fixtures'; else fail 'Fedora power-provider regression fixtures'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
