@@ -23,13 +23,13 @@ cat > "$TMP/bin/busctl" <<'BUSCTL'
 case "$*" in
     *NameHasOwner*)
         if [[ "${FAKE_POWERPROFILE_API:-0}" == 1 ]]; then
-            printf 'b true\\n'
+            printf 'b true\n'
         else
-            printf 'b false\\n'
+            printf 'b false\n'
         fi
         ;;
     *introspect*)
-        printf 'org.freedesktop.UPower.PowerProfiles interface\\n'
+        printf 'org.freedesktop.UPower.PowerProfiles interface\n'
         ;;
     *) exit 1 ;;
 esac
