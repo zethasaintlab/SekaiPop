@@ -115,6 +115,9 @@ deb http://deb.debian.org/debian trixie main
 SRC
 assert_false 'Mixed legacy Kali and Debian sources.list entries are rejected' sp_kali_apt_sources_are_safe
 
+cat > "$APT_ROOT/sources.list" <<'SRC'
+deb http://http.kali.org/kali kali-rolling main
+SRC
 mkdir -p "$TMP/bin"
 cat > "$TMP/bin/apt-config" <<'APT'
 #!/usr/bin/env bash
