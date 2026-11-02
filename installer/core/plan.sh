@@ -35,6 +35,106 @@ sp_load_distro_profile() {
     return 0
 }
 
+sp_kali_apt_sources_are_safe() {
+    local apt_root=/etc/apt file uri host suite found=0 invalid=0
+    local -a source_files=()
+
+    if [[ "${SEKAIPOP_TEST_MODE:-0}" == 1 && -n "${SEKAIPOP_TEST_APT_ROOT:-}" ]]; then
+        apt_root="$SEKAIPOP_TEST_APT_ROOT"
+    fi
+
+    shopt -s nullglob
+    source_files=("$apt_root/sources.list" "$apt_root"/sources.list.d/*.list "$apt_root"/sources.list.d/*.sources)
+    shopt -u nullglob
+
+    for file in "${source_files[@]}"; do
+        [[ -f "$file" && -r "$file" ]] || continue
+        case "$file" in
+            *.sources)
+                while IFS='|' read -r uris suites; do
+                    [[ -n "$uris" && -n "$suites" ]] || continue
+                    found=1
+                    for uri in $uris; do
+                        host="${uri#*://}"
+                        host="${host%%/*}"
+                        host="${host%%:*}"
+                        case "$host" in
+                            http.kali.org|archive.kali.org) ;;
+                            *) invalid=1 ;;
+                        esac
+                    done
+                    for suite in $suites; do
+                        [[ "$suite" == kali-rolling ]] || invalid=1
+                    done
+                done < <(awk '
+                    function emit() {
+                        if (types ~ /(^|[[:space:]])deb([[:space:]]|$)/ && enabled != "no" && uris != "" && suites != "") {
+                            print uris "|" suites
+                        }
+                        types = uris = suites = ""
+                        enabled = "yes"
+                        last = ""
+                    }
+                    /^[[:space:]]*#/ { next }
+                    /^[[:space:]]*$/ { emit(); next }
+                    /^[[:space:]]*Types:[[:space:]]*/ {
+                        value = $0; sub(/^[[:space:]]*Types:[[:space:]]*/, "", value)
+                        types = value; last = "Types"; next
+                    }
+                    /^[[:space:]]*URIs:[[:space:]]*/ {
+                        value = $0; sub(/^[[:space:]]*URIs:[[:space:]]*/, "", value)
+                        uris = value; last = "URIs"; next
+                    }
+                    /^[[:space:]]*Suites:[[:space:]]*/ {
+                        value = $0; sub(/^[[:space:]]*Suites:[[:space:]]*/, "", value)
+                        suites = value; last = "Suites"; next
+                    }
+                    /^[[:space:]]*Enabled:[[:space:]]*/ {
+                        value = $0; sub(/^[[:space:]]*Enabled:[[:space:]]*/, "", value)
+                        enabled = value; last = "Enabled"; next
+                    }
+                    /^[[:space:]]+/ {
+                        value = $0; sub(/^[[:space:]]+/, "", value)
+                        if (last == "URIs") uris = uris " " value
+                        else if (last == "Suites") suites = suites " " value
+                        else if (last == "Types") types = types " " value
+                        next
+                    }
+                    END { emit() }
+                ' "$file")
+                ;;
+            *)
+                while IFS='|' read -r uri suite; do
+                    [[ -n "$uri" && -n "$suite" ]] || continue
+                    found=1
+                    host="${uri#*://}"
+                    host="${host%%/*}"
+                    host="${host%%:*}"
+                    case "$host" in
+                        http.kali.org|archive.kali.org) ;;
+                        *) invalid=1 ;;
+                    esac
+                    [[ "$suite" == kali-rolling ]] || invalid=1
+                done < <(awk '
+                    {
+                        sub(/^[[:space:]]+/, "", $0)
+                        if ($0 ~ /^#/ || $1 != "deb") next
+                        count = split($0, fields, /[[:space:]]+/)
+                        field_index = 2
+                        if (fields[field_index] ~ /^\\[/) {
+                            while (field_index <= count && fields[field_index] !~ /\\]$/) field_index++
+                            field_index++
+                        }
+                        if (field_index + 1 <= count) print fields[field_index] "|" fields[field_index + 1]
+                    }
+                ' "$file")
+                ;;
+        esac
+    done
+
+    (( found > 0 && invalid == 0 ))
+}
+
 sp_fedora_tuned_ppd_available() {
     local owner interfaces
     [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
