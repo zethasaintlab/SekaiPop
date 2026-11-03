@@ -224,7 +224,7 @@ assert_false 'Non-default APT source path overrides are rejected' sp_kali_apt_so
 
 cat > "$TMP/bin/apt-config" <<'APT'
 #!/usr/bin/env bash
-printf '%s\\n' 'Dir "/";' 'Dir::Etc "etc/apt";' 'Dir::Etc::sourcelist "sources.list";' 'Dir::Etc::sourceparts "sources.list.d";' 'Acquire::AllowInsecureRepositories "true";'
+printf '%s\n' 'Dir "/";' 'Dir::Etc "etc/apt";' 'Dir::Etc::sourcelist "sources.list";' 'Dir::Etc::sourceparts "sources.list.d";' 'Acquire::AllowInsecureRepositories "true";'
 APT
 chmod +x "$TMP/bin/apt-config"
 assert_false 'Global APT AllowInsecureRepositories override is rejected' sp_kali_apt_sources_are_safe
