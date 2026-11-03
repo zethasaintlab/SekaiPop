@@ -39,6 +39,8 @@ case "$verb" in
         ;;
     start|enable|stop|disable)
         printf '%s %s\n' "$scope" "$verb${*:+ $*}" >> "$MOCK_LOG"
+        [[ "$verb" != "${MOCK_FAIL_ACTION:-}" ]] || exit 42
+        if [[ "$verb" == "${MOCK_FAIL_ROLLBACK_ACTION:-}" ]]; then exit 43; fi
         ;;
     *)
         exit 1
@@ -133,3 +135,40 @@ sp_service_transaction_commit
 [[ "$(<"$MOCK_LOG")" == 'system enable --now NetworkManager.service' ]] ||
     { printf '[FAIL] Committed service transaction must not immediately roll back\n' >&2; exit 1; }
 printf '[PASS] Successful transaction commits service changes without reverting them\n'
+
+# A failed enable --now may have enabled the unit before the start failed.
+# The reconciler must reverse that partial state before the deployment can commit.
+export MOCK_SCOPE=system MOCK_SERVICE=NetworkManager.service MOCK_STATE=disabled MOCK_ACTIVE=inactive
+export MOCK_FAIL_ACTION=enable MOCK_FAIL_ROLLBACK_ACTION=''
+: > "$MOCK_LOG"
+sp_service_transaction_begin
+sp_reconcile_service system NetworkManager.service
+expected=$'system enable --now NetworkManager.service\nsystem disable --now NetworkManager.service'
+[[ "$(<"$MOCK_LOG")" == "$expected" ]] || {
+    printf '[FAIL] Failed enable --now is immediately reversed (actual=%q)\n' "$(<"$MOCK_LOG")" >&2
+    exit 1
+}
+[[ "${#SP_SERVICE_CHANGE_NAMES[@]}" == 0 && "$SP_SERVICE_ROLLBACK_FAILED" == 0 ]] ||
+    { printf '[FAIL] Recovered partial action must be removed from the transaction journal\n' >&2; exit 1; }
+sp_service_transaction_commit
+printf '[PASS] Partial enable --now failure is immediately reverted before transaction commit\n'
+
+# If the immediate reversal also fails, the entry must remain journaled and the
+# caller receives a hard failure so deployment enters the full rollback path.
+export MOCK_FAIL_ACTION=enable MOCK_FAIL_ROLLBACK_ACTION=disable
+: > "$MOCK_LOG"
+sp_service_transaction_begin
+if sp_reconcile_service system NetworkManager.service; then
+    printf '[FAIL] Unreverted partial service action must fail reconciliation\n' >&2
+    exit 1
+fi
+[[ "${#SP_SERVICE_CHANGE_NAMES[@]}" == 1 && "$SP_SERVICE_ROLLBACK_FAILED" == 1 ]] ||
+    { printf '[FAIL] Unreverted partial action must remain in the transaction journal\n' >&2; exit 1; }
+export MOCK_FAIL_ACTION='' MOCK_FAIL_ROLLBACK_ACTION=''
+sp_service_transaction_rollback
+expected=$'system enable --now NetworkManager.service\nsystem disable --now NetworkManager.service\nsystem disable --now NetworkManager.service'
+[[ "$(<"$MOCK_LOG")" == "$expected" ]] || {
+    printf '[FAIL] Full rollback retries the incomplete service reversal (actual=%q)\n' "$(<"$MOCK_LOG")" >&2
+    exit 1
+}
+printf '[PASS] Unreverted partial service action fails reconciliation and is retried by deployment rollback\n'

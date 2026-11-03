@@ -22,30 +22,25 @@ sp_service_transaction_commit() {
     SP_SERVICE_TRANSACTION_ACTIVE=0
 }
 
+sp_service_rollback_one() {
+    local scope="$1" rollback_action="$2" service="$3"
+    case "$rollback_action" in
+        disable-now) sp_run_service_action "$scope" disable --now "$service" ;;
+        stop) sp_run_service_action "$scope" stop "$service" ;;
+        *) return 2 ;;
+    esac
+}
+
 sp_service_transaction_rollback() {
     local index scope service rollback_action failed=0
     for ((index=${#SP_SERVICE_CHANGE_NAMES[@]} - 1; index>=0; index--)); do
         scope="${SP_SERVICE_CHANGE_SCOPES[index]}"
         service="${SP_SERVICE_CHANGE_NAMES[index]}"
         rollback_action="${SP_SERVICE_CHANGE_ROLLBACKS[index]}"
-        case "$rollback_action" in
-            disable-now)
-                if ! sp_run_service_action "$scope" disable --now "$service"; then
-                    sp_warn "Could not restore the original disabled state of $scope service $service."
-                    failed=1
-                fi
-                ;;
-            stop)
-                if ! sp_run_service_action "$scope" stop "$service"; then
-                    sp_warn "Could not restore the original inactive state of $scope service $service."
-                    failed=1
-                fi
-                ;;
-            *)
-                sp_warn "Unknown service rollback action for $scope service $service; manual inspection is required."
-                failed=1
-                ;;
-        esac
+        if ! sp_service_rollback_one "$scope" "$rollback_action" "$service"; then
+            sp_warn "Could not restore the original state of $scope service $service."
+            failed=1
+        fi
     done
     SP_SERVICE_CHANGE_SCOPES=()
     SP_SERVICE_CHANGE_NAMES=()
@@ -99,7 +94,7 @@ sp_reconcile_service() {
     esac
 
     if sp_confirm "$prompt"; then
-        local rollback_action=stop
+        local rollback_action=stop rollback_index
         [[ "${action[0]}" != enable ]] || rollback_action=disable-now
         # Journal before running the operation: enable --now may partially enable
         # a unit even when its subsequent start fails.
@@ -108,15 +103,28 @@ sp_reconcile_service() {
             SP_SERVICE_CHANGE_NAMES+=("$service")
             SP_SERVICE_CHANGE_ROLLBACKS+=("$rollback_action")
         fi
-        sp_run_service_action "$scope" "${action[@]}" "$service" || \
-            sp_warn "Could not ${action[*]} $scope service $service; inspect it manually."
+        if ! sp_run_service_action "$scope" "${action[@]}" "$service"; then
+            sp_warn "Could not ${action[*]} $scope service $service; attempting to restore its previous state."
+            if (( SP_SERVICE_TRANSACTION_ACTIVE )); then
+                if sp_service_rollback_one "$scope" "$rollback_action" "$service"; then
+                    rollback_index=$(("${#SP_SERVICE_CHANGE_NAMES[@]}" - 1))
+                    unset "SP_SERVICE_CHANGE_SCOPES[rollback_index]" \
+                        "SP_SERVICE_CHANGE_NAMES[rollback_index]" \
+                        "SP_SERVICE_CHANGE_ROLLBACKS[rollback_index]"
+                else
+                    SP_SERVICE_ROLLBACK_FAILED=1
+                    sp_warn "Immediate rollback failed for $scope service $service; the deployment transaction must roll back."
+                    return 1
+                fi
+            fi
+        fi
     fi
 }
 
 sp_setup_services() {
     [[ "$SP_INIT" == systemd ]] || { sp_warn 'systemd is not active; service setup is skipped.'; return 0; }
 
-    local service active_provider="" active_providers="" active_count=0 provider_unit package_provider_count=0 tlp_backend_active=0 tlp_provider_conflict=0
+    local service failed=0 active_provider="" active_providers="" active_count=0 provider_unit package_provider_count=0 tlp_backend_active=0 tlp_provider_conflict=0
     local -a system_services=(NetworkManager.service bluetooth.service upower.service)
     if [[ "${SP_DISTRO_ID:-}" == fedora ]]; then
         # Prefer a provider that is already active over package-install order. This
@@ -170,7 +178,7 @@ sp_setup_services() {
         system_services+=(power-profiles-daemon.service)
     fi
     for service in "${system_services[@]}"; do
-        sp_reconcile_service system "$service"
+        sp_reconcile_service system "$service" || failed=1
     done
     if [[ "${SP_DISTRO_ID:-}" == fedora ]] &&
         sp_fedora_power_profile_provider_installed &&
@@ -180,9 +188,10 @@ sp_setup_services() {
 
     if [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" || -S "${XDG_RUNTIME_DIR:-/nonexistent}/bus" ]]; then
         for service in pipewire.service pipewire-pulse.service wireplumber.service; do
-            sp_reconcile_service user "$service"
+            sp_reconcile_service user "$service" || failed=1
         done
     else
         sp_warn 'No user D-Bus session detected; PipeWire user services are left untouched until a graphical login.'
     fi
+    return "$failed"
 }

@@ -198,7 +198,9 @@ sp_deploy_application() {
         sp_rollback_failed_deployment 'Post-deployment runtime validation failed; Quickshell activation was skipped.'
     fi
     sp_service_transaction_begin
-    sp_setup_services
+    if ! sp_setup_services; then
+        sp_rollback_failed_deployment 'A systemd service action failed and its partial state could not be reverted.'
+    fi
     if ! sp_activate_sekaipop; then
         sp_rollback_failed_deployment 'Quickshell activation failed after deployment validation.'
     fi
@@ -217,7 +219,9 @@ sp_dependency_only_setup() {
     if [[ "$SP_HYPR" != skip ]] && ! (sp_integrate_hyprland "${SP_HYPR_SOURCE:-$SP_ROOT/hypr}"); then
         sp_rollback_failed_deployment 'Hyprland dependency-only integration failed.'
     fi
-    sp_setup_services
+    if ! sp_setup_services; then
+        sp_rollback_failed_deployment 'A dependency-only systemd service action failed and its partial state could not be reverted.'
+    fi
     if ! (sp_write_state_manifest); then
         if [[ -n "${SP_BACKUP_DIR:-}" ]]; then
             sp_rollback_failed_deployment 'Could not write the installer state manifest in dependency-only mode.'
