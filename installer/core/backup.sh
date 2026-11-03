@@ -14,8 +14,8 @@ sp_tree_content_equal() {
     # bits, private config permissions, symlink targets, empty directories and
     # mtimes are part of the filesystem state restored by cp -a.
     cmp -s \
-        <(cd "$left" && find . -printf '%P\\0%y\\0%m\\0%s\\0%T@\\0%l\\0' | LC_ALL=C sort -z) \
-        <(cd "$right" && find . -printf '%P\\0%y\\0%m\\0%s\\0%T@\\0%l\\0' | LC_ALL=C sort -z)
+        <(cd "$left" && find . -printf '%P\0%y\0%m\0%s\0%T@\0%l\0' | LC_ALL=C sort -z) \
+        <(cd "$right" && find . -printf '%P\0%y\0%m\0%s\0%T@\0%l\0' | LC_ALL=C sort -z)
 }
 sp_create_backup() {
     local include_qs="${1:-1}" include_hypr="${2:-1}" backup_dir latest

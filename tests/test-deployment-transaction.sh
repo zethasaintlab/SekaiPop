@@ -128,7 +128,7 @@ SP_BACKEND=dnf5
 SP_PROFILE=standard
 SP_HYPR=skip
 mkdir -p "$SP_QS_DEST"
-printf 'unchanged file content\\n' > "$SP_QS_DEST/mode-only.marker"
+printf 'unchanged file content\n' > "$SP_QS_DEST/mode-only.marker"
 chmod 0644 "$SP_QS_DEST/mode-only.marker"
 sp_create_backup 1 0
 MODE_BACKUP="$SP_BACKUP_DIR"
