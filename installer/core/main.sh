@@ -107,6 +107,13 @@ sp_plan_and_install_dependencies() {
         sp_die 'Kali package operations require only the canonical http://http.kali.org/kali kali-rolling APT source. Disable foreign suites and third-party APT sources; the installer will not rewrite repository configuration.'
     fi
     if (( SP_DRY_RUN )); then
+        if [[ "$SP_BACKEND" == arch ]] && ! sp_pacman_sync_db_fresh; then
+            if (( SP_SYSTEM_UPGRADE )); then
+                sp_warn 'The Arch sync database is missing or stale. This read-only plan cannot run the required pacman -Syu synchronization; candidate resolution may be incomplete.'
+            else
+                sp_warn 'The Arch sync database is missing or stale. A real install requires explicit --system-upgrade authorization before safe package resolution.'
+            fi
+        fi
         sp_build_package_plan
         sp_print_package_plan
         (( ${#SP_MISSING_CORE[@]} == 0 )) || { sp_error 'Plan contains unsatisfied mandatory requirements; no installation would be attempted.'; return 1; }
@@ -116,8 +123,17 @@ sp_plan_and_install_dependencies() {
     if [[ "$SP_BACKEND" == dnf5 || "$SP_BACKEND" == apt ]]; then
         if (( ! SP_NO_UPDATE )); then sp_confirm "Refresh configured native repository metadata for $SP_DISTRO_NAME?" || sp_die 'Metadata refresh declined. Use --no-update to continue with the current package cache.'; pm_refresh_metadata
         else sp_info 'Repository metadata refresh skipped (--no-update).'; fi
-    elif [[ "$SP_BACKEND" == arch && $SP_SYSTEM_UPGRADE -eq 0 ]]; then
-        sp_pacman_sync_db_fresh || sp_die 'Arch sync databases are missing or older than 7 days. Refusing an unsafe partial synchronization; rerun with --system-upgrade to authorize pacman -Syu --needed.'
+    elif [[ "$SP_BACKEND" == arch ]]; then
+        if ! sp_pacman_sync_db_fresh; then
+            if (( SP_SYSTEM_UPGRADE )); then
+                sp_warn 'Arch sync databases are missing or older than 7 days. A full system synchronization and upgrade is required before dependency resolution.'
+                sp_confirm 'Run pacman -Syu --needed now? This will upgrade the entire Arch system.' ||
+                    sp_die 'Arch synchronization cancelled. No package database refresh or package transaction was attempted.'
+                pm_refresh_metadata
+            else
+                sp_die 'Arch sync databases are missing or older than 7 days. Refusing an unsafe partial synchronization; rerun with --system-upgrade to authorize pacman -Syu --needed.'
+            fi
+        fi
     fi
     sp_build_package_plan
     sp_print_package_plan
