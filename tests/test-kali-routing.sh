@@ -134,6 +134,18 @@ assert_false 'Foreign deb-src entries are rejected because apt update also conta
 
 cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 Types: deb
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Components: main contrib non-free non-free-firmware
+
+Types: deb
+URIs: http://http.kali.org/kali/
+Components: main
+SRC
+assert_false 'Active deb822 entries without a suite are rejected' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb
 URIs: http://mirror.example.invalid/kali/
 Suites: kali-rolling
 Components: main
@@ -162,6 +174,12 @@ deb http://http.kali.org/kali kali-rolling main
 deb-src http://deb.debian.org/debian trixie main
 SRC
 assert_false 'Foreign legacy deb-src entries are rejected' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list" <<'SRC'
+deb http://http.kali.org/kali kali-rolling main
+deb http://http.kali.org/kali
+SRC
+assert_false 'Active legacy APT entries without a suite are rejected' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list" <<'SRC'
 deb http://http.kali.org/kali kali-rolling main
