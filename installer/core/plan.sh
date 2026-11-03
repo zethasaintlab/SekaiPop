@@ -86,11 +86,8 @@ sp_kali_apt_sources_are_safe() {
                     [[ "$signed_by" == /usr/share/keyrings/kali-archive-keyring.gpg ]] || invalid=1
                     [[ "$trusted" != yes && "$allow_insecure" != yes ]] || invalid=1
                     for uri in $uris; do
-                        host="${uri#*://}"
-                        host="${host%%/*}"
-                        host="${host%%:*}"
-                        case "$host" in
-                            http.kali.org) ;;
+                        case "$uri" in
+                            http://http.kali.org/kali|http://http.kali.org/kali/) ;;
                             *) invalid=1 ;;
                         esac
                     done
@@ -155,11 +152,8 @@ sp_kali_apt_sources_are_safe() {
                 while IFS='|' read -r uri suite; do
                     [[ -n "$uri" && -n "$suite" ]] || { invalid=1; continue; }
                     found=1
-                    host="${uri#*://}"
-                    host="${host%%/*}"
-                    host="${host%%:*}"
-                    case "$host" in
-                        http.kali.org) ;;
+                    case "$uri" in
+                        http://http.kali.org/kali|http://http.kali.org/kali/) ;;
                         *) invalid=1 ;;
                     esac
                     [[ "$suite" == kali-rolling ]] || invalid=1
