@@ -62,6 +62,21 @@ Only repositories already configured by the user are queried. This installer doe
 
 The installer does not alter GPU drivers, kernel modules, Secure Boot, global portal defaults, desktop session environment, or unrelated Quickshell instances. It never kills every qs process. Shader compilation runs in the staged Quickshell tree before replacement. If Hyprland integration or mandatory post-deployment runtime validation fails, the installer restores the pre-deployment configuration snapshot and retains a separate recovery snapshot of the partial state. On Fedora, the package planner preserves the installed power-profile provider (TuneD PPD, TLP PPD, or power-profiles-daemon) and will not install a competing provider. If none is installed, Fedora 44 maps the PowerProfiles capability to its native `tuned-ppd` package. If TLP is installed without `tlp-pd`, the optional PowerProfiles integration is reported unavailable rather than forcing a conflicting package transaction.
 
+## Fedora 44 host baseline
+
+The Fedora 44 reference host has completed a user-host smoke-validation pass (2026-11-02):
+
+- `./check-deps.sh`: all mandatory runtime checks passed.
+- `./install.sh --plan --profile standard`: read-only plan; zero package installations were required on the reference host.
+- Hyprland `hyprctl configerrors`: no configuration errors were reported.
+- Qt Shader Tools: the temporary compile validation successfully rebuilt 28 GLSL shader sources with the system `qsb`.
+- Power profiles: `tuned-ppd` was active and owned `org.freedesktop.UPower.PowerProfiles`; its expected D-Bus object/interface was present.
+- Quickshell was running through the path-scoped SekaiPop configuration instance.
+
+This is the compatibility baseline for Fedora 44 changes. Preserve the Fedora package-manager route, DNF5 behavior, existing TuneD PPD provider selection, and path-scoped Quickshell lifecycle. Any later change touching these areas must pass the Fedora regression fixtures and must not install or activate a competing PowerProfiles provider.
+
+This host evidence does **not** certify clean installation on a fresh Fedora machine, rollback under an actual failure, or a fresh VM restore cycle.
+
 ## Test and certification status
 
 The repository includes mocked routing/CLI tests and integration fixtures. In addition, pull requests run read-only package-plan resolution against native package-manager metadata in disposable Arch, Fedora 44, Debian 13, Ubuntu 26.10, and Kali rolling containers. Container package metadata is refreshed before creating a dedicated unprivileged `sekaipop-ci` account; the installer plan itself runs as that account, matching the production non-root execution model. This checks candidate availability and release/suite routing; it does not install the packages or certify systemd, Hyprland, Quickshell, restore behavior, or a graphical desktop. EndeavourOS and CachyOS use the Arch package profile and are routing-tested, but are not separate container images. No distribution is claimed as VM-certified. Before general release, validate actual install/restore in native or VM environments for each supported baseline, then test Hyprland Lua, Quickshell QML imports, Qt plugins, shaders, portal behavior, and KDE coexistence.
