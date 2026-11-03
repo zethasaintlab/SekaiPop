@@ -99,6 +99,30 @@ SRC
 assert_true 'Disabled foreign deb822 source does not invalidate Kali repositories' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+types: deb
+uris: http://http.kali.org/kali/
+suites: kali-rolling
+trusted: yes
+SRC
+assert_false 'Deb822 trusted=yes is rejected even when the URI and suite are canonical' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Allow-Insecure: yes
+SRC
+assert_false 'Deb822 Allow-Insecure=yes is rejected' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+types: deb
+uris: http://http.kali.org/kali/
+suites: kali-rolling
+components: main contrib non-free non-free-firmware
+SRC
+assert_true 'Case-insensitive deb822 field names are parsed correctly' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 Types: deb
 URIs: http://http.kali.org/kali/
 Suites: kali-last-snapshot
@@ -164,6 +188,11 @@ SRC
 assert_true 'Canonical legacy source with APT options is accepted' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list" <<'SRC'
+deb [trusted=yes] http://http.kali.org/kali kali-rolling main
+SRC
+assert_false 'Legacy trusted=yes source options are rejected' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list" <<'SRC'
 deb http://http.kali.org/kali kali-rolling main
 deb http://deb.debian.org/debian trixie main
 SRC
@@ -192,5 +221,12 @@ APT
 chmod +x "$TMP/bin/apt-config"
 PATH="$TMP/bin:$PATH"
 assert_false 'Non-default APT source path overrides are rejected' sp_kali_apt_sources_are_safe
+
+cat > "$TMP/bin/apt-config" <<'APT'
+#!/usr/bin/env bash
+printf '%s\\n' 'Dir "/";' 'Dir::Etc "etc/apt";' 'Dir::Etc::sourcelist "sources.list";' 'Dir::Etc::sourceparts "sources.list.d";' 'Acquire::AllowInsecureRepositories "true";'
+APT
+chmod +x "$TMP/bin/apt-config"
+assert_false 'Global APT AllowInsecureRepositories override is rejected' sp_kali_apt_sources_are_safe
 
 printf '\nKali routing and repository policy fixtures passed.\n'
