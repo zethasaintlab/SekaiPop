@@ -128,6 +128,16 @@ SRC
 assert_true 'Case-insensitive deb822 field names are parsed correctly' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+Trusted: false
+Allow-Insecure: no
+SRC
+assert_true 'Explicit false values for deb822 trust overrides remain safe' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 Types: deb-src
 URIs: http://http.kali.org/kali/
 Suites: kali-rolling
