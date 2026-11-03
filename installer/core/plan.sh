@@ -65,9 +65,10 @@ sp_kali_apt_sources_are_safe() {
         [[ -f "$file" && -r "$file" ]] || continue
         case "$file" in
             *.sources)
-                while IFS='|' read -r uris suites trusted allow_insecure; do
+                while IFS='|' read -r uris suites signed_by trusted allow_insecure; do
                     [[ -n "$uris" && -n "$suites" ]] || { invalid=1; continue; }
                     found=1
+                    [[ "$signed_by" == /usr/share/keyrings/kali-archive-keyring.gpg ]] || invalid=1
                     [[ "$trusted" != yes && "$allow_insecure" != yes ]] || invalid=1
                     for uri in $uris; do
                         host="${uri#*://}"
@@ -84,10 +85,10 @@ sp_kali_apt_sources_are_safe() {
                 done < <(awk '
                     function emit() {
                         if (types ~ /(^|[[:space:]])deb(-src)?([[:space:]]|$)/ && tolower(enabled) != "no") {
-                            if (uris == "" || suites == "") print "!invalid!|!invalid!|yes|yes"
-                            else print uris "|" suites "|" trusted "|" allow_insecure
+                            if (uris == "" || suites == "" || signed_by == "") print "!invalid!|!invalid!|!invalid!|yes|yes"
+                            else print uris "|" suites "|" signed_by "|" trusted "|" allow_insecure
                         }
-                        types = uris = suites = trusted = allow_insecure = ""
+                        types = uris = suites = signed_by = trusted = allow_insecure = ""
                         enabled = "yes"
                         last = ""
                     }
@@ -114,6 +115,10 @@ sp_kali_apt_sources_are_safe() {
                         if (key ~ /^[[:space:]]*trusted:[[:space:]]*/) {
                             value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
                             trusted = tolower(value); last = "trusted"; next
+                        }
+                        if (key ~ /^[[:space:]]*signed-by:[[:space:]]*/) {
+                            value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
+                            signed_by = value; last = "signed-by"; next
                         }
                         if (key ~ /^[[:space:]]*allow-insecure:[[:space:]]*/) {
                             value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
