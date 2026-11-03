@@ -50,6 +50,9 @@ sp_kali_apt_sources_are_safe() {
     grep -Fqx 'Dir::Etc "etc/apt";' <<< "$apt_config" || return 1
     grep -Fqx 'Dir::Etc::sourcelist "sources.list";' <<< "$apt_config" || return 1
     grep -Fqx 'Dir::Etc::sourceparts "sources.list.d";' <<< "$apt_config" || return 1
+    if grep -Eiq '^(Acquire::AllowInsecureRepositories|Acquire::AllowDowngradeToInsecureRepositories|APT::Get::AllowUnauthenticated)[[:space:]]+"?(true|yes|1)' <<< "$apt_config"; then
+        return 1
+    fi
     root_dir="$(awk '$1 == "Dir::RootDir" { gsub(/[";]/, "", $2); print $2; exit }' <<< "$apt_config")"
     [[ -z "$root_dir" || "$root_dir" == / ]] || return 1
 
@@ -62,9 +65,10 @@ sp_kali_apt_sources_are_safe() {
         [[ -f "$file" && -r "$file" ]] || continue
         case "$file" in
             *.sources)
-                while IFS='|' read -r uris suites; do
-                    [[ -n "$uris" && -n "$suites" ]] || continue
+                while IFS='|' read -r uris suites trusted allow_insecure; do
+                    [[ -n "$uris" && -n "$suites" ]] || { invalid=1; continue; }
                     found=1
+                    [[ "$trusted" != yes && "$allow_insecure" != yes ]] || invalid=1
                     for uri in $uris; do
                         host="${uri#*://}"
                         host="${host%%/*}"
@@ -80,10 +84,10 @@ sp_kali_apt_sources_are_safe() {
                 done < <(awk '
                     function emit() {
                         if (types ~ /(^|[[:space:]])deb(-src)?([[:space:]]|$)/ && enabled != "no") {
-                            if (uris == "" || suites == "") print "!invalid!|!invalid!"
-                            else print uris "|" suites
+                            if (uris == "" || suites == "") print "!invalid!|!invalid!|yes|yes"
+                            else print uris "|" suites "|" trusted "|" allow_insecure
                         }
-                        types = uris = suites = ""
+                        types = uris = suites = trusted = allow_insecure = ""
                         enabled = "yes"
                         last = ""
                     }
@@ -105,6 +109,14 @@ sp_kali_apt_sources_are_safe() {
                         value = $0; sub(/^[[:space:]]*Enabled:[[:space:]]*/, "", value)
                         enabled = value; last = "Enabled"; next
                     }
+                    /^[[:space:]]*Trusted:[[:space:]]*/ {
+                        value = $0; sub(/^[[:space:]]*Trusted:[[:space:]]*/, "", value)
+                        trusted = tolower(value); last = "Trusted"; next
+                    }
+                    /^[[:space:]]*Allow-Insecure:[[:space:]]*/ {
+                        value = $0; sub(/^[[:space:]]*Allow-Insecure:[[:space:]]*/, "", value)
+                        allow_insecure = tolower(value); last = "Allow-Insecure"; next
+                    }
                     /^[^[:space:]]/ { last = ""; next }
                     /^[[:space:]]+/ {
                         value = $0; sub(/^[[:space:]]+/, "", value)
@@ -118,7 +130,7 @@ sp_kali_apt_sources_are_safe() {
                 ;;
             *)
                 while IFS='|' read -r uri suite; do
-                    [[ -n "$uri" && -n "$suite" ]] || continue
+                    [[ -n "$uri" && -n "$suite" ]] || { invalid=1; continue; }
                     found=1
                     host="${uri#*://}"
                     host="${host%%/*}"
@@ -134,11 +146,18 @@ sp_kali_apt_sources_are_safe() {
                         if ($0 ~ /^#/ || ($1 != "deb" && $1 != "deb-src")) next
                         count = split($0, fields, /[[:space:]]+/)
                         field_index = 2
+                        options = ""
                         if (fields[field_index] ~ /^\[/) {
-                            while (field_index <= count && fields[field_index] !~ /\]$/) field_index++
+                            while (field_index <= count && fields[field_index] !~ /\]$/) {
+                                options = options " " fields[field_index]
+                                field_index++
+                            }
+                            options = options " " fields[field_index]
                             field_index++
                         }
-                        if (field_index + 1 <= count) print fields[field_index] "|" fields[field_index + 1]
+                        if (tolower(options) ~ /(^|[[:space:]])(trusted|allow-insecure)=yes([[:space:]]|$)/) {
+                            print "!invalid!|!invalid!"
+                        } else if (field_index + 1 <= count) print fields[field_index] "|" fields[field_index + 1]
                         else print "!invalid!|!invalid!"
                     }
                 ' "$file")
