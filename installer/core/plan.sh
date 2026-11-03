@@ -36,7 +36,7 @@ sp_load_distro_profile() {
 }
 
 sp_kali_apt_sources_are_safe() {
-    local apt_root=/etc/apt file uri host suite found=0 invalid=0
+    local apt_root=/etc/apt file uri suite found=0 invalid=0
     local -a source_files=()
 
     if [[ "${SEKAIPOP_TEST_MODE:-0}" == 1 && -n "${SEKAIPOP_TEST_APT_ROOT:-}" ]]; then
