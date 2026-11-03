@@ -35,7 +35,7 @@ fault_dir="$(mktemp -d)"
 cat > "$fault_dir/qs" <<'WRAPPER'
 #!/usr/bin/env bash
 if [[ "$1" == list && "$2" == -p ]]; then
-    printf 'No running instances\\n'
+    printf 'No running instances\n'
     exit 0
 fi
 if [[ "$1" == -p && "$3" == -n && "$4" == -d ]]; then
@@ -44,8 +44,8 @@ fi
 exec "${SEKAIPOP_REAL_QS:?}" "$@"
 WRAPPER
 chmod 0755 "$fault_dir/qs"
-SEKAIPOP_REAL_QS="$real_qs" PATH="$fault_dir:$PATH" \\
-    QS_STARTUP_ATTEMPTS=10 QS_STARTUP_INTERVAL=0.1 \\
+SEKAIPOP_REAL_QS="$real_qs" PATH="$fault_dir:$PATH" \
+    QS_STARTUP_ATTEMPTS=10 QS_STARTUP_INTERVAL=0.1 \
     ./install.sh --profile standard
 rm -rf "$fault_dir"
 ```

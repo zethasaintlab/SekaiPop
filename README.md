@@ -161,7 +161,7 @@ Only repositories already configured by the user are queried. On Kali, only the 
 <pre><code>./check-deps.sh
 ./install.sh --restore</code></pre>
 
-The installer snapshots existing configuration before replacement and keeps persistent <code>~/.local/state/sekaipop</code> application state separate from the replaceable shell deployment. Mocked tests do not constitute a live distro or graphical-session certification; see <code>MULTI-DISTRO.md</code> for the support matrix and validation boundary.
+The installer snapshots existing configuration before replacement and keeps persistent <code>~/.local/state/sekaipop</code> application state separate from the replaceable shell deployment. Mocked tests do not constitute a live distro or graphical-session certification; see <code>MULTI-DISTRO.md</code> for the support matrix and <code>NATIVE-VM-VALIDATION.md</code> for the native/VM test procedure.
 
 <img src="assets/divider.svg" alt="" width="100%">
 
