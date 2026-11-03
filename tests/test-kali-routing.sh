@@ -300,6 +300,13 @@ deb [trusted=yes] http://http.kali.org/kali kali-rolling main
 SRC
 assert_false 'Legacy trusted=yes source options are rejected' sp_kali_apt_sources_are_safe
 
+for insecure_option in 'trusted=true' 'trusted=1' 'allow-insecure=true' 'allow-insecure=1'; do
+    cat > "$APT_ROOT/sources.list" <<SRC
+deb [$insecure_option] http://http.kali.org/kali kali-rolling main
+SRC
+    assert_false "Legacy APT trust bypass is rejected: $insecure_option" sp_kali_apt_sources_are_safe
+done
+
 cat > "$APT_ROOT/sources.list" <<'SRC'
 deb http://http.kali.org/kali kali-rolling main
 deb http://deb.debian.org/debian trixie main
