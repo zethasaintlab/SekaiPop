@@ -79,12 +79,12 @@ sp_setup_services() {
             system_services+=(tuned.service tuned-ppd.service)
         elif [[ "$active_provider" == power-profiles-daemon.service ]]; then
             system_services+=(power-profiles-daemon.service)
+        elif sp_fedora_power_profile_api_available; then
+            : # An unrecognized provider already owns the PowerProfiles D-Bus API; never start a second adapter.
         elif (( tlp_backend_active )) && ! sp_fedora_tlp_pd_installed; then
             sp_warn 'TLP is active without tlp-pd; no TuneD/PPD provider will be started alongside it. Install/configure one power-management stack explicitly before rerunning SekaiPop.'
         elif (( tlp_backend_active )) && sp_fedora_tlp_pd_installed; then
             system_services+=(tlp.service tlp-pd.service)
-        elif sp_fedora_power_profile_api_available; then
-            : # An unrecognized provider already owns the PowerProfiles D-Bus API.
         else
             package_provider_count="$(sp_fedora_power_profile_provider_count || printf '0')"
             if (( package_provider_count > 1 )); then

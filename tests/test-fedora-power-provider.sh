@@ -274,6 +274,18 @@ if grep -Eq '^cat (tuned|tuned-ppd|power-profiles-daemon)\.service$|^(enable|sta
 fi
 printf '[PASS] Active TLP with tlp-pd selects the matching TLP adapter only\n'
 
+FAKE_RPM_PACKAGES='power-profiles-daemon tlp tlp-pd'
+FAKE_ACTIVE_SERVICES='tlp.service'
+FAKE_POWERPROFILE_API=1
+export FAKE_RPM_PACKAGES FAKE_ACTIVE_SERVICES FAKE_POWERPROFILE_API
+: > "$SP_TEST_SYSTEMCTL_LOG"
+sp_setup_services
+if grep -Eq '^cat (tuned|tuned-ppd|tlp|tlp-pd|power-profiles-daemon)\.service$|^(enable|start) ' "$SP_TEST_SYSTEMCTL_LOG"; then
+    printf '[FAIL] Do not start TLP PPD or another provider when an unknown PowerProfiles D-Bus owner is already active\n' >&2
+    exit 1
+fi
+printf '[PASS] An unknown active PowerProfiles owner takes precedence over an inactive TLP PPD adapter\n'
+
 FAKE_RPM_PACKAGES='tuned-ppd tlp'
 FAKE_ACTIVE_SERVICES='tuned-ppd.service tlp.service'
 FAKE_POWERPROFILE_API=1
