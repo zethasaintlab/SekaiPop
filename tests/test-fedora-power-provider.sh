@@ -246,6 +246,46 @@ if grep -Eq '^cat (tuned|tuned-ppd|tlp|tlp-pd|power-profiles-daemon)\.service$|^
 fi
 printf '[PASS] An unknown active provider owning the PowerProfiles D-Bus API prevents a second provider selection\n'
 
+FAKE_RPM_PACKAGES='power-profiles-daemon tlp'
+FAKE_ACTIVE_SERVICES='tlp.service'
+FAKE_POWERPROFILE_API=0
+export FAKE_RPM_PACKAGES FAKE_ACTIVE_SERVICES FAKE_POWERPROFILE_API
+: > "$SP_TEST_SYSTEMCTL_LOG"
+sp_setup_services
+if grep -Eq '^cat (tuned|tuned-ppd|tlp-pd|power-profiles-daemon)\.service$|^(enable|start) ' "$SP_TEST_SYSTEMCTL_LOG"; then
+    printf '[FAIL] Do not start PPD/TuneD alongside an active TLP backend without tlp-pd\n' >&2
+    exit 1
+fi
+printf '[PASS] Active TLP without tlp-pd blocks competing TuneD/PPD providers\n'
+
+FAKE_RPM_PACKAGES='power-profiles-daemon tlp tlp-pd'
+FAKE_ACTIVE_SERVICES='tlp.service'
+FAKE_POWERPROFILE_API=0
+export FAKE_RPM_PACKAGES FAKE_ACTIVE_SERVICES FAKE_POWERPROFILE_API
+: > "$SP_TEST_SYSTEMCTL_LOG"
+sp_setup_services
+grep -Fq 'cat tlp-pd.service' "$SP_TEST_SYSTEMCTL_LOG" || {
+    printf '[FAIL] Reconcile TLP PPD when its backend is active and its adapter is installed\n' >&2
+    exit 1
+}
+if grep -Eq '^cat (tuned|tuned-ppd|power-profiles-daemon)\.service$|^(enable|start) ' "$SP_TEST_SYSTEMCTL_LOG"; then
+    printf '[FAIL] Do not start a second power management stack beside active TLP\n' >&2
+    exit 1
+fi
+printf '[PASS] Active TLP with tlp-pd selects the matching TLP adapter only\n'
+
+FAKE_RPM_PACKAGES='tuned-ppd tlp'
+FAKE_ACTIVE_SERVICES='tuned-ppd.service tlp.service'
+FAKE_POWERPROFILE_API=1
+export FAKE_RPM_PACKAGES FAKE_ACTIVE_SERVICES FAKE_POWERPROFILE_API
+: > "$SP_TEST_SYSTEMCTL_LOG"
+sp_setup_services
+if grep -Eq '^cat (tuned|tuned-ppd|tlp|tlp-pd|power-profiles-daemon)\.service$|^(enable|start) ' "$SP_TEST_SYSTEMCTL_LOG"; then
+    printf '[FAIL] Leave conflicting active TuneD and TLP backends untouched\n' >&2
+    exit 1
+fi
+printf '[PASS] Active TLP and TuneD backend conflict is detected and left untouched\n'
+
 FAKE_RPM_PACKAGES='power-profiles-daemon'
 FAKE_ACTIVE_SERVICES=''
 FAKE_POWERPROFILE_API=0
