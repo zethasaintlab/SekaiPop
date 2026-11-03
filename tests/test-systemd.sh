@@ -37,7 +37,7 @@ case "$verb" in
         [[ "$scope" == "${MOCK_SCOPE:-system}" && "$service" == "${MOCK_SERVICE:-}" ]] || exit 1
         printf '%s\n' "${MOCK_ACTIVE:-inactive}"
         ;;
-    start|enable)
+    start|enable|stop|disable)
         printf '%s %s\n' "$scope" "$verb${*:+ $*}" >> "$MOCK_LOG"
         ;;
     *)
@@ -87,3 +87,49 @@ assert_case 'Enabled inactive user service is started without re-enabling' user 
 
 printf '\nSystemd service assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
+
+# Deployment transaction rollback restores each unit to its original state in reverse order.
+export MOCK_SCOPE=system MOCK_SERVICE=NetworkManager.service MOCK_STATE=disabled MOCK_ACTIVE=inactive
+: > "$MOCK_LOG"
+sp_service_transaction_begin
+sp_reconcile_service system NetworkManager.service
+sp_service_transaction_rollback
+expected=$'system enable --now NetworkManager.service\nsystem disable --now NetworkManager.service'
+[[ "$(<"$MOCK_LOG")" == "$expected" ]] || {
+    printf '[FAIL] Disabled service returns to disabled/inactive state (actual=%q)\n' "$(<"$MOCK_LOG")" >&2
+    exit 1
+}
+printf '[PASS] Transaction rollback disables and stops a service that was originally disabled/inactive\n'
+
+export MOCK_SCOPE=system MOCK_SERVICE=NetworkManager.service MOCK_STATE=enabled MOCK_ACTIVE=inactive
+: > "$MOCK_LOG"
+sp_service_transaction_begin
+sp_reconcile_service system NetworkManager.service
+sp_service_transaction_rollback
+expected=$'system start NetworkManager.service\nsystem stop NetworkManager.service'
+[[ "$(<"$MOCK_LOG")" == "$expected" ]] || {
+    printf '[FAIL] Enabled service returns to its original inactive state (actual=%q)\n' "$(<"$MOCK_LOG")" >&2
+    exit 1
+}
+printf '[PASS] Transaction rollback stops a service that was originally enabled/inactive without disabling it\n'
+
+export MOCK_SCOPE=user MOCK_SERVICE=pipewire.service MOCK_STATE=disabled MOCK_ACTIVE=inactive DBUS_SESSION_BUS_ADDRESS=mock-session-bus
+: > "$MOCK_LOG"
+sp_service_transaction_begin
+sp_reconcile_service user pipewire.service
+sp_service_transaction_rollback
+expected=$'user enable --now pipewire.service\nuser disable --now pipewire.service'
+[[ "$(<"$MOCK_LOG")" == "$expected" ]] || {
+    printf '[FAIL] User service returns to its original disabled/inactive state (actual=%q)\n' "$(<"$MOCK_LOG")" >&2
+    exit 1
+}
+printf '[PASS] Transaction rollback restores user-scope systemd services\n'
+
+export MOCK_SCOPE=system MOCK_SERVICE=NetworkManager.service MOCK_STATE=disabled MOCK_ACTIVE=inactive
+: > "$MOCK_LOG"
+sp_service_transaction_begin
+sp_reconcile_service system NetworkManager.service
+sp_service_transaction_commit
+[[ "$(<"$MOCK_LOG")" == 'system enable --now NetworkManager.service' ]] ||
+    { printf '[FAIL] Committed service transaction must not immediately roll back\n' >&2; exit 1; }
+printf '[PASS] Successful transaction commits service changes without reverting them\n'

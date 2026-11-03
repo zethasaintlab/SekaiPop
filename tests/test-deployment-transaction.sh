@@ -113,3 +113,41 @@ fi
 pass 'Quickshell activation failure triggers configuration rollback before success is recorded'
 
 printf '\nDeployment transaction fixtures passed.\n'
+
+# Installer state must be replaced atomically and retain the old manifest on a failed rename.
+MANIFEST_HOME="$TMP/manifest-home"
+SP_STATE_DIR="$MANIFEST_HOME/.local/state/sekaipop"
+SP_DRY_RUN=0
+SP_DISTRO_ID=fedora
+SP_DISTRO_VERSION=44
+SP_BACKEND=dnf5
+SP_PROFILE=standard
+SP_HYPR=merge
+SP_INSTALL_PKGS=(quickshell hyprland)
+SP_BACKUP_DIR="$TMP/manifest-backup"
+mkdir -p "$SP_STATE_DIR"
+printf 'previous-successful-manifest\n' > "$SP_STATE_DIR/installer-manifest.env"
+sp_write_state_manifest
+grep -Fq 'installer_version=2.1.0' "$SP_STATE_DIR/installer-manifest.env" || fail 'Successful manifest replacement writes the current installer version'
+[[ "$(stat -c '%a' "$SP_STATE_DIR/installer-manifest.env")" == 600 ]] || fail 'Installer manifest is private to the user'
+if compgen -G "$SP_STATE_DIR/.installer-manifest.*" >/dev/null; then
+    fail 'Successful atomic manifest write leaves no temporary files'
+fi
+printf 'prior-manifest-must-survive\n' > "$SP_STATE_DIR/installer-manifest.env"
+if (
+    mv() {
+        if [[ "${!#}" == "$SP_STATE_DIR/installer-manifest.env" ]]; then return 1; fi
+        command mv "$@"
+    }
+    sp_write_state_manifest
+) >/dev/null 2>&1; then
+    fail 'A failed manifest activation must be reported'
+fi
+[[ "$(cat "$SP_STATE_DIR/installer-manifest.env")" == prior-manifest-must-survive ]] ||
+    fail 'A failed atomic manifest replacement leaves the previous successful manifest intact'
+if compgen -G "$SP_STATE_DIR/.installer-manifest.*" >/dev/null; then
+    fail 'Failed atomic manifest replacement cleans up its temporary file'
+fi
+pass 'Installer state manifest is atomically replaced and preserves the prior manifest on failure'
+
+printf '\nAtomic manifest fixtures passed.\n'

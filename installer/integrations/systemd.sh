@@ -1,10 +1,66 @@
 #!/usr/bin/env bash
 
+declare -ag SP_SERVICE_CHANGE_SCOPES=()
+declare -ag SP_SERVICE_CHANGE_NAMES=()
+declare -ag SP_SERVICE_CHANGE_ROLLBACKS=()
+SP_SERVICE_TRANSACTION_ACTIVE="${SP_SERVICE_TRANSACTION_ACTIVE:-0}"
+SP_SERVICE_ROLLBACK_FAILED=0
+
+sp_service_transaction_begin() {
+    SP_SERVICE_CHANGE_SCOPES=()
+    SP_SERVICE_CHANGE_NAMES=()
+    SP_SERVICE_CHANGE_ROLLBACKS=()
+    SP_SERVICE_ROLLBACK_FAILED=0
+    SP_SERVICE_TRANSACTION_ACTIVE=1
+}
+
+sp_service_transaction_commit() {
+    SP_SERVICE_CHANGE_SCOPES=()
+    SP_SERVICE_CHANGE_NAMES=()
+    SP_SERVICE_CHANGE_ROLLBACKS=()
+    SP_SERVICE_ROLLBACK_FAILED=0
+    SP_SERVICE_TRANSACTION_ACTIVE=0
+}
+
+sp_service_transaction_rollback() {
+    local index scope service rollback_action failed=0
+    for ((index=${#SP_SERVICE_CHANGE_NAMES[@]} - 1; index>=0; index--)); do
+        scope="${SP_SERVICE_CHANGE_SCOPES[index]}"
+        service="${SP_SERVICE_CHANGE_NAMES[index]}"
+        rollback_action="${SP_SERVICE_CHANGE_ROLLBACKS[index]}"
+        case "$rollback_action" in
+            disable-now)
+                if ! sp_run_service_action "$scope" disable --now "$service"; then
+                    sp_warn "Could not restore the original disabled state of $scope service $service."
+                    failed=1
+                fi
+                ;;
+            stop)
+                if ! sp_run_service_action "$scope" stop "$service"; then
+                    sp_warn "Could not restore the original inactive state of $scope service $service."
+                    failed=1
+                fi
+                ;;
+            *)
+                sp_warn "Unknown service rollback action for $scope service $service; manual inspection is required."
+                failed=1
+                ;;
+        esac
+    done
+    SP_SERVICE_CHANGE_SCOPES=()
+    SP_SERVICE_CHANGE_NAMES=()
+    SP_SERVICE_CHANGE_ROLLBACKS=()
+    SP_SERVICE_TRANSACTION_ACTIVE=0
+    SP_SERVICE_ROLLBACK_FAILED="$failed"
+    (( failed == 0 ))
+}
+
 sp_run_service_action() {
     local scope="$1"
     shift
     if [[ "$scope" == system ]]; then
-        sp_sudo systemctl "$@"
+        sp_have sudo || return 1
+        sudo systemctl "$@"
     else
         systemctl --user "$@"
     fi
@@ -43,6 +99,15 @@ sp_reconcile_service() {
     esac
 
     if sp_confirm "$prompt"; then
+        local rollback_action=stop
+        [[ "${action[0]}" != enable ]] || rollback_action=disable-now
+        # Journal before running the operation: enable --now may partially enable
+        # a unit even when its subsequent start fails.
+        if (( SP_SERVICE_TRANSACTION_ACTIVE )); then
+            SP_SERVICE_CHANGE_SCOPES+=("$scope")
+            SP_SERVICE_CHANGE_NAMES+=("$service")
+            SP_SERVICE_CHANGE_ROLLBACKS+=("$rollback_action")
+        fi
         sp_run_service_action "$scope" "${action[@]}" "$service" || \
             sp_warn "Could not ${action[*]} $scope service $service; inspect it manually."
     fi

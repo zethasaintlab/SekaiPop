@@ -94,10 +94,11 @@ sp_find_rice_source() {
     if [[ "$SP_HYPR" == full ]]; then [[ -d "$SP_HYPR_SOURCE" && -f "$SP_HYPR_SOURCE/hyprland.lua" ]] || sp_die "Full Hyprland source is absent: $SP_HYPR_SOURCE/hyprland.lua. Use the complete SekaiPop checkout."; fi
 }
 sp_write_state_manifest() {
-    local manifest="$SP_STATE_DIR/installer-manifest.env"
+    local manifest="$SP_STATE_DIR/installer-manifest.env" temporary
     (( SP_DRY_RUN )) && return 0
-    mkdir -p "$SP_STATE_DIR"
-    {
+    mkdir -p "$SP_STATE_DIR" || return 1
+    temporary="$(mktemp "$SP_STATE_DIR/.installer-manifest.XXXXXX")" || return 1
+    if ! {
         printf 'installer_version=%s\n' '2.1.0'
         printf 'installed_at=%s\n' "$(date --iso-8601=seconds 2>/dev/null || date)"
         printf 'distro_id=%s\n' "$SP_DISTRO_ID"
@@ -107,6 +108,14 @@ sp_write_state_manifest() {
         printf 'hypr_mode=%s\n' "$SP_HYPR"
         printf 'packages=%q\n' "${SP_INSTALL_PKGS[*]:-}"
         printf 'backup=%q\n' "${SP_BACKUP_DIR:-}"
-    } > "$manifest"
+    } > "$temporary"; then
+        rm -f -- "$temporary"
+        return 1
+    fi
+    chmod 0600 "$temporary" || { rm -f -- "$temporary"; return 1; }
+    if ! mv -f -- "$temporary" "$manifest"; then
+        rm -f -- "$temporary"
+        return 1
+    fi
     sp_info "Installer state manifest: $manifest"
 }

@@ -150,12 +150,13 @@ sp_plan_and_install_dependencies() {
     sp_ok 'Native package transaction completed.'
 }
 sp_rollback_failed_deployment() {
-    local reason="$1" original_yes="${SP_YES:-0}" restart_failed=0
+    local reason="$1" original_yes="${SP_YES:-0}" restart_failed=0 service_rollback_failed=0
     sp_error "$reason"
     if (( ${SP_QS_INSTANCE_STARTED_BY_INSTALL:-0} )) && sp_have qs; then
         qs kill -p "$SP_QS_DEST" >/dev/null 2>&1 || true
         sp_wait_qs_instance_state stopped || sp_warn 'Could not confirm shutdown of the newly launched SekaiPop instance during rollback.'
     fi
+    sp_service_transaction_rollback || service_rollback_failed=1
     SP_YES=1
     if [[ -n "${SP_BACKUP_DIR:-}" ]] && sp_restore_latest "$SP_BACKUP_DIR"; then
         if (( ${SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING:-0} )); then
@@ -172,9 +173,15 @@ sp_rollback_failed_deployment() {
         if (( restart_failed )); then
             sp_die "$reason Configuration was restored, but the previous Quickshell instance needs to be started manually. Recovery snapshot: $SP_BACKUP_ROOT."
         fi
+        if (( service_rollback_failed )); then
+            sp_die "$reason Configuration was restored, but one or more system/user service states could not be reverted. Inspect the installer log and run systemctl status on the affected units."
+        fi
         sp_die "$reason The previous Quickshell/Hyprland configuration was restored automatically; the recovery snapshot is retained under $SP_BACKUP_ROOT."
     fi
     SP_YES="$original_yes"
+    if (( service_rollback_failed )); then
+        sp_die "$reason Automatic configuration rollback failed and one or more service states could not be reverted. Keep the installer backup and inspect systemd unit states before retrying."
+    fi
     sp_die "$reason Automatic rollback failed. The installer backup remains available; run ./install.sh --restore after inspecting the log."
 }
 
@@ -190,6 +197,7 @@ sp_deploy_application() {
     if ! (sp_check_all); then
         sp_rollback_failed_deployment 'Post-deployment runtime validation failed; Quickshell activation was skipped.'
     fi
+    sp_service_transaction_begin
     sp_setup_services
     if ! sp_activate_sekaipop; then
         sp_rollback_failed_deployment 'Quickshell activation failed after deployment validation.'
@@ -197,6 +205,7 @@ sp_deploy_application() {
     if ! (sp_write_state_manifest); then
         sp_rollback_failed_deployment 'Could not write the installer state manifest.'
     fi
+    sp_service_transaction_commit
     SP_QS_INSTANCE_STARTED_BY_INSTALL=0
     SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING=0
     sp_ok 'SekaiPop deployment phase completed.'
@@ -204,9 +213,22 @@ sp_deploy_application() {
 sp_dependency_only_setup() {
     [[ "$SP_HYPR" != full ]] || sp_find_rice_source
     sp_create_backup 0 "$([[ "$SP_HYPR" == skip ]] && echo 0 || echo 1)"
-    [[ "$SP_HYPR" == skip ]] || sp_integrate_hyprland "${SP_HYPR_SOURCE:-$SP_ROOT/hypr}"
+    sp_service_transaction_begin
+    if [[ "$SP_HYPR" != skip ]] && ! (sp_integrate_hyprland "${SP_HYPR_SOURCE:-$SP_ROOT/hypr}"); then
+        sp_rollback_failed_deployment 'Hyprland dependency-only integration failed.'
+    fi
     sp_setup_services
-    sp_write_state_manifest
+    if ! (sp_write_state_manifest); then
+        if [[ -n "${SP_BACKUP_DIR:-}" ]]; then
+            sp_rollback_failed_deployment 'Could not write the installer state manifest in dependency-only mode.'
+        fi
+        local service_rollback_failed=0
+        sp_service_transaction_rollback || service_rollback_failed=1
+        (( service_rollback_failed == 0 )) ||
+            sp_die 'Could not write the installer state manifest; one or more system/user service states could not be reverted.'
+        sp_die 'Could not write the installer state manifest; service changes were reverted and no desktop configuration was modified.'
+    fi
+    sp_service_transaction_commit
 }
 sekaipop_main() {
     sp_parse_args "$@"
