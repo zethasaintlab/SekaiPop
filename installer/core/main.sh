@@ -149,6 +149,18 @@ sp_plan_and_install_dependencies() {
     pm_install "${SP_INSTALL_PKGS[@]}"
     sp_ok 'Native package transaction completed.'
 }
+sp_rollback_failed_dependency_only() {
+    local reason="$1" service_rollback_failed=0
+    if [[ -n "${SP_BACKUP_DIR:-}" ]]; then
+        sp_rollback_failed_deployment "$reason"
+    fi
+    sp_service_transaction_rollback || service_rollback_failed=1
+    if (( service_rollback_failed )); then
+        sp_die "$reason No desktop configuration was modified, but one or more system/user service states could not be reverted. Inspect the affected units manually."
+    fi
+    sp_die "$reason No Quickshell/Hyprland configuration was modified; service changes were reverted."
+}
+
 sp_rollback_failed_deployment() {
     local reason="$1" original_yes="${SP_YES:-0}" restart_failed=0 service_rollback_failed=0
     sp_error "$reason"
@@ -217,20 +229,13 @@ sp_dependency_only_setup() {
     sp_create_backup 0 "$([[ "$SP_HYPR" == skip ]] && echo 0 || echo 1)"
     sp_service_transaction_begin
     if [[ "$SP_HYPR" != skip ]] && ! (sp_integrate_hyprland "${SP_HYPR_SOURCE:-$SP_ROOT/hypr}"); then
-        sp_rollback_failed_deployment 'Hyprland dependency-only integration failed.'
+        sp_rollback_failed_dependency_only 'Hyprland dependency-only integration failed.'
     fi
     if ! sp_setup_services; then
-        sp_rollback_failed_deployment 'A dependency-only systemd service action failed and its partial state could not be reverted.'
+        sp_rollback_failed_dependency_only 'A dependency-only systemd service action failed and its partial state could not be reverted.'
     fi
     if ! (sp_write_state_manifest); then
-        if [[ -n "${SP_BACKUP_DIR:-}" ]]; then
-            sp_rollback_failed_deployment 'Could not write the installer state manifest in dependency-only mode.'
-        fi
-        local service_rollback_failed=0
-        sp_service_transaction_rollback || service_rollback_failed=1
-        (( service_rollback_failed == 0 )) ||
-            sp_die 'Could not write the installer state manifest; one or more system/user service states could not be reverted.'
-        sp_die 'Could not write the installer state manifest; service changes were reverted and no desktop configuration was modified.'
+        sp_rollback_failed_dependency_only 'Could not write the installer state manifest in dependency-only mode.'
     fi
     sp_service_transaction_commit
 }

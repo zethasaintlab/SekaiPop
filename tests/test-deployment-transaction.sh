@@ -151,3 +151,36 @@ fi
 pass 'Installer state manifest is atomically replaced and preserves the prior manifest on failure'
 
 printf '\nAtomic manifest fixtures passed.\n'
+
+# Dependency-only mode with --hypr skip has no config snapshot. Its rollback
+# must restore service state without pretending that config restoration failed.
+NO_CONFIG_ROLLBACK="$TMP/deps-only-rollback.log"
+SP_BACKUP_DIR=''
+sp_service_transaction_rollback() {
+    printf 'service-rollback\n' >> "$NO_CONFIG_ROLLBACK"
+    return 0
+}
+sp_die() {
+    printf 'die:%s\n' "$1" >> "$NO_CONFIG_ROLLBACK"
+    return 1
+}
+: > "$NO_CONFIG_ROLLBACK"
+if sp_rollback_failed_dependency_only 'Simulated deps-only service failure'; then
+    fail 'Dependency-only rollback must preserve its non-zero failure result'
+fi
+grep -Fxq -- service-rollback "$NO_CONFIG_ROLLBACK" ||
+    fail 'Dependency-only rollback reverts service changes without a config snapshot'
+grep -Fq -- 'No Quickshell/Hyprland configuration was modified; service changes were reverted.' "$NO_CONFIG_ROLLBACK" ||
+    fail 'Dependency-only rollback reports that no configuration restore was required'
+pass 'Dependency-only --hypr skip rollback handles service changes without requiring a configuration snapshot'
+
+sp_service_transaction_rollback() { return 1; }
+: > "$NO_CONFIG_ROLLBACK"
+if sp_rollback_failed_dependency_only 'Simulated deps-only service rollback failure'; then
+    fail 'Dependency-only service rollback failure must be reported'
+fi
+grep -Fq -- 'one or more system/user service states could not be reverted' "$NO_CONFIG_ROLLBACK" ||
+    fail 'Dependency-only rollback exposes incomplete systemd recovery'
+pass 'Dependency-only rollback reports service-state recovery failures explicitly'
+
+printf '\nDependency-only transaction fixtures passed.\n'
