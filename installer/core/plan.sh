@@ -100,15 +100,17 @@ sp_kali_apt_sources_are_safe() {
                         [[ "$suite" == kali-rolling ]] || invalid=1
                     done
                 done < <(awk '
-                    function emit( n, i, has_binary, type_invalid ) {
+                    function emit( n, i, has_binary, type_invalid, has_content ) {
                         n = split(types, type_parts, /[[:space:]]+/)
                         has_binary = 0
                         type_invalid = 0
+                        has_content = types_count + uris_count + suites_count + signed_by_count +
+                                      enabled_count + trusted_count + insecure_count
                         for (i = 1; i <= n; i++) {
                             if (type_parts[i] == "deb") has_binary = 1
                             else if (type_parts[i] != "" && type_parts[i] != "deb-src") type_invalid = 1
                         }
-                        if (types ~ /(^|[[:space:]])deb(-src)?([[:space:]]|$)/ && enabled != "no") {
+                        if (has_content > 0 && enabled != "no") {
                             if (types_count != 1 || uris_count != 1 || suites_count != 1 || signed_by_count != 1 ||
                                 enabled_count > 1 || trusted_count > 1 || insecure_count > 1 || type_invalid ||
                                 (enabled != "yes" && enabled != "no") ||
