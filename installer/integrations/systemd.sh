@@ -51,18 +51,39 @@ sp_reconcile_service() {
 sp_setup_services() {
     [[ "$SP_INIT" == systemd ]] || { sp_warn 'systemd is not active; service setup is skipped.'; return 0; }
 
-    local service
+    local service active_provider="" active_count=0 provider_unit
     local -a system_services=(NetworkManager.service bluetooth.service upower.service)
-    if [[ "${SP_DISTRO_ID:-}" == fedora ]] && sp_fedora_tlp_pd_installed; then
-        system_services+=(tlp.service tlp-pd.service)
-    elif [[ "${SP_DISTRO_ID:-}" == fedora ]] && sp_fedora_tuned_ppd_installed; then
-        system_services+=(tuned.service tuned-ppd.service)
-    elif [[ "${SP_DISTRO_ID:-}" == fedora ]] && sp_have rpm && rpm -q power-profiles-daemon >/dev/null 2>&1; then
-        system_services+=(power-profiles-daemon.service)
-    elif [[ "${SP_DISTRO_ID:-}" == fedora ]] && sp_fedora_power_profile_api_available; then
-        : # An unrecognized active provider already owns the PowerProfiles D-Bus API.
-    elif [[ "${SP_DISTRO_ID:-}" == fedora ]] && sp_fedora_tlp_installed; then
-        sp_warn 'TLP is installed without tlp-pd; no PowerProfiles D-Bus provider is configured. The installer will not add a conflicting power-profile daemon.'
+    if [[ "${SP_DISTRO_ID:-}" == fedora ]]; then
+        # Prefer a provider that is already active over package-install order. This
+        # prevents an inactive second provider from being started beside the live one.
+        for provider_unit in tlp-pd.service tuned-ppd.service power-profiles-daemon.service; do
+            if systemctl is-active --quiet "$provider_unit"; then
+                active_provider="$provider_unit"
+                ((active_count += 1))
+            fi
+        done
+
+        if (( active_count > 1 )); then
+            sp_warn "Multiple Fedora PowerProfiles providers are already active (${active_provider}); no provider service will be changed."
+        elif [[ "$active_provider" == tlp-pd.service ]]; then
+            system_services+=(tlp.service tlp-pd.service)
+        elif [[ "$active_provider" == tuned-ppd.service ]]; then
+            system_services+=(tuned.service tuned-ppd.service)
+        elif [[ "$active_provider" == power-profiles-daemon.service ]]; then
+            system_services+=(power-profiles-daemon.service)
+        elif sp_fedora_tlp_pd_installed; then
+            system_services+=(tlp.service tlp-pd.service)
+        elif sp_fedora_tuned_ppd_installed; then
+            system_services+=(tuned.service tuned-ppd.service)
+        elif sp_have rpm && rpm -q power-profiles-daemon >/dev/null 2>&1; then
+            system_services+=(power-profiles-daemon.service)
+        elif sp_fedora_power_profile_api_available; then
+            : # An unrecognized active provider already owns the PowerProfiles D-Bus API.
+        elif sp_fedora_tlp_installed; then
+            sp_warn 'TLP is installed without tlp-pd; no PowerProfiles D-Bus provider is configured. The installer will not add a conflicting power-profile daemon.'
+        else
+            system_services+=(power-profiles-daemon.service)
+        fi
     else
         system_services+=(power-profiles-daemon.service)
     fi
