@@ -209,6 +209,11 @@ SRC
 assert_true 'Canonical legacy source with APT options is accepted' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list" <<'SRC'
+deb [signed-by=/etc/apt/keyrings/custom.gpg] http://http.kali.org/kali kali-rolling main
+SRC
+assert_false 'Legacy custom Signed-By keyrings are rejected' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list" <<'SRC'
 deb [trusted=yes] http://http.kali.org/kali kali-rolling main
 SRC
 assert_false 'Legacy trusted=yes source options are rejected' sp_kali_apt_sources_are_safe
