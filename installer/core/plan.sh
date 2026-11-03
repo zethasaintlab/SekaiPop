@@ -206,7 +206,7 @@ sp_kali_apt_sources_are_safe() {
                         options = tolower(options)
                         signed_by = ""
                         signed_by_count = gsub(/signed-by[[:space:]]*=/, "&", options)
-                        if (signed_by_count > 1 || options ~ /(trusted|allow-insecure)[[:space:]]*=[[:space:]]*(yes|true|1)([[:space:]]|$)/) {
+                        if (signed_by_count > 1 || options ~ /(trusted|allow-insecure)[[:space:]]*=[[:space:]]*(yes|true|1)/) {
                             print "!invalid!|!invalid!|1"
                         } else {
                             if (signed_by_count == 1) {
