@@ -70,10 +70,85 @@ sp_hyprland_lua_qs_alias_targets_sekaipop() {
     ' "$variables"
 }
 
+# Resolve one literal Hyprland source path exactly as the legacy parser does.
+# Relative paths are anchored to the file containing source=. No shell eval.
+sp_hyprland_conf_resolve_source() {
+    local current_file="$1" source_path="$2" current_dir
+    [[ -n "$source_path" && "$source_path" != *'$'* ]] || return 1
+    if [[ "$source_path" == "~" ]]; then
+        printf '%s\n' "$HOME"
+    elif [[ "$source_path" == "~/"* ]]; then
+        printf '%s/%s\n' "$HOME" "${source_path#~/}"
+    elif [[ "$source_path" == /* ]]; then
+        printf '%s\n' "$source_path"
+    else
+        current_dir="${current_file%/*}"
+        [[ "$current_dir" != "$current_file" ]] || current_dir='.'
+        printf '%s/%s\n' "$current_dir" "$source_path"
+    fi
+}
+
+# Follow source= directives recursively, respecting relative paths and globbing.
+# Cycles are deduplicated; unresolved expressions/missing matches mark the graph ambiguous.
+sp_hyprland_conf_collect_files() {
+    local root="$1" current canonical source_path pattern candidate index=0
+    local -a queue=() matches=()
+    local -A seen=()
+    SP_HYPRLAND_CONF_FILES=()
+    SP_HYPRLAND_AUTOSTART_UNCERTAIN=0
+    queue=("$root")
+    while (( index < ${#queue[@]} )); do
+        if (( ${#SP_HYPRLAND_CONF_FILES[@]} >= 512 )); then
+            SP_HYPRLAND_AUTOSTART_UNCERTAIN=1
+            sp_warn 'Hyprland source graph exceeded the 512-file inspection limit; autostart detection is incomplete.'
+            break
+        fi
+        current="${queue[index]}"
+        index=$((index + 1))
+        [[ -f "$current" && -r "$current" ]] || { SP_HYPRLAND_AUTOSTART_UNCERTAIN=1; continue; }
+        canonical="$(realpath -m -- "$current" 2>/dev/null || printf '%s' "$current")"
+        [[ -z "${seen[$canonical]:-}" ]] || continue
+        seen[$canonical]=1
+        SP_HYPRLAND_CONF_FILES+=("$current")
+        while IFS= read -r source_path; do
+            pattern="$(sp_hyprland_conf_resolve_source "$current" "$source_path")" || {
+                SP_HYPRLAND_AUTOSTART_UNCERTAIN=1
+                continue
+            }
+            matches=()
+            mapfile -t matches < <(compgen -G "$pattern" || true)
+            if (("${#matches[@]}" == 0)); then
+                SP_HYPRLAND_AUTOSTART_UNCERTAIN=1
+                continue
+            fi
+            for candidate in "${matches[@]}"; do
+                if [[ -f "$candidate" ]]; then
+                    queue+=("$candidate")
+                elif [[ ! -d "$candidate" ]]; then
+                    SP_HYPRLAND_AUTOSTART_UNCERTAIN=1
+                fi
+            done
+        done < <(awk '
+            /^[[:space:]]*#/ { next }
+            /^[[:space:]]*source[[:space:]]*=/ {
+                value = $0
+                sub(/^[[:space:]]*source[[:space:]]*=[[:space:]]*/, "", value)
+                sub(/[[:space:]]+#.*$/, "", value)
+                sub(/^[[:space:]]+/, "", value)
+                sub(/[[:space:]]+$/, "", value)
+                if ((substr(value, 1, 1) == "\"" && substr(value, length(value), 1) == "\"") ||
+                    (substr(value, 1, 1) == "\047" && substr(value, length(value), 1) == "\047")) {
+                    value = substr(value, 2, length(value) - 2)
+                }
+                print value
+            }
+        ' "$current")
+    done
+}
+
 sp_hyprland_has_quickshell_autostart() {
     local mode="$1" hypr_dir="$2" root file
     local -a files=()
-
     case "$mode" in
         lua)
             root="$hypr_dir/hyprland.lua"
@@ -87,25 +162,11 @@ sp_hyprland_has_quickshell_autostart() {
             ;;
         conf)
             root="$hypr_dir/hyprland.conf"
-            files+=("$root")
-            if [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*hyprland/.*\*' "$root"; then
-                for file in "$hypr_dir"/hyprland/*.conf; do
-                    [[ -f "$file" ]] && files+=("$file")
-                done
-            elif [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*hyprland/execs\.conf' "$root"; then
-                files+=("$hypr_dir/hyprland/execs.conf")
-            fi
-            if [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*custom/.*\*' "$root"; then
-                for file in "$hypr_dir"/custom/*.conf; do
-                    [[ -f "$file" ]] && files+=("$file")
-                done
-            elif [[ -f "$root" ]] && grep -Eq '^[[:space:]]*source[[:space:]]*=.*custom/execs\.conf' "$root"; then
-                files+=("$hypr_dir/custom/execs.conf")
-            fi
+            sp_hyprland_conf_collect_files "$root"
+            files=("${SP_HYPRLAND_CONF_FILES[@]}")
             ;;
         *) return 1 ;;
     esac
-
     for file in "${files[@]}"; do
         [[ -f "$file" ]] || continue
         if [[ "$mode" == lua ]]; then
@@ -128,12 +189,19 @@ sp_hyprland_has_quickshell_autostart() {
             ' "$file" && return 0
         fi
     done
+    if [[ "$mode" == conf && "${SP_HYPRLAND_AUTOSTART_UNCERTAIN:-0}" == 1 ]]; then
+        return 0
+    fi
     return 1
 }
-
 sp_write_session_file() {
     local mode="$1" hypr_dir="$2" file tmp cfg req start=1 proposed
-    sp_hyprland_has_quickshell_autostart "$mode" "$hypr_dir" && start=0
+    if sp_hyprland_has_quickshell_autostart "$mode" "$hypr_dir"; then
+        start=0
+        if [[ "$mode" == conf && "${SP_HYPRLAND_AUTOSTART_UNCERTAIN:-0}" == 1 ]]; then
+            sp_warn 'The active Hyprland source graph contains unresolved includes. The installer is withholding an additional Quickshell autostart to avoid a duplicate launch; inspect the loaded files and ensure exactly one qs -c sekaipop startup command is configured.'
+        fi
+    fi
     if [[ "$mode" == lua ]]; then
         file="$hypr_dir/sekaipop_session.lua"; req='pcall(require, "sekaipop_session")'; tmp="$(mktemp "$hypr_dir/.sekaipop-session.XXXXXX")"
         { printf '%s\n' '-- sekaipop_session.lua: generated by SekaiPop; safe to edit or remove.'; printf '%s\n' 'hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")'; printf '%s\n' 'hl.on("hyprland.start", function()'; printf '%s\n' '    hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP")'; (( start )) && printf '%s\n' '    hl.exec_cmd("qs -c sekaipop")'; printf '%s\n' 'end)'; } > "$tmp"

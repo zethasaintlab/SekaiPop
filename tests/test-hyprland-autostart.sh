@@ -128,4 +128,47 @@ CONF
 assert_true 'Conf mode recognizes an exec-once directive in a sourced execs.conf' \
     sp_hyprland_has_quickshell_autostart conf "$CONF"
 
+# Nested source graphs are followed relative to the file containing source=.
+NESTED="$TMP/nested"
+mkdir -p "$NESTED/layers" "$NESTED/nested"
+cat > "$NESTED/hyprland.conf" <<'CONF'
+source = ./layers/*.conf
+CONF
+cat > "$NESTED/layers/00-base.conf" <<'CONF'
+source = ../nested/*.conf
+CONF
+cat > "$NESTED/nested/10-startup.conf" <<'CONF'
+exec-once = qs -c sekaipop
+CONF
+assert_true 'Conf mode recursively follows nested source globs relative to each included file' \
+    sp_hyprland_has_quickshell_autostart conf "$NESTED"
+
+# Include cycles are deduplicated and do not recurse indefinitely.
+CYCLE="$TMP/cycle"
+mkdir -p "$CYCLE"
+cat > "$CYCLE/hyprland.conf" <<'CONF'
+source = ./cycle-a.conf
+CONF
+cat > "$CYCLE/cycle-a.conf" <<'CONF'
+source = ./hyprland.conf
+exec-once = qs -c sekaipop
+CONF
+assert_true 'Conf mode handles source cycles without duplicate scanning' \
+    sp_hyprland_has_quickshell_autostart conf "$CYCLE"
+
+# Dynamic source expressions cannot be safely resolved by static inspection.
+# Do not append another shell startup when an unknown include could contain one.
+UNCERTAIN="$TMP/uncertain"
+mkdir -p "$UNCERTAIN"
+cat > "$UNCERTAIN/hyprland.conf" <<'CONF'
+source = $customConfigPath
+CONF
+assert_true 'Conf mode treats unresolved source expressions as an ambiguous autostart graph' \
+    sp_hyprland_has_quickshell_autostart conf "$UNCERTAIN"
+sp_write_session_file conf "$UNCERTAIN"
+if grep -Fq 'qs -c sekaipop' "$UNCERTAIN/sekaipop_session.conf"; then
+    fail 'An ambiguous source graph must not receive a second Quickshell startup command'
+else
+    pass 'An ambiguous source graph withholds automatic Quickshell startup to avoid duplicate launches'
+fi
 printf '\nHyprland autostart fixtures passed.\n'
