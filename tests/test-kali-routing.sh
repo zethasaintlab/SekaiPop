@@ -250,4 +250,20 @@ APT
 chmod +x "$TMP/bin/apt-config"
 assert_false 'Global APT AllowInsecureRepositories override is rejected' sp_kali_apt_sources_are_safe
 
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+SRC
+chmod 000 "$APT_ROOT/sources.list.d/kali.sources"
+assert_false 'Unreadable active APT source files are rejected instead of being skipped' sp_kali_apt_sources_are_safe
+chmod 0644 "$APT_ROOT/sources.list.d/kali.sources"
+
+chmod 000 "$APT_ROOT/sources.list.d"
+assert_false 'Unreadable APT source-parts directories are rejected' sp_kali_apt_sources_are_safe
+chmod 0755 "$APT_ROOT/sources.list.d"
+
+APT_CONFIG="$TMP/custom-apt.conf" assert_false 'External APT_CONFIG environment overrides are rejected' sp_kali_apt_sources_are_safe
+
 printf '\nKali routing and repository policy fixtures passed.\n'
