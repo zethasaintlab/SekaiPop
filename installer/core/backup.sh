@@ -56,17 +56,28 @@ sp_create_backup() {
     SP_BACKUP_DIR="$backup_dir"; sp_info "Configuration snapshot saved: $backup_dir"
 }
 sp_restore_latest() {
-    local latest='' candidate snapshot backup_qs backup_hypr restore_backup
+    local requested_snapshot="${1:-}" latest='' candidate snapshot backup_qs backup_hypr restore_backup
     local qs_included qs_exists hypr_included hypr_exists manifest
-    if [[ ! -d "$SP_BACKUP_ROOT" ]]; then sp_restore_legacy_hypr_backup; return $?; fi
+    if [[ ! -d "$SP_BACKUP_ROOT" ]]; then
+        [[ -z "$requested_snapshot" ]] && sp_restore_legacy_hypr_backup && return 0
+        sp_die "The transaction backup root is missing; cannot restore requested snapshot: $requested_snapshot"
+    fi
     [[ ! -L "$SP_BACKUP_ROOT" ]] || sp_die "Refusing symlinked installer backup directory: $SP_BACKUP_ROOT"
-    while IFS= read -r candidate; do
-        [[ "$candidate" == restore-* ]] && continue
-        manifest="$SP_BACKUP_ROOT/$candidate/manifest"; [[ -f "$manifest" ]] || continue
-        if [[ "$(sp_manifest_value "$manifest" quickshell_included)" == yes || "$(sp_manifest_value "$manifest" hyprland_included)" == yes || -d "$SP_BACKUP_ROOT/$candidate/config/hypr" || -d "$SP_BACKUP_ROOT/$candidate/config/sekaipop" ]]; then latest="$candidate"; fi
-    done < <(find "$SP_BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
-    if [[ -z "$latest" ]]; then sp_restore_legacy_hypr_backup; return $?; fi
-    snapshot="$SP_BACKUP_ROOT/$latest"; manifest="$snapshot/manifest"; backup_hypr="$snapshot/config/hypr"; backup_qs="$snapshot/config/sekaipop"
+    if [[ -n "$requested_snapshot" ]]; then
+        [[ "$requested_snapshot" == "$SP_BACKUP_ROOT/"* && -d "$requested_snapshot" && ! -L "$requested_snapshot" ]] ||
+            sp_die "Refusing invalid transaction snapshot path: $requested_snapshot"
+        snapshot="$requested_snapshot"
+        latest="${snapshot##*/}"
+    else
+        while IFS= read -r candidate; do
+            [[ "$candidate" == restore-* ]] && continue
+            manifest="$SP_BACKUP_ROOT/$candidate/manifest"; [[ -f "$manifest" ]] || continue
+            if [[ "$(sp_manifest_value "$manifest" quickshell_included)" == yes || "$(sp_manifest_value "$manifest" hyprland_included)" == yes || -d "$SP_BACKUP_ROOT/$candidate/config/hypr" || -d "$SP_BACKUP_ROOT/$candidate/config/sekaipop" ]]; then latest="$candidate"; fi
+        done < <(find "$SP_BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+        if [[ -z "$latest" ]]; then sp_restore_legacy_hypr_backup; return $?; fi
+        snapshot="$SP_BACKUP_ROOT/$latest"
+    fi
+    manifest="$snapshot/manifest"; backup_hypr="$snapshot/config/hypr"; backup_qs="$snapshot/config/sekaipop"
     qs_included="$(sp_manifest_value "$manifest" quickshell_included)"; hypr_included="$(sp_manifest_value "$manifest" hyprland_included)"
     qs_exists="$(sp_manifest_value "$manifest" quickshell_exists)"; hypr_exists="$(sp_manifest_value "$manifest" hyprland_exists)"
     if [[ -z "$qs_included" ]]; then qs_included=no; [[ -d "$backup_qs" ]] && qs_included=yes; fi

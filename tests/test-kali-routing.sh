@@ -247,6 +247,16 @@ SRC
 assert_false 'Active deb822 entries without a suite are rejected' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+
+Components: main
+SRC
+assert_false 'An additional active deb822 paragraph without required routing fields is rejected' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 URIs: http://http.kali.org/kali/
 Suites: kali-rolling
 Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg

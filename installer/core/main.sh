@@ -104,7 +104,7 @@ sp_plan_and_install_dependencies() {
     sp_load_package_manager
     sp_load_distro_profile
     if [[ "$SP_DISTRO_ID" == kali ]] && ! sp_kali_apt_sources_are_safe; then
-        sp_die 'Kali package operations require only the official http.kali.org or archive.kali.org kali-rolling APT sources. Disable foreign suites and third-party APT sources; the installer will not rewrite repository configuration.'
+        sp_die 'Kali package operations require only the canonical http://http.kali.org/kali kali-rolling APT source. Disable foreign suites and third-party APT sources; the installer will not rewrite repository configuration.'
     fi
     if (( SP_DRY_RUN )); then
         sp_build_package_plan
@@ -137,7 +137,7 @@ sp_rollback_failed_deployment() {
     local reason="$1" original_yes="${SP_YES:-0}"
     sp_error "$reason"
     SP_YES=1
-    if sp_restore_latest; then
+    if [[ -n "${SP_BACKUP_DIR:-}" ]] && sp_restore_latest "$SP_BACKUP_DIR"; then
         SP_YES="$original_yes"
         sp_die "$reason The previous Quickshell/Hyprland configuration was restored automatically; the recovery snapshot is retained under $SP_BACKUP_ROOT."
     fi
@@ -157,11 +157,13 @@ sp_deploy_application() {
     if ! (sp_check_all); then
         sp_rollback_failed_deployment 'Post-deployment runtime validation failed; Quickshell activation was skipped.'
     fi
+    sp_setup_services
+    if ! sp_activate_sekaipop; then
+        sp_rollback_failed_deployment 'Quickshell activation failed after deployment validation.'
+    fi
     if ! (sp_write_state_manifest); then
         sp_rollback_failed_deployment 'Could not write the installer state manifest.'
     fi
-    sp_setup_services
-    sp_activate_sekaipop || true
     sp_ok 'SekaiPop deployment phase completed.'
 }
 sp_dependency_only_setup() {

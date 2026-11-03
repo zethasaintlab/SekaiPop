@@ -105,7 +105,7 @@ sp_kali_apt_sources_are_safe() {
                         n = split(types, type_parts, /[[:space:]]+/)
                         has_binary = 0
                         type_invalid = 0
-                        has_content = types_count + uris_count + suites_count + signed_by_count + enabled_count + trusted_count + insecure_count
+                        has_content = types_count + uris_count + suites_count + signed_by_count + enabled_count + trusted_count + insecure_count + field_count
                         for (i = 1; i <= n; i++) {
                             if (type_parts[i] == "deb") has_binary = 1
                             else if (type_parts[i] != "" && type_parts[i] != "deb-src") type_invalid = 1
@@ -125,6 +125,7 @@ sp_kali_apt_sources_are_safe() {
                         types = uris = suites = signed_by = trusted = allow_insecure = ""
                         types_count = uris_count = suites_count = signed_by_count = 0
                         enabled_count = trusted_count = insecure_count = 0
+                        field_count = 0
                         enabled = "yes"
                         last = ""
                     }
@@ -168,7 +169,7 @@ sp_kali_apt_sources_are_safe() {
                             allow_insecure = tolower(value); last = "allow-insecure"; next
                         }
                     }
-                    /^[^[:space:]]/ { last = ""; next }
+                    /^[^[:space:]]/ { field_count++; last = ""; next }
                     /^[[:space:]]+/ {
                         value = $0; sub(/^[[:space:]]+/, "", value)
                         if (last == "uris") uris = uris " " value

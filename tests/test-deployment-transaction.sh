@@ -62,6 +62,12 @@ mkdir -p "$SP_QS_DEST" "$SP_HYPR_DEST"
 printf 'previous-shell\n' > "$SP_QS_DEST/original.marker"
 printf 'previous-hypr\n' > "$SP_HYPR_DEST/original.marker"
 sp_create_backup 1 1
+FIRST_BACKUP="$SP_BACKUP_DIR"
+printf 'intervening-state\n' > "$SP_QS_DEST/intervening.marker"
+SP_TIMESTAMP=20261102180101
+sp_create_backup 1 1
+[[ "$SP_BACKUP_DIR" != "$FIRST_BACKUP" ]] || fail 'A changed configuration produces a distinct later snapshot'
+SP_BACKUP_DIR="$FIRST_BACKUP"
 printf 'partially-deployed-shell\n' > "$SP_QS_DEST/partial.marker"
 printf 'partially-integrated-hypr\n' > "$SP_HYPR_DEST/partial.marker"
 
@@ -70,9 +76,40 @@ if (sp_rollback_failed_deployment 'Simulated integration failure.') > "$TMP/roll
 fi
 [[ "$(cat "$SP_QS_DEST/original.marker")" == previous-shell ]] || fail 'Automatic rollback restores the previous Quickshell tree'
 [[ ! -e "$SP_QS_DEST/partial.marker" ]] || fail 'Automatic rollback removes the partial Quickshell tree'
+[[ ! -e "$SP_QS_DEST/intervening.marker" ]] || fail 'Automatic rollback restores the exact snapshot created for the current transaction'
 [[ "$(cat "$SP_HYPR_DEST/original.marker")" == previous-hypr ]] || fail 'Automatic rollback restores the previous Hyprland tree'
 [[ ! -e "$SP_HYPR_DEST/partial.marker" ]] || fail 'Automatic rollback removes partial Hyprland integration'
 find "$SP_BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -name 'restore-*' -print -quit | grep -q . || fail 'Automatic rollback retains a recovery snapshot of the partial state'
 pass 'Failed Hyprland integration automatically restores both configuration trees and preserves recovery data'
+
+ACT_HOME="$TMP/activation-home"
+SP_CONFIG_HOME="$ACT_HOME/.config"
+SP_STATE_DIR="$ACT_HOME/.local/state/sekaipop"
+SP_BACKUP_ROOT="$SP_STATE_DIR/installer-backups"
+SP_QS_DEST="$SP_CONFIG_HOME/quickshell/sekaipop"
+SP_HYPR_DEST="$SP_CONFIG_HOME/hypr"
+SP_TIMESTAMP=20261102180200
+SP_HYPR=skip
+SP_YES=0
+SP_DRY_RUN=0
+mkdir -p "$SP_QS_DEST"
+printf 'activation-previous\n' > "$SP_QS_DEST/original.marker"
+sp_find_rice_source() { :; }
+sp_deploy_quickshell() {
+    rm -rf -- "$SP_QS_DEST"
+    mkdir -p "$SP_QS_DEST"
+    printf 'activation-partial\n' > "$SP_QS_DEST/partial.marker"
+}
+sp_check_all() { return 0; }
+sp_setup_services() { return 0; }
+sp_activate_sekaipop() { return 1; }
+
+if (sp_deploy_application) > "$TMP/activation-failure.log" 2>&1; then
+    fail 'Quickshell activation failure must fail the deployment transaction'
+fi
+[[ "$(cat "$SP_QS_DEST/original.marker")" == activation-previous ]] || fail 'Activation failure restores the previous Quickshell tree'
+[[ ! -e "$SP_QS_DEST/partial.marker" ]] || fail 'Activation failure removes the partially deployed tree'
+[[ ! -e "$SP_STATE_DIR/installer-manifest.env" ]] || fail 'Failed activation must not write a successful installer manifest'
+pass 'Quickshell activation failure triggers configuration rollback before success is recorded'
 
 printf '\nDeployment transaction fixtures passed.\n'
