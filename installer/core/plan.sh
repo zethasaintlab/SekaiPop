@@ -79,8 +79,9 @@ sp_kali_apt_sources_are_safe() {
                     done
                 done < <(awk '
                     function emit() {
-                        if (types ~ /(^|[[:space:]])deb(-src)?([[:space:]]|$)/ && enabled != "no" && uris != "" && suites != "") {
-                            print uris "|" suites
+                        if (types ~ /(^|[[:space:]])deb(-src)?([[:space:]]|$)/ && enabled != "no") {
+                            if (uris == "" || suites == "") print "!invalid!|!invalid!"
+                            else print uris "|" suites
                         }
                         types = uris = suites = ""
                         enabled = "yes"
@@ -138,6 +139,7 @@ sp_kali_apt_sources_are_safe() {
                             field_index++
                         }
                         if (field_index + 1 <= count) print fields[field_index] "|" fields[field_index + 1]
+                        else print "!invalid!|!invalid!"
                     }
                 ' "$file")
                 ;;
