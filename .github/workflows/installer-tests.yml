@@ -72,7 +72,7 @@ jobs:
             --env DISTRO_ID="$DISTRO_ID" \
             --volume "$GITHUB_WORKSPACE:/workspace" \
             --workdir /workspace \
-            "$CONTAINER_IMAGE" bash -lc '
+            "$CONTAINER_IMAGE" bash -s <<'CONTAINER_SCRIPT'
               set -Eeuo pipefail
               case "$DISTRO_ID" in
                 arch)
@@ -122,5 +122,5 @@ HYPRLAND
               # Match production's normal-user execution model. Metadata is refreshed as root;
               # package-plan discovery and the installer itself run unprivileged.
               useradd --create-home --shell /bin/bash sekaipop-ci
-              su -s /bin/bash -c 'cd /workspace && ./install.sh --plan --profile standard --no-update --no-log' sekaipop-ci
-            '
+              su -s /bin/bash -c "cd /workspace && ./install.sh --plan --profile standard --no-update --no-log" sekaipop-ci
+CONTAINER_SCRIPT
