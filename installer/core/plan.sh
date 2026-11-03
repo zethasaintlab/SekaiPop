@@ -186,7 +186,7 @@ sp_kali_apt_sources_are_safe() {
                             if (options ~ /signed-by[[:space:]]*=/) {
                                 signed_by = options
                                 sub(/^.*signed-by[[:space:]]*=[[:space:]]*/, "", signed_by)
-                                sub(/[[:space:]\\]].*$/, "", signed_by)
+                                sub(/\].*$/, "", signed_by)
                                 if (signed_by != "/usr/share/keyrings/kali-archive-keyring.gpg") {
                                     print "!invalid!|!invalid!"
                                     next
