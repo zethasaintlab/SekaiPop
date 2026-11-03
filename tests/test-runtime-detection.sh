@@ -83,8 +83,8 @@ assert_absent power-profiles-daemon 'Active tuned-ppd without the canonical D-Bu
 export MOCK_DBUS_OWNER=1 MOCK_DBUS_OBJECT=0
 assert_absent power-profiles-daemon 'Owned D-Bus name without the expected PowerProfiles API object does not satisfy the capability'
 
-export MOCK_DBUS_OBJECT=1 MOCK_TUNED_PPD_ACTIVE=0
-assert_absent power-profiles-daemon 'Inactive tuned-ppd does not satisfy the power-profile capability'
+export MOCK_DBUS_OBJECT=1 MOCK_TUNED_PPD_ACTIVE=0 MOCK_DBUS_OWNER=0
+assert_absent power-profiles-daemon 'Inactive tuned-ppd without an owned PowerProfiles API does not satisfy the capability'
 
 export MOCK_TUNED_PPD_ACTIVE=0 MOCK_TUNED_PPD_INSTALLED=0
 assert_absent power-profiles-daemon 'Uninstalled and inactive tuned-ppd does not satisfy the power-profile capability'
@@ -92,8 +92,11 @@ assert_absent power-profiles-daemon 'Uninstalled and inactive tuned-ppd does not
 export MOCK_PPD_ACTIVE=1 MOCK_DBUS_OWNER=1 MOCK_DBUS_OBJECT=1
 assert_present power-profiles-daemon 'Active power-profiles-daemon with the PowerProfiles D-Bus API satisfies the capability'
 
-export MOCK_PPD_ACTIVE=0 MOCK_TLP_PD_ACTIVE=1
+export MOCK_PPD_ACTIVE=0 MOCK_TLP_PD_ACTIVE=1 MOCK_DBUS_OWNER=1 MOCK_DBUS_OBJECT=1
 assert_present power-profiles-daemon 'Active TLP PPD service with the PowerProfiles D-Bus API satisfies the capability'
+
+export MOCK_TLP_PD_ACTIVE=0 MOCK_TUNED_PPD_ACTIVE=0 MOCK_PPD_ACTIVE=0
+assert_present power-profiles-daemon 'An owned PowerProfiles D-Bus API is recognized even without a known provider unit name'
 
 SP_DISTRO_ID=debian
 PATH="$TMP/native-bin:$TMP/bin"
