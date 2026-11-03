@@ -218,6 +218,22 @@ if grep -Eq 'cat (tuned|tuned-ppd|tlp|tlp-pd|power-profiles-daemon)\.service|^(e
 fi
 printf '[PASS] Multiple active Fedora providers are detected and left untouched\n'
 
+FAKE_RPM_PACKAGES='tuned-ppd tlp-pd'
+FAKE_ACTIVE_SERVICES=''
+FAKE_POWERPROFILE_API=0
+export FAKE_RPM_PACKAGES FAKE_ACTIVE_SERVICES FAKE_POWERPROFILE_API
+[[ "$(sp_fedora_power_profile_provider_count)" == 2 ]] || {
+    printf '[FAIL] Count multiple installed Fedora provider packages correctly\n' >&2
+    exit 1
+}
+: > "$SP_TEST_SYSTEMCTL_LOG"
+sp_setup_services
+if grep -Eq '^cat (tuned|tuned-ppd|tlp|tlp-pd|power-profiles-daemon)\.service$|^(enable|start) ' "$SP_TEST_SYSTEMCTL_LOG"; then
+    printf '[FAIL] Do not choose or activate an arbitrary provider when multiple installed providers are inactive\n' >&2
+    exit 1
+fi
+printf '[PASS] Multiple installed but inactive Fedora providers are left for explicit user resolution\n'
+
 FAKE_RPM_PACKAGES='power-profiles-daemon'
 FAKE_ACTIVE_SERVICES=''
 FAKE_POWERPROFILE_API=0
