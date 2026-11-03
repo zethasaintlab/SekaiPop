@@ -237,6 +237,30 @@ SRC
 assert_false 'Active deb822 entries without a suite are rejected' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+SRC
+assert_false 'Active deb822 paragraphs without Types are rejected' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb-foreign
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+SRC
+assert_false 'Unsupported source types are rejected even without a deb token' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb
+URIs: http://http.kali.org/kali/
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+SRC
+assert_false 'Duplicate identical deb822 URIs are rejected' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 Types: deb
 URIs: http://mirror.example.invalid/kali/
 Suites: kali-rolling
