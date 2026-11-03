@@ -88,8 +88,8 @@ sp_kali_apt_sources_are_safe() {
                     [[ -n "$uris" && -n "$suites" && "$binary" =~ ^[01]$ ]] || { invalid=1; continue; }
                     [[ "$binary" == 1 ]] && found=1
                     [[ "$signed_by" == /usr/share/keyrings/kali-archive-keyring.gpg ]] || invalid=1
-                    [[ -z "$trusted" || "$trusted" == no ]] || invalid=1
-                    [[ -z "$allow_insecure" || "$allow_insecure" == no ]] || invalid=1
+                    [[ -z "$trusted" || "$trusted" == no || "$trusted" == false || "$trusted" == 0 ]] || invalid=1
+                    [[ -z "$allow_insecure" || "$allow_insecure" == no || "$allow_insecure" == false || "$allow_insecure" == 0 ]] || invalid=1
                     for uri in $uris; do
                         case "$uri" in
                             http://http.kali.org/kali|http://http.kali.org/kali/) ;;
