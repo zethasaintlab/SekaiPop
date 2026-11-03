@@ -71,6 +71,8 @@ sp_setup_services() {
             system_services+=(tuned.service tuned-ppd.service)
         elif [[ "$active_provider" == power-profiles-daemon.service ]]; then
             system_services+=(power-profiles-daemon.service)
+        elif sp_fedora_power_profile_api_available; then
+            : # An unrecognized provider already owns the PowerProfiles D-Bus API.
         else
             package_provider_count="$(sp_fedora_power_profile_provider_count || printf '0')"
             if (( package_provider_count > 1 )); then
