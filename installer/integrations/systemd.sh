@@ -69,8 +69,10 @@ sp_setup_services() {
             tlp_provider_conflict=1
         fi
 
-        if (( active_count > 1 || tlp_provider_conflict )); then
+        if (( active_count > 1 )); then
             sp_warn "Multiple Fedora PowerProfiles providers are already active (${active_providers% }); no provider service will be changed."
+        elif (( tlp_provider_conflict )); then
+            sp_warn "The TLP backend is active alongside a different PowerProfiles provider ($active_provider); no provider service will be changed."
         elif [[ "$active_provider" == tlp-pd.service ]]; then
             system_services+=(tlp.service tlp-pd.service)
         elif [[ "$active_provider" == tuned-ppd.service ]]; then
