@@ -150,11 +150,28 @@ sp_plan_and_install_dependencies() {
     sp_ok 'Native package transaction completed.'
 }
 sp_rollback_failed_deployment() {
-    local reason="$1" original_yes="${SP_YES:-0}"
+    local reason="$1" original_yes="${SP_YES:-0}" restart_failed=0
     sp_error "$reason"
+    if (( ${SP_QS_INSTANCE_STARTED_BY_INSTALL:-0} )) && sp_have qs; then
+        qs kill -p "$SP_QS_DEST" >/dev/null 2>&1 || true
+        sp_wait_qs_instance_state stopped || sp_warn 'Could not confirm shutdown of the newly launched SekaiPop instance during rollback.'
+    fi
     SP_YES=1
     if [[ -n "${SP_BACKUP_DIR:-}" ]] && sp_restore_latest "$SP_BACKUP_DIR"; then
+        if (( ${SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING:-0} )); then
+            if ! qs -p "$SP_QS_DEST" -n -d >/dev/null 2>&1 || ! sp_wait_qs_instance_state running; then
+                restart_failed=1
+                sp_warn 'Configuration rollback succeeded, but the previously running SekaiPop instance could not be restarted automatically.'
+            else
+                sp_ok 'The previously running SekaiPop instance was restarted from the restored configuration.'
+            fi
+        fi
+        SP_QS_INSTANCE_STARTED_BY_INSTALL=0
+        SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING=0
         SP_YES="$original_yes"
+        if (( restart_failed )); then
+            sp_die "$reason Configuration was restored, but the previous Quickshell instance needs to be started manually. Recovery snapshot: $SP_BACKUP_ROOT."
+        fi
         sp_die "$reason The previous Quickshell/Hyprland configuration was restored automatically; the recovery snapshot is retained under $SP_BACKUP_ROOT."
     fi
     SP_YES="$original_yes"
@@ -180,6 +197,8 @@ sp_deploy_application() {
     if ! (sp_write_state_manifest); then
         sp_rollback_failed_deployment 'Could not write the installer state manifest.'
     fi
+    SP_QS_INSTANCE_STARTED_BY_INSTALL=0
+    SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING=0
     sp_ok 'SekaiPop deployment phase completed.'
 }
 sp_dependency_only_setup() {

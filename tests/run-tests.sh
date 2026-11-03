@@ -7,7 +7,7 @@ pass() { printf '[PASS] %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf '[FAIL] %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 contains() { grep -Fq -- "$2" "$1"; }
 not_contains() { ! grep -RFq -- "$2" "$1"; }
-for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-kali-routing.sh "$ROOT"/tests/test-fedora-power-provider.sh "$ROOT"/tests/test-deployment-transaction.sh "$ROOT"/tests/test-pacman-safety.sh; do
+for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-quickshell-activation.sh "$ROOT"/tests/test-kali-routing.sh "$ROOT"/tests/test-fedora-power-provider.sh "$ROOT"/tests/test-deployment-transaction.sh "$ROOT"/tests/test-pacman-safety.sh; do
     if bash -n "$script"; then pass "Bash syntax: $(basename "$script")"; else fail "Bash syntax: $(basename "$script")"; fi
 done
 if env SEKAIPOP_INSTALLER_ROOT="$ROOT" "$ROOT/install.sh" --help >/dev/null; then pass 'Help works without distro detection'; else fail 'Help works without distro detection'; fi
@@ -80,6 +80,7 @@ for legacy in install-fedora.sh install-deps-fedora.sh check-deps-fedora.sh; do
     [[ ! -e "$ROOT/$legacy" ]] && pass "Legacy root wrapper absent: $legacy" || fail "Legacy root wrapper must be absent: $legacy"
 done
 if bash "$ROOT/tests/test-hyprland-autostart.sh"; then pass 'Hyprland autostart regression fixtures'; else fail 'Hyprland autostart regression fixtures'; fi
+if bash "$ROOT/tests/test-quickshell-activation.sh"; then pass 'Quickshell activation and process rollback fixtures'; else fail 'Quickshell activation and process rollback fixtures'; fi
 if bash "$ROOT/tests/test-kali-routing.sh"; then pass 'Kali routing and repository policy fixtures'; else fail 'Kali routing and repository policy fixtures'; fi
 if bash "$ROOT/tests/test-fedora-power-provider.sh"; then pass 'Fedora power-provider regression fixtures'; else fail 'Fedora power-provider regression fixtures'; fi
 if bash "$ROOT/tests/test-deployment-transaction.sh"; then pass 'Deployment staging and rollback regression fixtures'; else fail 'Deployment staging and rollback regression fixtures'; fi
