@@ -79,7 +79,7 @@ sp_kali_apt_sources_are_safe() {
                     done
                 done < <(awk '
                     function emit() {
-                        if (types ~ /(^|[[:space:]])deb([[:space:]]|$)/ && enabled != "no" && uris != "" && suites != "") {
+                        if (types ~ /(^|[[:space:]])deb(-src)?([[:space:]]|$)/ && enabled != "no" && uris != "" && suites != "") {
                             print uris "|" suites
                         }
                         types = uris = suites = ""
@@ -130,7 +130,7 @@ sp_kali_apt_sources_are_safe() {
                 done < <(awk '
                     {
                         sub(/^[[:space:]]+/, "", $0)
-                        if ($0 ~ /^#/ || $1 != "deb") next
+                        if ($0 ~ /^#/ || ($1 != "deb" && $1 != "deb-src")) next
                         count = split($0, fields, /[[:space:]]+/)
                         field_index = 2
                         if (fields[field_index] ~ /^\[/) {
