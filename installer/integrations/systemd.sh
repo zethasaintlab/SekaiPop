@@ -51,7 +51,7 @@ sp_reconcile_service() {
 sp_setup_services() {
     [[ "$SP_INIT" == systemd ]] || { sp_warn 'systemd is not active; service setup is skipped.'; return 0; }
 
-    local service active_provider="" active_count=0 provider_unit package_provider_count=0
+    local service active_provider="" active_providers="" active_count=0 provider_unit package_provider_count=0
     local -a system_services=(NetworkManager.service bluetooth.service upower.service)
     if [[ "${SP_DISTRO_ID:-}" == fedora ]]; then
         # Prefer a provider that is already active over package-install order. This
@@ -59,12 +59,13 @@ sp_setup_services() {
         for provider_unit in tlp-pd.service tuned-ppd.service power-profiles-daemon.service; do
             if systemctl is-active --quiet "$provider_unit"; then
                 active_provider="$provider_unit"
+                active_providers+="$provider_unit "
                 ((active_count += 1))
             fi
         done
 
         if (( active_count > 1 )); then
-            sp_warn "Multiple Fedora PowerProfiles providers are already active (${active_provider}); no provider service will be changed."
+            sp_warn "Multiple Fedora PowerProfiles providers are already active (${active_providers% }); no provider service will be changed."
         elif [[ "$active_provider" == tlp-pd.service ]]; then
             system_services+=(tlp.service tlp-pd.service)
         elif [[ "$active_provider" == tuned-ppd.service ]]; then
