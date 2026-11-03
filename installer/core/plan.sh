@@ -279,6 +279,16 @@ sp_fedora_power_profile_provider_installed() {
         rpm -q power-profiles-daemon >/dev/null 2>&1
 }
 
+sp_fedora_power_profile_provider_count() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_have rpm || return 1
+    local count=0
+    rpm -q tuned-ppd >/dev/null 2>&1 && ((count += 1))
+    rpm -q tlp-pd >/dev/null 2>&1 && ((count += 1))
+    rpm -q power-profiles-daemon >/dev/null 2>&1 && ((count += 1))
+    printf '%s\n' "$count"
+}
+
 sp_runtime_requirement_present() {
     local req="$1" version
     case "$req" in
