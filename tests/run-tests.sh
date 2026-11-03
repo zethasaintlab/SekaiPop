@@ -56,7 +56,7 @@ contains "$ROOT/installer/core/plan.sh" 'quickshell) sp_have qs ;;' && pass 'Qui
 contains "$ROOT/installer/core/plan.sh" 'ffmpeg) sp_have ffmpeg ;;' && pass 'FFmpeg runtime detection accepts an existing ffmpeg executable' || fail 'FFmpeg runtime detection accepts an existing ffmpeg executable'
 contains "$ROOT/installer/distros/fedora/packages.sh" "[qt6-base]='qt6-qtbase'" && pass 'Fedora Qt runtime map excludes development headers' || fail 'Fedora Qt runtime map excludes development headers'
 not_contains "$ROOT/installer/distros/fedora/packages.sh" 'qt6-qtbase-devel' && pass 'Fedora Qt runtime map does not install qtbase development files' || fail 'Fedora Qt runtime map does not install qtbase development files'
-contains "$ROOT/installer/core/plan.sh" 'tuned-ppd.service' && pass 'Fedora tuned-ppd compatibility provider is recognized' || fail 'Fedora tuned-ppd compatibility provider is recognized'
+contains "$ROOT/installer/integrations/systemd.sh" 'tuned-ppd.service' && pass 'Fedora tuned-ppd compatibility provider is reconciled' || fail 'Fedora tuned-ppd compatibility provider is reconciled'
 contains "$ROOT/installer/distros/fedora/packages.sh" "[power-profiles-daemon]='tuned-ppd'" && pass 'Fedora 44 defaults to its native TuneD PPD provider' || fail 'Fedora 44 defaults to its native TuneD PPD provider'
 contains "$ROOT/installer/core/plan.sh" 'Existing provider packages' && pass 'Inactive installed Fedora providers are reported separately from active runtime APIs' || fail 'Inactive installed Fedora providers are reported separately from active runtime APIs'
 contains "$ROOT/installer/core/plan.sh" 'NameHasOwner' && pass 'Fedora TuneD provider verifies D-Bus name ownership' || fail 'Fedora TuneD provider verifies D-Bus name ownership'
