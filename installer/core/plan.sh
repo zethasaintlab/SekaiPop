@@ -114,7 +114,8 @@ sp_kali_apt_sources_are_safe() {
                             if (types_count != 1 || uris_count != 1 || suites_count != 1 || signed_by_count != 1 ||
                                 enabled_count > 1 || trusted_count > 1 || insecure_count > 1 || type_invalid ||
                                 (enabled != "yes" && enabled != "no") ||
-                                (trusted != "" && trusted != "no") || (allow_insecure != "" && allow_insecure != "no") ||
+                                (trusted != "" && trusted != "no" && trusted != "false" && trusted != "0") ||
+                                (allow_insecure != "" && allow_insecure != "no" && allow_insecure != "false" && allow_insecure != "0") ||
                                 uris == "" || suites == "" || signed_by == "") {
                                 print "!invalid!|!invalid!|!invalid!|yes|yes|1"
                             } else {
