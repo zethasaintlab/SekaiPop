@@ -43,6 +43,7 @@ sp_kali_apt_sources_are_safe() {
         apt_root="$SEKAIPOP_TEST_APT_ROOT"
     fi
 
+    [[ -z "${APT_CONFIG:-}" ]] || return 1
     sp_have apt-config || return 1
     local apt_config root_dir
     apt_config="$(apt-config dump 2>/dev/null)" || return 1
@@ -56,13 +57,27 @@ sp_kali_apt_sources_are_safe() {
     root_dir="$(awk '$1 == "Dir::RootDir" { gsub(/[";]/, "", $2); print $2; exit }' <<< "$apt_config")"
     [[ -z "$root_dir" || "$root_dir" == / ]] || return 1
 
-    source_files=("$apt_root/sources.list")
+    source_files=()
+    if [[ -e "$apt_root/sources.list" || -L "$apt_root/sources.list" ]]; then
+        if [[ -f "$apt_root/sources.list" && -r "$apt_root/sources.list" ]]; then
+            source_files+=("$apt_root/sources.list")
+        else
+            invalid=1
+        fi
+    fi
+    if [[ -e "$apt_root/sources.list.d" || -L "$apt_root/sources.list.d" ]]; then
+        [[ -d "$apt_root/sources.list.d" && -r "$apt_root/sources.list.d" ]] || invalid=1
+    fi
     for file in "$apt_root"/sources.list.d/*.list "$apt_root"/sources.list.d/*.sources; do
-        [[ -f "$file" ]] && source_files+=("$file")
+        [[ -e "$file" || -L "$file" ]] || continue
+        if [[ -f "$file" && -r "$file" ]]; then
+            source_files+=("$file")
+        else
+            invalid=1
+        fi
     done
 
     for file in "${source_files[@]}"; do
-        [[ -f "$file" && -r "$file" ]] || continue
         case "$file" in
             *.sources)
                 while IFS='|' read -r uris suites signed_by trusted allow_insecure; do
