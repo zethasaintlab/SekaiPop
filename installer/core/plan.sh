@@ -104,8 +104,7 @@ sp_kali_apt_sources_are_safe() {
                         n = split(types, type_parts, /[[:space:]]+/)
                         has_binary = 0
                         type_invalid = 0
-                        has_content = types_count + uris_count + suites_count + signed_by_count +
-                                      enabled_count + trusted_count + insecure_count
+                        has_content = types_count + uris_count + suites_count + signed_by_count + enabled_count + trusted_count + insecure_count
                         for (i = 1; i <= n; i++) {
                             if (type_parts[i] == "deb") has_binary = 1
                             else if (type_parts[i] != "" && type_parts[i] != "deb-src") type_invalid = 1
