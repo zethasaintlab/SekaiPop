@@ -83,7 +83,7 @@ sp_kali_apt_sources_are_safe() {
                     done
                 done < <(awk '
                     function emit() {
-                        if (types ~ /(^|[[:space:]])deb(-src)?([[:space:]]|$)/ && enabled != "no") {
+                        if (types ~ /(^|[[:space:]])deb(-src)?([[:space:]]|$)/ && tolower(enabled) != "no") {
                             if (uris == "" || suites == "") print "!invalid!|!invalid!|yes|yes"
                             else print uris "|" suites "|" trusted "|" allow_insecure
                         }
@@ -93,36 +93,39 @@ sp_kali_apt_sources_are_safe() {
                     }
                     /^[[:space:]]*#/ { next }
                     /^[[:space:]]*$/ { emit(); next }
-                    /^[[:space:]]*Types:[[:space:]]*/ {
-                        value = $0; sub(/^[[:space:]]*Types:[[:space:]]*/, "", value)
-                        types = value; last = "Types"; next
-                    }
-                    /^[[:space:]]*URIs:[[:space:]]*/ {
-                        value = $0; sub(/^[[:space:]]*URIs:[[:space:]]*/, "", value)
-                        uris = value; last = "URIs"; next
-                    }
-                    /^[[:space:]]*Suites:[[:space:]]*/ {
-                        value = $0; sub(/^[[:space:]]*Suites:[[:space:]]*/, "", value)
-                        suites = value; last = "Suites"; next
-                    }
-                    /^[[:space:]]*Enabled:[[:space:]]*/ {
-                        value = $0; sub(/^[[:space:]]*Enabled:[[:space:]]*/, "", value)
-                        enabled = value; last = "Enabled"; next
-                    }
-                    /^[[:space:]]*Trusted:[[:space:]]*/ {
-                        value = $0; sub(/^[[:space:]]*Trusted:[[:space:]]*/, "", value)
-                        trusted = tolower(value); last = "Trusted"; next
-                    }
-                    /^[[:space:]]*Allow-Insecure:[[:space:]]*/ {
-                        value = $0; sub(/^[[:space:]]*Allow-Insecure:[[:space:]]*/, "", value)
-                        allow_insecure = tolower(value); last = "Allow-Insecure"; next
+                    {
+                        key = tolower($0)
+                        if (key ~ /^[[:space:]]*types:[[:space:]]*/) {
+                            value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
+                            types = tolower(value); last = "types"; next
+                        }
+                        if (key ~ /^[[:space:]]*uris:[[:space:]]*/) {
+                            value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
+                            uris = value; last = "uris"; next
+                        }
+                        if (key ~ /^[[:space:]]*suites:[[:space:]]*/) {
+                            value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
+                            suites = value; last = "suites"; next
+                        }
+                        if (key ~ /^[[:space:]]*enabled:[[:space:]]*/) {
+                            value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
+                            enabled = tolower(value); last = "enabled"; next
+                        }
+                        if (key ~ /^[[:space:]]*trusted:[[:space:]]*/) {
+                            value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
+                            trusted = tolower(value); last = "trusted"; next
+                        }
+                        if (key ~ /^[[:space:]]*allow-insecure:[[:space:]]*/) {
+                            value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
+                            allow_insecure = tolower(value); last = "allow-insecure"; next
+                        }
                     }
                     /^[^[:space:]]/ { last = ""; next }
                     /^[[:space:]]+/ {
                         value = $0; sub(/^[[:space:]]+/, "", value)
-                        if (last == "URIs") uris = uris " " value
-                        else if (last == "Suites") suites = suites " " value
-                        else if (last == "Types") types = types " " value
+                        if (last == "uris") uris = uris " " value
+                        else if (last == "suites") suites = suites " " value
+                        else if (last == "types") types = types " " value
                         next
                     }
                     END { emit() }
@@ -155,7 +158,7 @@ sp_kali_apt_sources_are_safe() {
                             options = options " " fields[field_index]
                             field_index++
                         }
-                        if (tolower(options) ~ /(^|[[:space:]])(trusted|allow-insecure)=yes([[:space:]]|$)/) {
+                        if (tolower(options) ~ /(trusted|allow-insecure)[[:space:]]*=[[:space:]]*yes/) {
                             print "!invalid!|!invalid!"
                         } else if (field_index + 1 <= count) print fields[field_index] "|" fields[field_index + 1]
                         else print "!invalid!|!invalid!"
