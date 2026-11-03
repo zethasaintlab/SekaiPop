@@ -127,6 +127,40 @@ components: main contrib non-free non-free-firmware
 SRC
 assert_true 'Case-insensitive deb822 field names are parsed correctly' sp_kali_apt_sources_are_safe
 
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb-src
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+SRC
+assert_false 'A source-only deb-src entry does not satisfy the binary package repository requirement' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb
+URIs: http://mirror.example.invalid/kali/
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+SRC
+assert_false 'Duplicated deb822 URI fields are rejected instead of silently overriding one another' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+Signed-By: /etc/apt/keyrings/custom.gpg
+SRC
+assert_false 'Duplicated deb822 Signed-By fields are rejected' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb deb-src deb-foreign
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+SRC
+assert_false 'Unsupported deb822 source types are rejected' sp_kali_apt_sources_are_safe
+
 for uri in \
     'https://http.kali.org/kali/' \
     'http://http.kali.org:80/kali/' \
@@ -221,6 +255,11 @@ cat > "$APT_ROOT/sources.list" <<'SRC'
 deb [arch=amd64 signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] http://http.kali.org/kali kali-rolling main
 SRC
 assert_true 'Canonical legacy source with APT options is accepted' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list" <<'SRC'
+deb-src http://http.kali.org/kali kali-rolling main
+SRC
+assert_false 'A legacy deb-src-only entry does not satisfy the binary package repository requirement' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list" <<'SRC'
 deb https://http.kali.org/kali kali-rolling main
