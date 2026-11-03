@@ -178,10 +178,23 @@ sp_kali_apt_sources_are_safe() {
                             options = options " " fields[field_index]
                             field_index++
                         }
-                        if (tolower(options) ~ /(trusted|allow-insecure)[[:space:]]*=[[:space:]]*yes/) {
+                        options = tolower(options)
+                        signed_by = ""
+                        if (options ~ /(trusted|allow-insecure)[[:space:]]*=[[:space:]]*yes/) {
                             print "!invalid!|!invalid!"
-                        } else if (field_index + 1 <= count) print fields[field_index] "|" fields[field_index + 1]
-                        else print "!invalid!|!invalid!"
+                        } else {
+                            if (options ~ /signed-by[[:space:]]*=/) {
+                                signed_by = options
+                                sub(/^.*signed-by[[:space:]]*=[[:space:]]*/, "", signed_by)
+                                sub(/[[:space:]\\]].*$/, "", signed_by)
+                                if (signed_by != "/usr/share/keyrings/kali-archive-keyring.gpg") {
+                                    print "!invalid!|!invalid!"
+                                    next
+                                }
+                            }
+                            if (field_index + 1 <= count) print fields[field_index] "|" fields[field_index + 1]
+                            else print "!invalid!|!invalid!"
+                        }
                     }
                 ' "$file")
                 ;;
