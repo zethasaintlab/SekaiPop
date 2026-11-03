@@ -244,13 +244,6 @@ sp_fedora_power_profile_api_available() {
     [[ "$interfaces" == *'org.freedesktop.UPower.PowerProfiles'* ]]
 }
 
-sp_fedora_tuned_ppd_available() {
-    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
-    sp_fedora_tuned_ppd_installed || return 1
-    sp_have systemctl && systemctl is-active --quiet tuned-ppd.service || return 1
-    sp_fedora_power_profile_api_available
-}
-
 sp_fedora_tuned_ppd_installed() {
     [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
     sp_have rpm && rpm -q tuned-ppd >/dev/null 2>&1
