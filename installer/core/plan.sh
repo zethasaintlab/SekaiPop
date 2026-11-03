@@ -100,6 +100,7 @@ sp_kali_apt_sources_are_safe() {
                         [[ "$suite" == kali-rolling ]] || invalid=1
                     done
                 done < <(awk '
+                    BEGIN { enabled = "yes" }
                     function emit( n, i, has_binary, type_invalid, has_content ) {
                         n = split(types, type_parts, /[[:space:]]+/)
                         has_binary = 0
