@@ -44,6 +44,10 @@ sp_kali_apt_sources_are_safe() {
     fi
 
     [[ -z "${APT_CONFIG:-}" ]] || return 1
+    if [[ "${SEKAIPOP_TEST_MODE:-0}" != 1 ]] &&
+        [[ ! -r /usr/share/keyrings/kali-archive-keyring.gpg ]]; then
+        return 1
+    fi
     sp_have apt-config || return 1
     local apt_config root_dir
     apt_config="$(apt-config dump 2>/dev/null)" || return 1
