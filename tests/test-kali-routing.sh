@@ -69,8 +69,7 @@ Types: deb
 URIs: http://http.kali.org/kali/
 Suites: kali-rolling
 Components: main contrib non-free non-free-firmware
-Signed-By:
-  /usr/share/keyrings/kali-archive-keyring.gpg
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 SRC
 assert_true 'Canonical Kali deb822 source with a continued Signed-By field is accepted' sp_kali_apt_sources_are_safe
 
@@ -87,6 +86,7 @@ Types: deb
 URIs: http://http.kali.org/kali/
 Suites: kali-rolling
 Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 SRC
 cat >> "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 
@@ -102,6 +102,7 @@ cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 types: deb
 uris: http://http.kali.org/kali/
 suites: kali-rolling
+signed-by: /usr/share/keyrings/kali-archive-keyring.gpg
 trusted: yes
 SRC
 assert_false 'Deb822 trusted=yes is rejected even when the URI and suite are canonical' sp_kali_apt_sources_are_safe
@@ -110,6 +111,7 @@ cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 Types: deb
 URIs: http://http.kali.org/kali/
 Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 Allow-Insecure: yes
 SRC
 assert_false 'Deb822 Allow-Insecure=yes is rejected' sp_kali_apt_sources_are_safe
@@ -118,6 +120,7 @@ cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 types: deb
 uris: http://http.kali.org/kali/
 suites: kali-rolling
+signed-by: /usr/share/keyrings/kali-archive-keyring.gpg
 components: main contrib non-free non-free-firmware
 SRC
 assert_true 'Case-insensitive deb822 field names are parsed correctly' sp_kali_apt_sources_are_safe
