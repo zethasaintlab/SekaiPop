@@ -127,6 +127,20 @@ components: main contrib non-free non-free-firmware
 SRC
 assert_true 'Case-insensitive deb822 field names are parsed correctly' sp_kali_apt_sources_are_safe
 
+for uri in \
+    'https://http.kali.org/kali/' \
+    'http://http.kali.org:80/kali/' \
+    'http://http.kali.org/kali/experimental' \
+    'http://user@http.kali.org/kali/'; do
+    cat > "$APT_ROOT/sources.list.d/kali.sources" <<SRC
+Types: deb
+URIs: $uri
+Suites: kali-rolling
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
+SRC
+    assert_false "Non-canonical Kali URI is rejected: $uri" sp_kali_apt_sources_are_safe
+done
+
 cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 Types: deb
 URIs: http://http.kali.org/kali/
@@ -207,6 +221,11 @@ cat > "$APT_ROOT/sources.list" <<'SRC'
 deb [arch=amd64 signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] http://http.kali.org/kali kali-rolling main
 SRC
 assert_true 'Canonical legacy source with APT options is accepted' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list" <<'SRC'
+deb https://http.kali.org/kali kali-rolling main
+SRC
+assert_false 'Legacy HTTPS URI is rejected when it differs from the official Kali endpoint' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list" <<'SRC'
 deb [signed-by=/etc/apt/keyrings/custom.gpg] http://http.kali.org/kali kali-rolling main
