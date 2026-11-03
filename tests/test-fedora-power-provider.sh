@@ -234,6 +234,18 @@ if grep -Eq '^cat (tuned|tuned-ppd|tlp|tlp-pd|power-profiles-daemon)\.service$|^
 fi
 printf '[PASS] Multiple installed but inactive Fedora providers are left for explicit user resolution\n'
 
+FAKE_RPM_PACKAGES=''
+FAKE_ACTIVE_SERVICES=''
+FAKE_POWERPROFILE_API=1
+export FAKE_RPM_PACKAGES FAKE_ACTIVE_SERVICES FAKE_POWERPROFILE_API
+: > "$SP_TEST_SYSTEMCTL_LOG"
+sp_setup_services
+if grep -Eq '^cat (tuned|tuned-ppd|tlp|tlp-pd|power-profiles-daemon)\.service$|^(enable|start) ' "$SP_TEST_SYSTEMCTL_LOG"; then
+    printf '[FAIL] Do not add a built-in Fedora provider when an unknown service already owns the PowerProfiles D-Bus API\n' >&2
+    exit 1
+fi
+printf '[PASS] An unknown active provider owning the PowerProfiles D-Bus API prevents a second provider selection\n'
+
 FAKE_RPM_PACKAGES='power-profiles-daemon'
 FAKE_ACTIVE_SERVICES=''
 FAKE_POWERPROFILE_API=0
