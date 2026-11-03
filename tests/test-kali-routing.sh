@@ -121,6 +121,19 @@ assert_false 'Mixed Kali and Debian APT sources are rejected' sp_kali_apt_source
 
 cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 Types: deb
+URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Components: main contrib non-free non-free-firmware
+
+Types: deb-src
+URIs: http://deb.debian.org/debian/
+Suites: trixie
+Components: main
+SRC
+assert_false 'Foreign deb-src entries are rejected because apt update also contacts them' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb
 URIs: http://mirror.example.invalid/kali/
 Suites: kali-rolling
 Components: main
@@ -143,6 +156,12 @@ deb http://http.kali.org/kali kali-rolling main
 deb http://deb.debian.org/debian trixie main
 SRC
 assert_false 'Mixed legacy Kali and Debian sources.list entries are rejected' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list" <<'SRC'
+deb http://http.kali.org/kali kali-rolling main
+deb-src http://deb.debian.org/debian trixie main
+SRC
+assert_false 'Foreign legacy deb-src entries are rejected' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list" <<'SRC'
 deb http://http.kali.org/kali kali-rolling main
