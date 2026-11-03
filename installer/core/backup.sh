@@ -5,7 +5,18 @@ sp_latest_backup_dir() {
     find "$SP_BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | grep -v '^restore-' | sort | tail -n1 | while IFS= read -r name; do [[ -n "$name" ]] && printf '%s/%s\n' "$SP_BACKUP_ROOT" "$name"; done
 }
 sp_manifest_value() { local manifest="$1" key="$2"; awk -F= -v wanted="$key" '$1 == wanted {sub(/^[^=]*=/, ""); print; exit}' "$manifest" 2>/dev/null; }
-sp_tree_content_equal() { local left="$1" right="$2"; [[ -d "$left" && -d "$right" ]] && sp_have diff && diff -qr -- "$left" "$right" >/dev/null 2>&1; }
+sp_tree_content_equal() {
+    local left="$1" right="$2"
+    [[ -d "$left" && -d "$right" ]] || return 1
+    sp_have diff || return 1
+    diff -qr -- "$left" "$right" >/dev/null 2>&1 || return 1
+    # Content equality alone is insufficient for a rollback snapshot: executable
+    # bits, private config permissions, symlink targets, empty directories and
+    # mtimes are part of the filesystem state restored by cp -a.
+    cmp -s \
+        <(cd "$left" && find . -printf '%P\\0%y\\0%m\\0%s\\0%T@\\0%l\\0' | LC_ALL=C sort -z) \
+        <(cd "$right" && find . -printf '%P\\0%y\\0%m\\0%s\\0%T@\\0%l\\0' | LC_ALL=C sort -z)
+}
 sp_create_backup() {
     local include_qs="${1:-1}" include_hypr="${2:-1}" backup_dir latest
     local latest_qs_included latest_hypr_included latest_qs_exists latest_hypr_exists

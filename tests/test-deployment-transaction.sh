@@ -114,6 +114,35 @@ pass 'Quickshell activation failure triggers configuration rollback before succe
 
 printf '\nDeployment transaction fixtures passed.\n'
 
+# A permission-only configuration change must not reuse a stale snapshot.
+META_HOME="$TMP/metadata-home"
+SP_CONFIG_HOME="$META_HOME/.config"
+SP_STATE_DIR="$META_HOME/.local/state/sekaipop"
+SP_BACKUP_ROOT="$SP_STATE_DIR/installer-backups"
+SP_QS_DEST="$SP_CONFIG_HOME/quickshell/sekaipop"
+SP_HYPR_DEST="$SP_CONFIG_HOME/hypr"
+SP_TIMESTAMP=20261102180300
+SP_DISTRO_ID=fedora
+SP_DISTRO_VERSION=44
+SP_BACKEND=dnf5
+SP_PROFILE=standard
+SP_HYPR=skip
+mkdir -p "$SP_QS_DEST"
+printf 'unchanged file content\\n' > "$SP_QS_DEST/mode-only.marker"
+chmod 0644 "$SP_QS_DEST/mode-only.marker"
+sp_create_backup 1 0
+MODE_BACKUP="$SP_BACKUP_DIR"
+[[ "$(stat -c '%a' "$MODE_BACKUP/config/sekaipop/mode-only.marker")" == 644 ]] ||
+    fail 'Initial snapshot retains the original file mode'
+chmod 0600 "$SP_QS_DEST/mode-only.marker"
+SP_TIMESTAMP=20261102180301
+sp_create_backup 1 0
+[[ "$SP_BACKUP_DIR" != "$MODE_BACKUP" ]] ||
+    fail 'A permission-only change must create a fresh pre-transaction snapshot'
+[[ "$(stat -c '%a' "$SP_BACKUP_DIR/config/sekaipop/mode-only.marker")" == 600 ]] ||
+    fail 'Fresh snapshot records the current private file permission'
+pass 'Snapshot reuse checks filesystem metadata, not only file contents'
+
 # Installer state must be replaced atomically and retain the old manifest on a failed rename.
 MANIFEST_HOME="$TMP/manifest-home"
 SP_STATE_DIR="$MANIFEST_HOME/.local/state/sekaipop"
