@@ -119,5 +119,8 @@ HYPRLAND
                   exit 2
                   ;;
               esac
-              ./install.sh --plan --profile standard --no-update --no-log
+              # Match production's normal-user execution model. Metadata is refreshed as root;
+              # package-plan discovery and the installer itself run unprivileged.
+              useradd --create-home --shell /bin/bash sekaipop-ci
+              su -s /bin/bash -c 'cd /workspace && ./install.sh --plan --profile standard --no-update --no-log' sekaipop-ci
             '
