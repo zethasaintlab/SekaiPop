@@ -34,3 +34,90 @@ jobs:
         run: bash tests/test-systemd.sh
       - name: Run runtime detection fixtures
         run: bash tests/test-runtime-detection.sh
+
+  package-plan:
+    name: ${{ matrix.distro }} package resolution (container)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: Arch Linux
+            image: archlinux:base
+            id: arch
+          - distro: Fedora 44
+            image: fedora:44
+            id: fedora
+          - distro: Debian 13
+            image: debian:trixie
+            id: debian
+          - distro: Ubuntu 26.10
+            image: ubuntu:26.10
+            id: ubuntu
+          - distro: Kali Linux rolling
+            image: kalilinux/kali-rolling
+            id: kali
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Resolve packages using the native package manager
+        env:
+          DISTRO_ID: ${{ matrix.id }}
+          CONTAINER_IMAGE: ${{ matrix.image }}
+        run: |
+          set -Eeuo pipefail
+          docker pull "$CONTAINER_IMAGE"
+          docker run --rm \
+            --env DISTRO_ID="$DISTRO_ID" \
+            --volume "$GITHUB_WORKSPACE:/workspace" \
+            --workdir /workspace \
+            "$CONTAINER_IMAGE" bash -lc '
+              set -Eeuo pipefail
+              case "$DISTRO_ID" in
+                arch)
+                  pacman-key --init
+                  pacman-key --populate archlinux
+                  pacman -Syyu --noconfirm
+                  ;;
+                fedora)
+                  # Fedora 44 intentionally requires a compatible user-provided Hyprland.
+                  # Stub only the executable/version probe for package-plan validation.
+                  cat > /usr/local/bin/Hyprland <<'HYPRLAND'
+#!/usr/bin/env bash
+printf "Hyprland 0.56.2\\n"
+HYPRLAND
+                  chmod +x /usr/local/bin/Hyprland
+                  dnf5 makecache --refresh
+                  ;;
+                debian)
+                  printf "%s\\n" "deb http://deb.debian.org/debian trixie-backports main" \
+                    > /etc/apt/sources.list.d/sekaipop-backports.list
+                  apt-get update
+                  ;;
+                ubuntu)
+                  shopt -s nullglob
+                  ubuntu_sources=(/etc/apt/sources.list.d/*.sources)
+                  if (("${#ubuntu_sources[@]}")); then
+                    for source_file in "${ubuntu_sources[@]}"; do
+                      sed -i -E "s/^Components:.*/Components: main universe restricted multiverse/" "$source_file"
+                    done
+                  else
+                    . /etc/os-release
+                    printf "deb http://archive.ubuntu.com/ubuntu %s main universe restricted multiverse\\n" "$VERSION_CODENAME" \
+                      > /etc/apt/sources.list.d/sekaipop-universe.list
+                    printf "deb http://security.ubuntu.com/ubuntu %s-security main universe restricted multiverse\\n" "$VERSION_CODENAME" \
+                      >> /etc/apt/sources.list.d/sekaipop-universe.list
+                  fi
+                  apt-get update
+                  ;;
+                kali)
+                  apt-get update
+                  ;;
+                *)
+                  printf "Unsupported CI matrix id: %s\\n" "$DISTRO_ID" >&2
+                  exit 2
+                  ;;
+              esac
+              ./install.sh --plan --profile standard --no-update --no-log
+            '
