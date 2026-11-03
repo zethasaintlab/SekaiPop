@@ -84,9 +84,9 @@ jobs:
                   # Fedora 44 intentionally requires a compatible user-provided Hyprland.
                   # Stub only the executable/version probe for package-plan validation.
                   cat > /usr/local/bin/Hyprland <<'HYPRLAND'
-#!/usr/bin/env bash
-printf "Hyprland 0.56.2\\n"
-HYPRLAND
+          #!/usr/bin/env bash
+          printf "Hyprland 0.56.2\\n"
+          HYPRLAND
                   chmod +x /usr/local/bin/Hyprland
                   dnf5 makecache --refresh
                   ;;
@@ -123,4 +123,4 @@ HYPRLAND
               # package-plan discovery and the installer itself run unprivileged.
               useradd --create-home --shell /bin/bash sekaipop-ci
               su -s /bin/bash -c "cd /workspace && ./install.sh --plan --profile standard --no-update --no-log" sekaipop-ci
-CONTAINER_SCRIPT
+          CONTAINER_SCRIPT
