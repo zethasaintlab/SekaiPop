@@ -71,13 +71,14 @@ Suites: kali-rolling
 Components: main contrib non-free non-free-firmware
 Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 SRC
-assert_true 'Canonical Kali deb822 source with a continued Signed-By field is accepted' sp_kali_apt_sources_are_safe
+assert_true 'Canonical Kali deb822 source with the official Signed-By keyring is accepted' sp_kali_apt_sources_are_safe
 
 cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 Types: deb
 URIs: https://archive.kali.org/kali/
 Suites: kali-rolling
 Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 SRC
 assert_false 'Non-default archive host is rejected in favor of Kali official load balancer' sp_kali_apt_sources_are_safe
 
@@ -95,6 +96,7 @@ URIs: http://deb.debian.org/debian/
 Suites: trixie
 Components: main
 Enabled: no
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 SRC
 assert_true 'Disabled foreign deb822 source does not invalidate Kali repositories' sp_kali_apt_sources_are_safe
 
@@ -128,8 +130,17 @@ assert_true 'Case-insensitive deb822 field names are parsed correctly' sp_kali_a
 cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
 Types: deb
 URIs: http://http.kali.org/kali/
+Suites: kali-rolling
+Signed-By: /etc/apt/keyrings/custom.gpg
+SRC
+assert_false 'Custom deb822 signing keyrings are rejected' sp_kali_apt_sources_are_safe
+
+cat > "$APT_ROOT/sources.list.d/kali.sources" <<'SRC'
+Types: deb
+URIs: http://http.kali.org/kali/
 Suites: kali-last-snapshot
 Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 SRC
 assert_false 'Kali last-snapshot is rejected by the kali-rolling-only package profile' sp_kali_apt_sources_are_safe
 
@@ -138,11 +149,13 @@ Types: deb
 URIs: http://http.kali.org/kali/
 Suites: kali-rolling
 Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 
 Types: deb
 URIs: http://deb.debian.org/debian/
 Suites: trixie
 Components: main
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 SRC
 assert_false 'Mixed Kali and Debian APT sources are rejected' sp_kali_apt_sources_are_safe
 
@@ -151,11 +164,13 @@ Types: deb
 URIs: http://http.kali.org/kali/
 Suites: kali-rolling
 Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 
 Types: deb-src
 URIs: http://deb.debian.org/debian/
 Suites: trixie
 Components: main
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 SRC
 assert_false 'Foreign deb-src entries are rejected because apt update also contacts them' sp_kali_apt_sources_are_safe
 
@@ -164,10 +179,12 @@ Types: deb
 URIs: http://http.kali.org/kali/
 Suites: kali-rolling
 Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 
 Types: deb
 URIs: http://http.kali.org/kali/
 Components: main
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 SRC
 assert_false 'Active deb822 entries without a suite are rejected' sp_kali_apt_sources_are_safe
 
@@ -176,6 +193,7 @@ Types: deb
 URIs: http://mirror.example.invalid/kali/
 Suites: kali-rolling
 Components: main
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 SRC
 assert_false 'Unrecognized third-party Kali mirror is rejected' sp_kali_apt_sources_are_safe
 
