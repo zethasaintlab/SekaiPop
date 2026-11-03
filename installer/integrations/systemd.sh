@@ -51,7 +51,7 @@ sp_reconcile_service() {
 sp_setup_services() {
     [[ "$SP_INIT" == systemd ]] || { sp_warn 'systemd is not active; service setup is skipped.'; return 0; }
 
-    local service active_provider="" active_providers="" active_count=0 provider_unit package_provider_count=0
+    local service active_provider="" active_providers="" active_count=0 provider_unit package_provider_count=0 tlp_backend_active=0
     local -a system_services=(NetworkManager.service bluetooth.service upower.service)
     if [[ "${SP_DISTRO_ID:-}" == fedora ]]; then
         # Prefer a provider that is already active over package-install order. This
@@ -63,8 +63,10 @@ sp_setup_services() {
                 ((active_count += 1))
             fi
         done
+        systemctl is-active --quiet tlp.service && tlp_backend_active=1 || true
 
-        if (( active_count > 1 )); then
+        if (( active_count > 1 )) ||
+            (( tlp_backend_active && active_provider != "" && active_provider != tlp-pd.service )); then
             sp_warn "Multiple Fedora PowerProfiles providers are already active (${active_providers% }); no provider service will be changed."
         elif [[ "$active_provider" == tlp-pd.service ]]; then
             system_services+=(tlp.service tlp-pd.service)
@@ -72,6 +74,10 @@ sp_setup_services() {
             system_services+=(tuned.service tuned-ppd.service)
         elif [[ "$active_provider" == power-profiles-daemon.service ]]; then
             system_services+=(power-profiles-daemon.service)
+        elif (( tlp_backend_active )) && ! sp_fedora_tlp_pd_installed; then
+            sp_warn 'TLP is active without tlp-pd; no TuneD/PPD provider will be started alongside it. Install/configure one power-management stack explicitly before rerunning SekaiPop.'
+        elif (( tlp_backend_active )) && sp_fedora_tlp_pd_installed; then
+            system_services+=(tlp.service tlp-pd.service)
         elif sp_fedora_power_profile_api_available; then
             : # An unrecognized provider already owns the PowerProfiles D-Bus API.
         else
