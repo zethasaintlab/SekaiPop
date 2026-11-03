@@ -88,7 +88,8 @@ sp_kali_apt_sources_are_safe() {
                     [[ -n "$uris" && -n "$suites" && "$binary" =~ ^[01]$ ]] || { invalid=1; continue; }
                     [[ "$binary" == 1 ]] && found=1
                     [[ "$signed_by" == /usr/share/keyrings/kali-archive-keyring.gpg ]] || invalid=1
-                    [[ "$trusted" != yes && "$allow_insecure" != yes ]] || invalid=1
+                    [[ -z "$trusted" || "$trusted" == no ]] || invalid=1
+                    [[ -z "$allow_insecure" || "$allow_insecure" == no ]] || invalid=1
                     for uri in $uris; do
                         case "$uri" in
                             http://http.kali.org/kali|http://http.kali.org/kali/) ;;
@@ -99,15 +100,28 @@ sp_kali_apt_sources_are_safe() {
                         [[ "$suite" == kali-rolling ]] || invalid=1
                     done
                 done < <(awk '
-                    function emit( n, i, has_binary ) {
+                    function emit( n, i, has_binary, type_invalid ) {
                         n = split(types, type_parts, /[[:space:]]+/)
                         has_binary = 0
-                        for (i = 1; i <= n; i++) if (type_parts[i] == "deb") has_binary = 1
-                        if (types ~ /(^|[[:space:]])deb(-src)?([[:space:]]|$)/ && tolower(enabled) != "no") {
-                            if (uris == "" || suites == "" || signed_by == "") print "!invalid!|!invalid!|!invalid!|yes|yes|1"
-                            else print uris "|" suites "|" signed_by "|" trusted "|" allow_insecure "|" has_binary
+                        type_invalid = 0
+                        for (i = 1; i <= n; i++) {
+                            if (type_parts[i] == "deb") has_binary = 1
+                            else if (type_parts[i] != "" && type_parts[i] != "deb-src") type_invalid = 1
+                        }
+                        if (types ~ /(^|[[:space:]])deb(-src)?([[:space:]]|$)/ && enabled != "no") {
+                            if (types_count != 1 || uris_count != 1 || suites_count != 1 || signed_by_count != 1 ||
+                                enabled_count > 1 || trusted_count > 1 || insecure_count > 1 || type_invalid ||
+                                (enabled != "yes" && enabled != "no") ||
+                                (trusted != "" && trusted != "no") || (allow_insecure != "" && allow_insecure != "no") ||
+                                uris == "" || suites == "" || signed_by == "") {
+                                print "!invalid!|!invalid!|!invalid!|yes|yes|1"
+                            } else {
+                                print uris "|" suites "|" signed_by "|" trusted "|" allow_insecure "|" has_binary
+                            }
                         }
                         types = uris = suites = signed_by = trusted = allow_insecure = ""
+                        types_count = uris_count = suites_count = signed_by_count = 0
+                        enabled_count = trusted_count = insecure_count = 0
                         enabled = "yes"
                         last = ""
                     }
@@ -116,30 +130,37 @@ sp_kali_apt_sources_are_safe() {
                     {
                         key = tolower($0)
                         if (key ~ /^[[:space:]]*types:[[:space:]]*/) {
+                            types_count++
                             value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
                             types = tolower(value); last = "types"; next
                         }
                         if (key ~ /^[[:space:]]*uris:[[:space:]]*/) {
+                            uris_count++
                             value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
                             uris = value; last = "uris"; next
                         }
                         if (key ~ /^[[:space:]]*suites:[[:space:]]*/) {
+                            suites_count++
                             value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
                             suites = value; last = "suites"; next
                         }
                         if (key ~ /^[[:space:]]*enabled:[[:space:]]*/) {
+                            enabled_count++
                             value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
                             enabled = tolower(value); last = "enabled"; next
                         }
                         if (key ~ /^[[:space:]]*trusted:[[:space:]]*/) {
+                            trusted_count++
                             value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
                             trusted = tolower(value); last = "trusted"; next
                         }
                         if (key ~ /^[[:space:]]*signed-by:[[:space:]]*/) {
+                            signed_by_count++
                             value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
                             signed_by = value; last = "signed-by"; next
                         }
                         if (key ~ /^[[:space:]]*allow-insecure:[[:space:]]*/) {
+                            insecure_count++
                             value = $0; sub(/^[[:space:]]*[^:]*:[[:space:]]*/, "", value)
                             allow_insecure = tolower(value); last = "allow-insecure"; next
                         }
