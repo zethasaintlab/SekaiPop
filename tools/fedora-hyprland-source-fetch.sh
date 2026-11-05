@@ -56,7 +56,7 @@ LUA_URLS=(
 )
 rm -f -- "$LUA_PART" "$LUA_ARCHIVE"
 LUA_SOURCE_OK=0
-for lua_url in "\${LUA_URLS[@]}"; do
+for lua_url in "${LUA_URLS[@]}"; do
     printf 'Fetching pinned Lua 5.5.1 from %s\n' "$lua_url"
     if curl --fail --location --silent --show-error \
         --connect-timeout 15 --max-time 120 \
