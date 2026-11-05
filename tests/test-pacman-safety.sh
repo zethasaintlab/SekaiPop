@@ -38,31 +38,42 @@ SP_DRY_RUN=0
 SP_NO_UPDATE=0
 SP_YES=1
 sp_load_distro_profile() { :; }
+plan_calls=0
 sp_build_package_plan() {
     printf 'plan\n' >> "$PACMAN_EVENT_LOG"
-    SP_INSTALL_PKGS=(test-dependency)
+    plan_calls=$((plan_calls + 1))
     SP_MISSING_CORE=()
     SP_MISSING_OPTIONAL=()
+    if (( plan_calls % 2 == 1 )); then
+        SP_INSTALL_PKGS=(test-dependency)
+        SP_INSTALL_CORE=(test-dependency)
+    else
+        SP_INSTALL_PKGS=()
+        SP_INSTALL_CORE=()
+    fi
 }
 sp_print_package_plan() { :; }
 sp_pacman_sync_db_fresh() { return 1; }
 
 sp_plan_and_install_dependencies
 mapfile -t events < "$PACMAN_EVENT_LOG"
-[[ "${#events[@]}" == 3 ]] || fail 'Stale or absent sync DB performs one full sync, then plans and installs dependencies'
+[[ "${#events[@]}" == 4 ]] || fail 'Stale or absent sync DB performs one full sync, plans, installs, and revalidates dependencies'
 [[ "${events[0]}" == 'pacman:-Syu --needed --noconfirm' ]] || fail 'A stale or absent sync DB is recovered only through pacman -Syu --needed'
 [[ "${events[1]}" == plan ]] || fail 'Package candidate resolution happens after the safe full synchronization'
 [[ "${events[2]}" == 'pacman:-S --needed --noconfirm -- test-dependency' ]] || fail 'Dependencies install without repeating the full system upgrade'
+[[ "${events[3]}" == plan ]] || fail 'Mandatory package state is revalidated after the package transaction'
 pass 'Explicit authorization safely recovers stale or absent Arch sync databases before dependency resolution'
 
-: > "$PACMAN_EVENT_LOG"
+ : > "$PACMAN_EVENT_LOG"
+plan_calls=0
 SP_ARCH_SYNC_UPGRADED=0
 sp_pacman_sync_db_fresh() { return 0; }
 sp_plan_and_install_dependencies
 mapfile -t events < "$PACMAN_EVENT_LOG"
-[[ "${#events[@]}" == 2 ]] || fail 'A fresh sync DB uses one combined package transaction'
+[[ "${#events[@]}" == 3 ]] || fail 'A fresh sync DB uses one combined package transaction followed by mandatory revalidation'
 [[ "${events[0]}" == plan ]] || fail 'A fresh sync DB is planned before the combined package transaction'
 [[ "${events[1]}" == 'pacman:-Syu --needed --noconfirm -- test-dependency' ]] || fail 'An explicitly authorized fresh-cache install uses pacman -Syu --needed'
+[[ "${events[2]}" == plan ]] || fail 'Mandatory package state is revalidated after the Arch full-upgrade transaction'
 pass 'A fresh Arch sync database retains the single-transaction pacman -Syu --needed path'
 
 : > "$PACMAN_EVENT_LOG"
