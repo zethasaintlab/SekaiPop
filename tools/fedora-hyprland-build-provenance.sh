@@ -11,6 +11,7 @@ OUTPUT=$1
 SOURCES=$2
 OS_RELEASE_FILE=${SEKAIPOP_OS_RELEASE_FILE:-/etc/os-release}
 BASE_IMAGE_REF=${SEKAIPOP_BASE_IMAGE_REF:-}
+BUILD_GIT_COMMIT=${SEKAIPOP_BUILD_GIT_COMMIT:-unrecorded}
 
 [[ "$OUTPUT" == /* ]] || { printf 'Output path must be absolute.\n' >&2; exit 2; }
 [[ -d "$(dirname -- "$OUTPUT")" && ! -L "$(dirname -- "$OUTPUT")" ]] || {
@@ -31,6 +32,10 @@ BASE_IMAGE_REF=${SEKAIPOP_BASE_IMAGE_REF:-}
 }
 [[ "$BASE_IMAGE_REF" =~ @sha256:[0-9a-f]{64}$ ]] || {
     printf 'SEKAIPOP_BASE_IMAGE_REF must be an immutable sha256 image reference.\n' >&2
+    exit 2
+}
+[[ "$BUILD_GIT_COMMIT" == unrecorded || "$BUILD_GIT_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
+    printf 'SEKAIPOP_BUILD_GIT_COMMIT must be a full 40-character Git commit SHA.\n' >&2
     exit 2
 }
 
@@ -107,6 +112,7 @@ trap cleanup EXIT
     printf 'fedora_pretty_name=%s\n' "${PRETTY_NAME:-unknown}"
     printf 'architecture=%s\n' "$(uname -m)"
     printf 'base_image_ref=%s\n' "$BASE_IMAGE_REF"
+    printf 'sekaipop_build_commit=%s\n' "$BUILD_GIT_COMMIT"
     printf 'source_archive.lua-5.5.1.sha256=%s\n' "$lua_sha256"
     printf '\n[toolchain]\n'
     version_line gcc 'gcc' --version
