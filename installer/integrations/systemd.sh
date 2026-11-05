@@ -175,7 +175,23 @@ sp_setup_services() {
             fi
         fi
     else
-        system_services+=(power-profiles-daemon.service)
+        local ppd_active=0 tlp_active=0 tlp_pd_active=0
+        systemctl is-active --quiet power-profiles-daemon.service && ppd_active=1 || true
+        systemctl is-active --quiet tlp.service && tlp_active=1 || true
+        systemctl is-active --quiet tlp-pd.service && tlp_pd_active=1 || true
+        if (( ppd_active && (tlp_active || tlp_pd_active) )); then
+            sp_warn 'TLP and power-profiles-daemon providers are both active; no PowerProfiles provider service will be changed.'
+        elif (( tlp_pd_active )); then
+            system_services+=(tlp.service tlp-pd.service)
+        elif (( ppd_active )); then
+            system_services+=(power-profiles-daemon.service)
+        elif (( tlp_active )); then
+            sp_warn 'TLP is active without an active tlp-pd adapter; the installer will not start power-profiles-daemon alongside it.'
+        elif sp_power_profile_api_available; then
+            : # An unrecognized provider already owns the PowerProfiles D-Bus API.
+        else
+            system_services+=(power-profiles-daemon.service)
+        fi
     fi
     for service in "${system_services[@]}"; do
         sp_reconcile_service system "$service" || failed=1
