@@ -70,7 +70,17 @@ grep -RhsE '^(deb |URIs:|Suites:|Components:)' /etc/apt/sources.list /etc/apt/so
 apt-cache policy quickshell hyprland qt6-base-dev qt6-declarative-dev
 ```
 
-Record whether official trixie-backports is already configured. If it is missing, stop the test and configure it manually before running SekaiPop. Example Deb822 entry (create it yourself as `/etc/apt/sources.list.d/debian-backports.sources`):\n\n```text\nTypes: deb\nURIs: https://deb.debian.org/debian\nSuites: trixie-backports\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n```\n\nThen run `sudo apt update`. Verify the source is enabled and official before continuing. SekaiPop must not create or modify this file.
+Record whether official trixie-backports is already configured. If it is missing, stop the test and configure it manually before running SekaiPop. Example Deb822 entry (create it yourself as `/etc/apt/sources.list.d/debian-backports.sources`):
+
+```text
+Types: deb
+URIs: https://deb.debian.org/debian
+Suites: trixie-backports
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+```
+
+Then run `sudo apt update`. Verify the source is enabled and official before continuing. SekaiPop must not create or modify this file.
 
 On Ubuntu 26.10:
 
