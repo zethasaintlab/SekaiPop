@@ -158,6 +158,13 @@ sp_build_package_plan() {
             SP_MISSING_OPTIONAL+=("$req (TLP is installed without tlp-pd; provider installation was skipped to avoid a TLP/PPD conflict)")
             continue
         fi
+        if [[ "$req" == power-profiles-daemon && "${SP_DISTRO_ID:-}" != fedora ]] &&
+            command -v systemctl >/dev/null 2>&1 &&
+            systemctl is-active --quiet tlp.service &&
+            ! systemctl is-active --quiet tlp-pd.service; then
+            SP_MISSING_OPTIONAL+=("$req (TLP is active without an active tlp-pd adapter; provider installation was skipped to avoid a TLP/PPD conflict)")
+            continue
+        fi
         if sp_runtime_requirement_present "$req"; then
             SP_RUNTIME_SATISFIED+=("$req")
             continue
