@@ -24,8 +24,7 @@ if [[ "${1:-}" == --user ]]; then
 fi
 verb="${1:-}"
 shift || true
-while [[ "${1:-}" == --* ]]; do shift; done
-service="${1:-}"
+service="${@: -1}"
 case "$verb" in
 	cat)
         if [[ "${MOCK_PROVIDER_MODE:-0}" == 1 ]]; then exit 0; fi
@@ -47,7 +46,9 @@ case "$verb" in
         printf '%s\n' "$state"
         ;;
     start|enable|stop|disable)
-        printf '%s %s\n' "$scope" "$verb${*:+ $*}" >> "$MOCK_LOG"
+        printf -v action '%s' "$verb"
+        for arg in "$@"; do action+=" $arg"; done
+        printf '%s %s\n' "$scope" "$action" >> "$MOCK_LOG"
         [[ "$verb" != "${MOCK_FAIL_ACTION:-}" ]] || exit 42
         if [[ "$verb" == "${MOCK_FAIL_ROLLBACK_ACTION:-}" ]]; then exit 43; fi
         ;;
