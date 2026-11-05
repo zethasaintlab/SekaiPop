@@ -95,6 +95,9 @@ sp_runtime_requirement_present() {
     case "$req" in
         quickshell) sp_have qs ;;
         ffmpeg) sp_have ffmpeg ;;
+        util-linux) sp_have flock && sp_have setpriv && sp_have setsid ;;
+        diffutils) sp_have diff ;;
+        procps) sp_have pkill ;;
         hyprland)
             version="$(sp_hyprland_version 2>/dev/null || true)"
             [[ -n "$version" ]] && sp_version_ge "$version" 0.55.0
