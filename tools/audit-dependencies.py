@@ -13,10 +13,11 @@ import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 QML_ROOT = ROOT / "sekaipop"
-SHELL_ROOTS = (ROOT / "installer", ROOT / "sekaipop" / "scripts")
+SHELL_ROOTS = (ROOT, )
 QML_IMPORT = re.compile(r"^\s*import\s+([A-Za-z_][A-Za-z0-9_.]*)(?:\s+([0-9]+(?:\.[0-9]+)*))?", re.M)
 QML_COMMAND = re.compile(r"(?:\bcommand\s*:\s*\[|\bexecDetached\s*\(\s*\[)\s*['\"]([^'\"]+)['\"]", re.M)
 QML_COMMAND_STRING = re.compile(r"\bcommand\s*:\s*['\"]([^'\"]+)['\"]", re.M)
+LUA_EXEC = re.compile(r"""\b(?:hl\.exec_cmd|os\.execute|io\.popen)\s*\(\s*[\"']([^\"']+)[\"']""", re.M)
 SHELL_PROBE = re.compile(r"""^\s*(?:if\s+|elif\s+|!?\s*)?(?:sp_have|command\s+-v|type\s+-P|which)\s+[\"']?([A-Za-z0-9_.+-]+)""", re.M)
 SHELL_EXEC = re.compile(r"^\s*(?:if\s+|elif\s+|!?\s*)?(?:exec|env|sudo|timeout)\s+([A-Za-z0-9_./+-]+)", re.M)
 SHELL_BUILTINS = {
@@ -58,11 +59,13 @@ def main() -> int:
     args = parser.parse_args()
 
     qml_files = files_under(QML_ROOT, ".qml")
-    shell_files = sorted({file for root in SHELL_ROOTS for file in files_under(root, ".sh")})
+    shell_files = files_under(ROOT, ".sh")
+    lua_files = files_under(ROOT, ".lua")
     imports: dict[str, set[str]] = collections.defaultdict(set)
     qml_commands: dict[str, set[str]] = collections.defaultdict(set)
     shell_probes: dict[str, set[str]] = collections.defaultdict(set)
     shell_execs: dict[str, set[str]] = collections.defaultdict(set)
+    lua_commands: dict[str, set[str]] = collections.defaultdict(set)
 
     for path in qml_files:
         rel = path.relative_to(ROOT).as_posix()
@@ -74,6 +77,14 @@ def main() -> int:
             if name:
                 qml_commands[name].add(rel)
 
+    for path in lua_files:
+        rel = path.relative_to(ROOT).as_posix()
+        source = path.read_text(encoding="utf-8", errors="replace")
+        source = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("--"))
+        for raw in LUA_EXEC.findall(source):
+            name = command_name(raw)
+            if name:
+                lua_commands[name].add(rel)
     for path in shell_files:
         rel = path.relative_to(ROOT).as_posix()
         source = path.read_text(encoding="utf-8", errors="replace")
@@ -93,6 +104,7 @@ def main() -> int:
         for section, values in (
             ("qml-import", imports),
             ("qml-executable", qml_commands),
+            ("lua-executable", lua_commands),
             ("shell-probe", shell_probes),
             ("shell-exec", shell_execs),
         ):
@@ -102,12 +114,14 @@ def main() -> int:
 
     print("# Static dependency inventory\n")
     print(f"- QML files scanned: {len(qml_files)}")
-    print(f"- Installer and project shell scripts scanned: {len(shell_files)}")
+    print(f"- Shell scripts scanned: {len(shell_files)}")
+    print(f"- Lua scripts scanned: {len(lua_files)}")
     print("- Static references only; this is not proof of complete runtime dependency coverage.")
     print("- Dynamic command construction, indirect execution, and generated QML require manual review.\n")
     for title, values in (
         ("QML import modules", imports),
         ("Explicit executable references in QML Process/execDetached commands", qml_commands),
+        ("Explicit executable references in Lua command calls", lua_commands),
         ("Explicit shell executable probes", shell_probes),
         ("Explicit shell execution wrappers", shell_execs),
     ):
