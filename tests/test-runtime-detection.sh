@@ -99,6 +99,7 @@ export MOCK_TLP_PD_ACTIVE=0 MOCK_TUNED_PPD_ACTIVE=0 MOCK_PPD_ACTIVE=0
 assert_present power-profiles-daemon 'An owned PowerProfiles D-Bus API is recognized even without a known provider unit name'
 
 SP_DISTRO_ID=debian
+export MOCK_DBUS_OWNER=0 MOCK_DBUS_OBJECT=0
 PATH="$TMP/native-bin:$TMP/bin"
 export PATH
 assert_absent power-profiles-daemon 'Native powerprofilesctl without the D-Bus API does not satisfy the non-Fedora capability'
