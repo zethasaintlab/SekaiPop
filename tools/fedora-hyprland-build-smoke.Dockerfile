@@ -14,6 +14,8 @@ RUN dnf5 install -y \
     python3 \
     cpio \
     make \
+    readline-devel \
+    ncurses-devel \
     git \
     curl \
     tar \
