@@ -53,7 +53,8 @@ for name in gcc g++ cmake ninja meson pkg-config uname; do
 done
 chmod +x "$TMP/bin/rpm" "$TMP/bin/git" "$TMP/bin/tool-version"
 export PATH="$TMP/bin:$PATH"
-export SEKAIPOP_OS_RELEASE_FILE="$TMP/os-release"
+ln -s "$TMP/os-release" "$TMP/os-release-link"
+export SEKAIPOP_OS_RELEASE_FILE="$TMP/os-release-link"
 printf 'Repo-id : fedora\nRepo-id : updates\n' > "$TMP/repositories/enabled.txt"
 printf 'fedora.repo  abcdef0123456789\n' > "$TMP/repositories/config-sha256.txt"
 export SEKAIPOP_DNF_REPO_INVENTORY="$TMP/repositories/enabled.txt"
