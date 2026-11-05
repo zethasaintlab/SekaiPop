@@ -138,3 +138,25 @@ jobs:
               printf 'CI_CONTAINER_SCRIPT_EXECUTED=1\\n'
           CONTAINER_SCRIPT
           grep -Fq 'CI_CONTAINER_SCRIPT_EXECUTED=1' "$RUNNER_TEMP/container-${DISTRO_ID}.log"
+
+  fedora-hyprland-source-build:
+    name: Fedora ${{ matrix.fedora }} pinned Hyprland offline source build
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        fedora: ["44", "45"]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Acquire official build dependencies and verify immutable source pins
+        run: |
+          docker build --progress=plain \
+            --build-arg FEDORA_VERSION="${{ matrix.fedora }}" \
+            --file tools/fedora-hyprland-build-smoke.Dockerfile \
+            --tag "sekaipop-fedora-hyprland:${{ matrix.fedora }}" .
+      - name: Build compositor and portal with network disabled
+        run: |
+          docker run --rm --network none \
+            "sekaipop-fedora-hyprland:${{ matrix.fedora }}"
