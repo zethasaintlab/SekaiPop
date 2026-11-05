@@ -58,8 +58,15 @@ def main() -> int:
     args = parser.parse_args()
 
     qml_files = files_under(QML_ROOT, ".qml")
-    shell_files = files_under(ROOT, ".sh")
-    lua_files = files_under(ROOT, ".lua")
+    shell_files = sorted(set(
+        files_under(ROOT / "installer", ".sh")
+        + files_under(QML_ROOT / "scripts", ".sh")
+        + [path for path in ROOT.glob("*.sh") if path.is_file()]
+    ))
+    lua_files = [
+        path for path in files_under(ROOT, ".lua")
+        if "tests" not in path.relative_to(ROOT).parts and ".git" not in path.relative_to(ROOT).parts
+    ]
     imports: dict[str, set[str]] = collections.defaultdict(set)
     qml_commands: dict[str, set[str]] = collections.defaultdict(set)
     shell_probes: dict[str, set[str]] = collections.defaultdict(set)
