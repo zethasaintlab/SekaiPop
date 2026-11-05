@@ -33,7 +33,7 @@ systemctl --version
 ```
 
 Expected:
-- Working tree is clean and the commit is the reviewed PR #6 merge.
+- Working tree is clean; record the exact installer commit SHA and use that same reviewed revision for every test result.
 - Distribution ID, release, codename, and architecture match one explicitly supported profile.
 - Architecture is `x86_64`.
 - systemd is the active init system.
