@@ -53,6 +53,17 @@ printf '%s\n' '# trixie-backports is mentioned only in this comment' > "$SP_APT_
 if sp_apt_sources_has_suite_component trixie-backports main; then fail 'Comment was incorrectly treated as an enabled APT suite'; fi
 pass 'APT source detection ignores commented examples'
 
+cat > "$SP_APT_SOURCES_DIR/legacy.list" <<'SOURCE'
+# example comment
+deb [arch=amd64] https://deb.debian.org/debian trixie-backports main contrib
+deb https://archive.ubuntu.com/ubuntu jammy universe
+SOURCE
+sp_apt_sources_has_suite_component trixie-backports main || fail 'Legacy APT list entry with options was not parsed'
+sp_apt_sources_has_suite_component jammy universe || fail 'Legacy APT list second line was not parsed'
+if sp_apt_sources_has_suite_component stonking universe; then fail 'Universe from a different Ubuntu suite was treated as Stonking Universe'; fi
+pass 'Legacy APT list parsing is line-scoped and suite-specific'
+rm -f -- "$SP_APT_SOURCES_DIR/legacy.list"
+
 SP_DISTRO_ID=ubuntu SP_DISTRO_VERSION=26.10 SP_DISTRO_CODENAME=stonking
 sp_apt_bootstrap_official_sources
 ubuntu_source="$SP_APT_SOURCES_DIR/sekaipop-universe.sources"
