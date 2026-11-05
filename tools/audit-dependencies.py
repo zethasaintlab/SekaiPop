@@ -89,6 +89,7 @@ def main() -> int:
             ("qml-import", imports),
             ("qml-executable", qml_commands),
             ("shell-probe", shell_probes),
+            ("shell-exec", shell_execs),
         ):
             for name, paths in sorted(values.items()):
                 print(f"{section}\t{name}\t{len(paths)}\t{';'.join(sorted(paths))}")
