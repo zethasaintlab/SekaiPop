@@ -13,6 +13,32 @@ PRIVATE_PREFIX_VALIDATOR="${SEKAIPOP_PRIVATE_PREFIX_VALIDATOR:-/usr/local/bin/se
 [[ ! -e "$PREFIX" && ! -L "$PREFIX" ]] || { printf 'Refusing existing install prefix: %s\n' "$PREFIX" >&2; exit 2; }
 
 mkdir -p -- "$WORK" "$PREFIX"
+
+# Preserve the exact container build environment as diagnostic evidence. This
+# is not a dependency lock: image tags and repository contents remain mutable.
+PROVENANCE="$WORK/BUILD-PROVENANCE.txt"
+{
+    printf '%s\\n' '=== OS ==='
+    cat /etc/os-release
+    printf '\\n%s\\n' '=== Enabled repositories ==='
+    dnf5 repolist --enabled
+    printf '\\n%s\\n' '=== Installed RPM NEVRAs ==='
+    rpm -qa --qf '%{NAME}-%{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}\\n' | LC_ALL=C sort
+    printf '\\n%s\\n' '=== Toolchain ==='
+    printf '%s\\n' '-- gcc --'
+    gcc --version | head -n 1
+    printf '%s\\n' '-- g++ --'
+    g++ --version | head -n 1
+    printf '%s\\n' '-- cmake --'
+    cmake --version | head -n 1
+    printf '%s\\n' '-- ninja --'
+    ninja --version
+    printf '%s\\n' '-- meson --'
+    meson --version
+    printf '%s\\n' '-- pkg-config --'
+    pkg-config --version
+} > "$PROVENANCE"
+
 export PATH="$PREFIX/bin:$PATH"
 export PKG_CONFIG_PATH="$PREFIX/lib64/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 export LD_LIBRARY_PATH="$PREFIX/lib64:$PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
@@ -193,5 +219,9 @@ grep -Eq '^Exec=.*(Hyprland|start-hyprland)' "$PREFIX/share/wayland-sessions/hyp
     fi
     exit 1
 }
+
+printf '\nprintf '\\n=== FEDORA_HYPRLAND_BUILD_PROVENANCE_BEGIN ===\\n'
+cat "$PROVENANCE"
+printf '=== FEDORA_HYPRLAND_BUILD_PROVENANCE_END ===\\n'
 
 printf '\nFEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK\n'
