@@ -47,6 +47,7 @@ sp_apt_bootstrap_official_sources
 [[ "${#SP_APT_BOOTSTRAP_CREATED[@]}" == 0 ]] || fail 'Idempotent Debian bootstrap incorrectly marked existing source as newly created'
 [[ -f "$debian_source" ]] || fail 'Existing Debian source was modified or removed'
 pass 'Debian backports bootstrap is idempotent'
+rm -f -- "$debian_source"
 
 cat > "$SP_APT_SOURCES_DIR/untrusted-backports.sources" <<'SOURCE'
 Types: deb
