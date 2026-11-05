@@ -26,6 +26,7 @@ contains "$ROOT/installer/distros/debian/packages.sh" "[jetbrains-mono]='fonts-j
 contains "$ROOT/installer/distros/ubuntu/packages.sh" "[jetbrains-mono]='fonts-jetbrains-mono'" && pass 'Ubuntu maps JetBrains Mono to the matching package' || fail 'Ubuntu maps JetBrains Mono to the matching package'
 contains "$ROOT/installer/distros/arch/packages.sh" "[jetbrains-mono]='ttf-jetbrains-mono'" && pass 'Arch maps the plain JetBrains Mono package, not a Nerd Font' || fail 'Arch maps the plain JetBrains Mono package, not a Nerd Font'
 contains "$ROOT/installer/catalog/requirements.sh" 'util-linux' && pass 'Installer lock and process wrappers declare util-linux' || fail 'Installer lock and process wrappers declare util-linux'
+contains "$ROOT/installer/catalog/requirements.sh" 'diffutils' && pass 'Backup comparison declares diffutils' || fail 'Backup comparison declares diffutils'
 contains "$ROOT/installer/catalog/requirements.sh" 'procps' && pass 'Clipboard cleanup declares procps' || fail 'Clipboard cleanup declares procps'
 contains "$ROOT/installer/core/plan.sh" 'sp_fedora_tuned_ppd_installed' && pass 'Fedora TuneD PPD provider is recognized even when inactive' || fail 'Fedora TuneD PPD provider is recognized even when inactive'
 contains "$ROOT/installer/integrations/systemd.sh" 'tuned-ppd.service' && pass 'Fedora TuneD PPD service is reconciled without adding a second provider' || fail 'Fedora TuneD PPD service is reconciled without adding a second provider'
