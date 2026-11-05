@@ -1,75 +1,315 @@
-# Native / VM validation protocol
+# Native and VM acceptance protocol
 
-This document is a test protocol, not a certification report. No clean-install, restore-cycle, or graphical-session certification is claimed by the automated container package-plan jobs.
+This document defines the manual acceptance boundary for SekaiPop's universal installer. Automated fixtures and container package-plan jobs do not certify a native installation, graphical session, shader runtime, suspend/resume behavior, or restore cycle.
 
-## Fedora 45 reference target
+**Run installation and destructive recovery tests only in disposable VMs or on a machine with a verified full-system snapshot.** Do not use the failure-injection scenarios on a daily-driver host. The installer does not roll back native package transactions after a later deployment failure; it preserves configuration snapshots and service rollback state where possible.
 
-Use a fresh x86_64 Fedora 45 mutable installation with systemd. Install a compatible Hyprland >= 0.55 from a source you independently trust before testing; the SekaiPop installer does not enable COPRs or install a compositor from an unreviewed provider.
+## 1. Supported test matrix
 
-Record exact versions:
+| Target | Required baseline | Preconditions |
+|---|---|---|
+| Fedora 44 | x86_64, mutable, systemd | Existing trusted Hyprland >= 0.55 |
+| Fedora 45 | x86_64, mutable, systemd | Existing trusted Hyprland >= 0.55 |
+| Arch Linux | x86_64, rolling, systemd | Normal synchronized repositories; stale DB requires explicit full-upgrade authorization |
+| Debian 13 | x86_64, trixie, systemd | Official trixie-backports already configured |
+| Ubuntu 26.10 | x86_64, systemd | Universe already enabled |
+| EndeavourOS / CachyOS | x86_64, systemd | Arch-compatible package profile; additional native validation required |
 
-    cat /etc/os-release
-    rpm -q dnf5 qt6-qtbase qt6-qtdeclarative qt6-qtmultimedia quickshell
-    Hyprland --version
-    qs --version
-    rpm -q qt6-qtshadertools
+Kali, openSUSE, Fedora Atomic/ostree, unsupported derivatives, and non-x86_64 architectures must be rejected. Fedora derivatives are not implicitly supported.
 
-If qsb is not installed, that is expected on a fresh Qt < 6.12 system before the installer resolves the Shader Tools dependency.
+For every baseline, test both a clean VM and an existing-user configuration where practical. On Fedora, include a minimal installation as well as a normal workstation installation. Keep a VM snapshot before each installation and before restore/failure tests.
 
-## Read-only checks
+## 2. Capture the baseline
 
-    ./install.sh --plan --profile standard
-    ./install.sh --check
+From the complete repository checkout:
 
-Confirm:
-- Exact Fedora 45 release policy is selected.
-- DNF5 metadata refresh precedes candidate Qt-version resolution during a real install.
-- If Qt is < 6.12, qt6-qtshadertools is included; if the effective Qt candidate version cannot be established, the plan fails closed and explains why.
-- No COPR, external repository, local RPM, unsigned package, or source build is enabled.
-- A compatible existing Hyprland satisfies the capability; otherwise the plan reports the missing mandatory compositor instead of installing an unverified one.
-- Existing TuneD PPD, TLP PPD, or power-profiles-daemon providers are preserved and conflicts are not auto-resolved.
+```bash
+git status --short
+git rev-parse HEAD
+cat /etc/os-release
+uname -m
+systemctl --version
+./install.sh --version
+```
 
-## Install and runtime checks
+Expected:
+- Working tree is clean and the commit is the reviewed PR #6 merge.
+- Distribution ID, release, codename, and architecture match one explicitly supported profile.
+- Architecture is `x86_64`.
+- systemd is the active init system.
+- Installer version reports `2.1.0`.
 
-Run the installer interactively:
+Capture the installed desktop/runtime state:
 
-    ./install.sh --profile standard
+```bash
+command -v Hyprland hyprctl qs qsb qtpaths6 || true
+Hyprland --version 2>&1 || true
+qs --version 2>&1 || true
+qtpaths6 --qt-version 2>&1 || true
+qsb --version 2>&1 || true
+```
 
-After installation:
+On Fedora, also record configured repositories and relevant packages:
 
-    ./install.sh --check
-    qs -p "$HOME/.config/quickshell/sekaipop" -n -d
-    hyprctl configerrors
-    busctl --system call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus NameHasOwner s org.freedesktop.UPower.PowerProfiles
-    busctl --system --no-pager introspect org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles
+```bash
+dnf5 repolist --enabled
+rpm -q dnf5 qt6-qtbase qt6-qtdeclarative qt6-qtmultimedia quickshell tuned-ppd power-profiles-daemon 2>&1 || true
+```
 
-Check the launcher, app search, desktop-entry rescans, widgets, lockscreen, region selector, quick panel, touchpad settings, and clock format. Confirm the Lyrics widget timing controls remain interactive while the global widget lock is enabled. Suspend and resume the machine, then confirm lockscreen clocks refresh.
+On Arch:
 
-For Qt < 6.12, confirm the installer compiled every source shader in staging and replaced the .qsb files only after successful compilation. Do not infer success merely from qsb being installed.
+```bash
+pacman -Q pacman qt6-base qt6-declarative quickshell hyprland 2>&1 || true
+pacman -Si quickshell hyprland qt6-base qt6-declarative 2>&1 || true
+```
 
-## Restore and failure recovery
+On Debian 13:
 
-Before installation, retain a VM snapshot. Test:
+```bash
+grep -RhsE '^(deb |URIs:|Suites:|Components:)' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null
+apt-cache policy quickshell hyprland qt6-base-dev qt6-declarative-dev
+```
 
-    ./install.sh --restore
+Verify official trixie-backports was configured by the administrator before testing. The installer must not create or modify APT source definitions.
 
-Verify that the selected Quickshell and Hyprland configuration trees return to their pre-install state, unrelated Quickshell instances remain running, and systemd units return to their original enabled/disabled and active/inactive state.
+On Ubuntu 26.10:
 
-Native package transactions are intentionally retained after a later deployment failure; the installer does not attempt cross-distribution package downgrades or removals. Verify that the recovery snapshot remains available and inspect the installer log after any injected failure.
+```bash
+grep -RhsE '^(deb |URIs:|Suites:|Components:)' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null
+apt-cache policy quickshell hyprland qt6-base-dev qt6-declarative-dev
+```
 
-## Additional supported baselines
+Verify Universe is already enabled. The installer must not enable it.
 
-Run equivalent package-plan and install/restore checks on Arch Linux, EndeavourOS, CachyOS, Debian 13 (with official trixie-backports already configured), Ubuntu 26.10 (with Universe already enabled), and Fedora 44. The package-plan CI matrix is not a substitute for native installation, systemd, QML plugin, or graphical validation.
+## 3. Read-only detection and package planning
 
-## Result recording
+Run:
 
-For every test target, record:
-- Distribution/release/architecture and image or VM snapshot identifier.
+```bash
+./install.sh --plan --profile minimal
+./install.sh --plan --profile standard
+./install.sh --plan --profile full
+./install.sh --check
+```
+
+Expected:
+- Exact distribution/release detection; no `ID_LIKE` fallback.
+- Unsupported releases and excluded distributions fail closed.
+- Package plans use only repositories already configured by the administrator.
+- No COPR, PPA, AUR helper, third-party repository, unverified package source, or unpinned source build is enabled.
+- Existing trusted Hyprland >= 0.55 satisfies the compositor requirement; a missing or incompatible compositor is reported rather than silently replaced.
+- Qt 6.7 or newer is required.
+- If effective Qt is below 6.12, Qt Shader Tools is required for rebuilding shipped shader bytecode. If the effective version cannot be established, the dependency must remain explicitly unresolved.
+- Missing optional packages are reported as optional; they must not be misreported as installed.
+- The plan/check commands do not write configuration, create backups, change services, or perform package transactions.
+
+For Arch with a missing or stale sync database, a read-only plan may warn that package candidates are incomplete. A real installation must refuse an unsafe partial `pacman -Sy`; only the explicit `--system-upgrade` path may authorize a full `pacman -Syu` transaction.
+
+## 4. Installation scenarios
+
+Run the following only after reviewing the plan and confirming the VM snapshot:
+
+```bash
+./install.sh --profile standard
+./install.sh --check
+```
+
+Repeat in separate snapshots with:
+
+- Clean Fedora 44 and Fedora 45.
+- Fedora minimal installation with a trusted compatible Hyprland already installed.
+- Existing user environment containing custom Quickshell settings, presets, user data, and Hyprland configuration.
+- Required dependencies already installed.
+- One or more required dependencies missing.
+- Optional dependencies missing or unavailable.
+- `--profile minimal`, `standard`, and `full`.
+- `--no-deps` only when all required runtime dependencies are already present.
+- `--no-update` with valid existing package metadata.
+
+Expected:
+- Native package manager resolves the declared package candidates.
+- Repository metadata is refreshed only for APT/DNF when requested; repository definitions remain unchanged.
+- Existing user settings and custom data are preserved.
+- The persistent `~/.local/state/sekaipop` directory is not replaced as part of Quickshell deployment.
+- Package transactions are not falsely described as rolled back if deployment later fails.
+- A second installation is safe and does not create duplicate autostart hooks or corrupt existing customizations.
+
+Do not use `--yes` for the first acceptance run. Verify each confirmation before accepting it.
+
+## 5. Deployment and service checks
+
+Test each supported Hyprland mode in a disposable VM:
+
+```bash
+./install.sh --profile standard --hypr merge
+./install.sh --check
+```
+
+For `merge`, verify the installer adds only the intended SekaiPop integration and does not overwrite unrelated user settings. Test `--hypr full` only on a disposable VM because it deploys the complete SekaiPop Hyprland configuration. Test `--hypr skip` to confirm Hyprland files are untouched.
+
+Check Quickshell deployment and activation:
+
+```bash
+qs list
+qs -p "$HOME/.config/quickshell/sekaipop" -n -d
+qs list
+```
+
+Expected:
+- The SekaiPop path appears as a running instance after successful activation.
+- Restart and rollback operations are scoped to the SekaiPop config path.
+- Unrelated Quickshell instances remain running.
+- Activation failure is surfaced as installation failure; it is not silently accepted as success.
+- With no active Hyprland session, activation is explicitly deferred to the next login.
+
+Inspect service state before and after installation:
+
+```bash
+systemctl is-enabled NetworkManager.service bluetooth.service upower.service 2>&1 || true
+systemctl is-active NetworkManager.service bluetooth.service upower.service 2>&1 || true
+systemctl --user is-enabled pipewire.service pipewire-pulse.service wireplumber.service 2>&1 || true
+systemctl --user is-active pipewire.service pipewire-pulse.service wireplumber.service 2>&1 || true
+```
+
+Expected:
+- Active services are left untouched.
+- Masked services are not unmasked.
+- Only existing inactive services are offered for activation.
+- Disabled units are enabled and started as separate operations.
+- Previously enabled but inactive units are started without being re-enabled.
+- If a service action fails, the installer attempts to restore its original enabled/disabled and active/inactive state.
+- Fedora must not activate competing TuneD PPD, TLP PPD, or power-profiles-daemon providers. Ambiguous or conflicting provider states must be left untouched and reported.
+
+## 6. Graphical and runtime acceptance
+
+After logging into the installed Hyprland session:
+
+```bash
+hyprctl configerrors
+qs -c sekaipop log
+./check-deps.sh
+```
+
+Expected:
+- Hyprland reports no new configuration errors.
+- SekaiPop loads without missing QML modules, plugins, or Quickshell modules.
+- Launcher opens and accepts normal text queries.
+- AppSource search, desktop-entry rescans, and ranking return consistent results.
+- Lyrics Widget provider selection and timing controls remain interactive.
+- Lockscreen and calendar render; lock/unlock does not leave the shell in a stale state.
+- Region selector, quick panel, Settings, and touchpad configuration work.
+- Keyboard layout, network, Bluetooth, audio, and media integrations behave according to the host's available services.
+
+For shader behavior:
+
+```bash
+qsb --version
+find "$HOME/.config/quickshell/sekaipop/shaders" -maxdepth 1 -type f -name '*.qsb' -printf '%f\n' | sort
+```
+
+If Qt is older than 6.12, verify the staged shader compilation completed successfully and the generated `.qsb` files were deployed. Test wallpaper transitions and lockscreen transitions visually; the presence of `qsb` alone is not proof that shaders work.
+
+Suspend and resume the VM/host. Verify:
+- Graphical session returns without a black screen.
+- Quickshell remains responsive.
+- Lock screen clock/calendar refresh.
+- Audio, network, Bluetooth, and touchpad integrations recover.
+- No duplicate Quickshell instance appears.
+
+## 7. Backup and restore cycle
+
+Before restore, record hashes and metadata for the configuration trees:
+
+```bash
+find "$HOME/.config/quickshell/sekaipop" -type f -print0 | sort -z | xargs -0 sha256sum
+find "$HOME/.config/hypr" -type f -print0 | sort -z | xargs -0 sha256sum
+```
+
+Run:
+
+```bash
+./install.sh --restore
+```
+
+Expected:
+- The user is shown the selected snapshot and must confirm.
+- Current Quickshell and Hyprland trees are preserved in a separate recovery snapshot before any restore modification.
+- If the recovery snapshot cannot be completed, restore aborts without modifying either destination.
+- The selected snapshot is validated before use.
+- Restored trees match the selected snapshot, including permissions and symlink targets.
+- Systemd services return to their pre-install state when rollback is part of a failed deployment.
+- Recovery snapshots remain available after restoration.
+
+Repeat with:
+- Existing Quickshell config only.
+- Existing Hyprland config only.
+- Both trees present.
+- One or both destinations absent before installation.
+- Existing custom settings and symlinks.
+- An intentionally malformed snapshot in a disposable test fixture; it must be rejected without changing user data.
+
+## 8. Failure and interruption recovery
+
+Use a cloned VM snapshot for each injected failure. Do not deliberately interrupt package transactions on a daily-driver machine.
+
+Required fixture/native scenarios:
+- Package manager returns a non-zero status.
+- Source build or shader compilation fails.
+- Staged Quickshell deployment fails before replacement.
+- Hyprland integration fails after Quickshell deployment.
+- Quickshell activation command fails or the path never becomes active.
+- Systemd enable succeeds but start fails.
+- Systemd rollback fails.
+- State manifest write/rename fails.
+- Recovery snapshot copy fails.
+- Restore fails after one configuration tree has been replaced.
+- Installer receives SIGINT or SIGTERM during a staged deployment.
+- Repeated installer invocation while another instance holds the lock.
+
+Expected:
+- No package repository or unrelated system configuration is silently changed.
+- Existing configuration is preserved whenever a complete snapshot could be created.
+- A failed deployment returns a non-zero status and retains a recovery snapshot.
+- Failed service recovery is explicitly reported; do not assume that an error message means rollback succeeded.
+- An interrupted operation must be inspected manually before retrying. Do not claim power-loss atomicity: package transactions, filesystem replacement across two separate config trees, and service activation are not one indivisible OS transaction.
+
+## 9. Diagnostics and failure report
+
+Capture these outputs after any failure:
+
+```bash
+date --iso-8601=seconds
+cat /etc/os-release
+uname -a
+./install.sh --version
+./install.sh --plan --profile standard
+./install.sh --check
+find "$HOME/.local/state/sekaipop/installer-backups" -maxdepth 3 -type f -printf '%p\n' 2>/dev/null
+find "$HOME/.cache/sekaipop/installer" -maxdepth 1 -type f -printf '%p\n' 2>/dev/null
+systemctl --failed --no-pager
+systemctl --user --failed --no-pager 2>&1 || true
+journalctl -b -p warning..alert --no-pager
+journalctl --user -b -p warning..alert --no-pager 2>&1 || true
+hyprctl configerrors 2>&1 || true
+qs -c sekaipop log 2>&1 || true
+```
+
+Attach the exact failing command, exit status, complete installer log, package-manager error output, and whether configuration/service rollback completed. Redact usernames, hostnames, tokens, private paths, and personal configuration contents before sharing logs. Do not upload full `~/.config` or `~/.local/state` trees.
+
+## 10. Certification record
+
+For every tested baseline, record:
+
+- Distribution, release, codename, architecture, VM image/snapshot ID.
+- Installer commit SHA.
 - Package-manager, Qt, Quickshell, Hyprland, and qsb versions.
-- Full --plan, installer log, --check, and compositor validation output.
-- Whether shader compilation was required and how many shaders compiled.
-- Provider state before and after installation.
-- Restore result and any remaining manual recovery.
-- Pass/fail with the exact failing command and exit status.
+- Repository configuration before and after the test.
+- Plan output and actual package transaction result.
+- Whether the host was clean, minimal, or an existing user environment.
+- Quickshell and Hyprland deployment mode.
+- Service state before and after.
+- Runtime feature results and suspend/resume outcome.
+- Restore result and recovery snapshot location.
+- Exact failing command, exit status, and diagnostic log for failures.
 
-Do not mark a release baseline certified until a clean install, runtime session, and restore cycle have all passed on that baseline.
+A distribution baseline is certified only after clean installation, runtime/graphical validation, and restore-cycle acceptance have all passed on that baseline. CI package-plan success alone does not certify a distribution.
