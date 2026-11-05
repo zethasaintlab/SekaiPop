@@ -56,6 +56,7 @@ RUN dnf5 install -y \
     libpng-devel \
     librsvg2-devel \
     sdbus-cpp-devel \
+    libffi-devel \
     pugixml-devel \
     libzip-devel \
     tomlplusplus-devel \
