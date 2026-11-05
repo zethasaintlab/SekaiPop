@@ -32,7 +32,7 @@ SP_MISSING_OPTIONAL=()
 SP_INSTALL_PKGS=()
 SP_INSTALL_CORE=()
 scenario=transaction-failure
-APT_GET_STATUS=42
+export APT_GET_STATUS=42
 plan_calls=0
 
 sp_load_package_manager() { :; }
