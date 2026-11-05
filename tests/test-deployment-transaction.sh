@@ -234,17 +234,17 @@ hyprland_exists=yes
 MANIFEST
 printf 'current-shell\\n' > "$SP_QS_DEST/current.marker"
 printf 'current-hypr\\n' > "$SP_HYPR_DEST/current.marker"
-mkdir -p "$TMP/failing-copy-bin"
-cat > "$TMP/failing-copy-bin/cp" <<'CP'
-#!/usr/bin/env bash
-destination="${!#}"
-case "$destination" in
-    */restore-*/config/sekaipop-current) exit 42 ;;
-esac
-exec /usr/bin/cp "$@"
-CP
-chmod +x "$TMP/failing-copy-bin/cp"
-if ( PATH="$TMP/failing-copy-bin:$PATH"; sp_confirm() { return 0; }; sp_restore_latest "$SP_BACKUP_ROOT/source" ) > "$TMP/restore-copy-failure.log" 2>&1; then
+if (
+    cp() {
+        local destination="${!#}"
+        case "$destination" in
+            */restore-*/config/sekaipop-current) return 42 ;;
+        esac
+        command /usr/bin/cp "$@"
+    }
+    sp_confirm() { return 0; }
+    sp_restore_latest "$SP_BACKUP_ROOT/source"
+) > "$TMP/restore-copy-failure.log" 2>&1; then
     fail 'A failed recovery snapshot copy must abort restore'
 fi
 [[ "$(cat "$SP_QS_DEST/current.marker")" == current-shell ]] || fail 'Quickshell destination remains unchanged when its recovery copy fails'
