@@ -172,3 +172,17 @@ expected=$'system enable NetworkManager.service\nsystem start NetworkManager.ser
     exit 1
 }
 printf '[PASS] Unreverted partial service action fails reconciliation and is retried by deployment rollback\n'
+
+# A caller outside a transaction still receives immediate recovery after a partial enable/start.
+export MOCK_SCOPE=system MOCK_SERVICE=NetworkManager.service MOCK_STATE=disabled MOCK_ACTIVE=inactive
+export MOCK_FAIL_ACTION=start MOCK_FAIL_ROLLBACK_ACTION=''
+SP_SERVICE_TRANSACTION_ACTIVE=0
+: > "$MOCK_LOG"
+sp_reconcile_service system NetworkManager.service
+expected=$'system enable NetworkManager.service\nsystem start NetworkManager.service\nsystem disable --now NetworkManager.service'
+[[ "$(<"$MOCK_LOG")" == "$expected" ]] || {
+    printf '[FAIL] Standalone partial service action is immediately reversed (actual=%q)\n' "$(<"$MOCK_LOG")" >&2
+    exit 1
+}
+export MOCK_FAIL_ACTION=''
+printf '[PASS] Partial service action is immediately reversed without a transaction journal\n'
