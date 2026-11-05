@@ -26,14 +26,22 @@ grep -Fq 'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg' "$debian_so
 [[ "${#SP_APT_BOOTSTRAP_CREATED[@]}" == 1 ]] || fail 'New Debian source was not tracked for rollback'
 pass 'Debian 13 official backports source is provisioned and tracked'
 
-sp_apt_bootstrap_official_sources
-[[ "${#SP_APT_BOOTSTRAP_CREATED[@]}" == 0 ]] || fail 'Idempotent Debian bootstrap incorrectly marked existing source as newly created'
-pass 'Debian backports bootstrap is idempotent'
-
 sp_apt_bootstrap_rollback
 [[ ! -e "$debian_source" ]] || fail 'Rollback did not remove the installer-managed Debian source'
 pass 'APT source rollback removes only newly managed source'
 
+cat > "$debian_source" <<'SOURCE'
+Types: deb
+URIs: https://deb.debian.org/debian
+Suites: trixie-backports
+Components: main
+SOURCE
+sp_apt_bootstrap_official_sources
+[[ "${#SP_APT_BOOTSTRAP_CREATED[@]}" == 0 ]] || fail 'Idempotent Debian bootstrap incorrectly marked existing source as newly created'
+[[ -f "$debian_source" ]] || fail 'Existing Debian source was modified or removed'
+pass 'Debian backports bootstrap is idempotent'
+
+rm -f -- "$debian_source"
 printf '%s\n' '# trixie-backports is mentioned only in this comment' > "$SP_APT_MAIN_SOURCES"
 if sp_apt_sources_contain trixie-backports; then fail 'Comment was incorrectly treated as an enabled APT suite'; fi
 pass 'APT source detection ignores commented examples'
