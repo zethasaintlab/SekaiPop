@@ -30,6 +30,13 @@ sp_apt_bootstrap_rollback
 [[ ! -e "$debian_source" ]] || fail 'Rollback did not remove the installer-managed Debian source'
 pass 'APT source rollback removes only newly managed source'
 
+sp_apt_bootstrap_official_sources
+printf '%s\\n' '# user edit during package transaction' >> "$debian_source"
+sp_apt_bootstrap_rollback
+grep -Fq 'user edit during package transaction' "$debian_source" || fail 'Rollback removed a source file modified after creation'
+pass 'APT source rollback preserves files edited during the transaction'
+rm -f -- "$debian_source"
+
 cat > "$debian_source" <<'SOURCE'
 Types: deb
 URIs: https://deb.debian.org/debian
@@ -54,12 +61,24 @@ grep -Fq 'URIs: https://archive.ubuntu.com/ubuntu' "$ubuntu_source" || fail 'Ubu
 grep -Fq 'Suites: stonking stonking-updates' "$ubuntu_source" || fail 'Ubuntu release/update suites are incorrect'
 grep -Fq 'URIs: https://security.ubuntu.com/ubuntu' "$ubuntu_source" || fail 'Ubuntu security archive is missing'
 grep -Fq 'Suites: stonking-security' "$ubuntu_source" || fail 'Ubuntu security suite is incorrect'
-grep -Fq 'Components: universe' "$ubuntu_source" || fail 'Ubuntu Universe component is missing'
+grep -Fq 'Components: main universe' "$ubuntu_source" || fail 'Ubuntu source must provide main and Universe when no existing main component is configured'
 grep -Fq 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' "$ubuntu_source" || fail 'Ubuntu archive keyring is not pinned'
 pass 'Ubuntu 26.10 Universe source includes official release and security archives'
 
 sp_apt_bootstrap_rollback
 [[ ! -e "$ubuntu_source" ]] || fail 'Rollback did not remove the installer-managed Ubuntu source'
 pass 'Ubuntu source rollback succeeds'
+
+cat > "$SP_APT_SOURCES_DIR/existing-main.sources" <<'SOURCE'
+Types: deb
+URIs: https://archive.ubuntu.com/ubuntu
+Suites: stonking
+Components: main
+SOURCE
+sp_apt_bootstrap_official_sources
+grep -Fq 'Components: universe' "$ubuntu_source" || fail 'Universe-only source should not duplicate main when main is already configured'
+if grep -Fq 'Components: main universe' "$ubuntu_source"; then fail 'Existing main component was unnecessarily duplicated'; fi
+sp_apt_bootstrap_rollback
+pass 'Ubuntu bootstrap adds only Universe when official main is already configured'
 
 printf 'APT repository bootstrap assertions: all passed\n'
