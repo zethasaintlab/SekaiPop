@@ -102,8 +102,8 @@ sp_validate_preflight() {
 }
 sp_plan_and_install_dependencies() {
     sp_load_package_manager
-    sp_load_distro_profile
     if (( SP_DRY_RUN )); then
+        sp_load_distro_profile
         if [[ "$SP_BACKEND" == arch ]] && ! sp_pacman_sync_db_fresh; then
             if (( SP_SYSTEM_UPGRADE )); then
                 sp_warn 'The Arch sync database is missing or stale. This read-only plan cannot run the required pacman -Syu synchronization; candidate resolution may be incomplete.'
@@ -132,6 +132,7 @@ sp_plan_and_install_dependencies() {
             fi
         fi
     fi
+    sp_load_distro_profile
     sp_build_package_plan
     sp_print_package_plan
     if (("${#SP_MISSING_CORE[@]}")); then
