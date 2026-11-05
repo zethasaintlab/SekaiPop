@@ -170,6 +170,18 @@ jobs:
             --tag "sekaipop-fedora-hyprland:${{ matrix.fedora }}" .
       - name: Build compositor and portal with network disabled
         run: |
+          set -Eeuo pipefail
+          PROVENANCE_DIR="$RUNNER_TEMP/fedora-hyprland-${{ matrix.fedora }}"
+          mkdir -p "$PROVENANCE_DIR"
           docker run --rm --network none \
             --env "SEKAIPOP_BUILD_GIT_COMMIT=$GITHUB_SHA" \
+            --env "SEKAIPOP_PROVENANCE_OUTPUT=/artifacts/BUILD-PROVENANCE" \
+            --volume "$PROVENANCE_DIR:/artifacts" \
             "sekaipop-fedora-hyprland:${{ matrix.fedora }}"
+      - name: Upload Fedora build provenance
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fedora-${{ matrix.fedora }}-hyprland-build-provenance
+          path: ${{ runner.temp }}/fedora-hyprland-${{ matrix.fedora }}/BUILD-PROVENANCE
+          if-no-files-found: error
+          retention-days: 30
