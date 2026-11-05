@@ -43,16 +43,16 @@ sp_confirm() { return 0; }
 pm_install() { return "$install_status"; }
 
 if sp_plan_and_install_dependencies; then
-    printf '[FAIL] production planner swallowed native package transaction failure\\n' >&2
+    printf '[FAIL] production planner swallowed native package transaction failure\n' >&2
     exit 1
 fi
-printf '[PASS] production planner propagates native package transaction failure\\n'
+printf '[PASS] production planner propagates native package transaction failure\n'
 
 scenario=post-install-missing
 install_status=0
 plan_calls=0
 if sp_plan_and_install_dependencies; then
-    printf '[FAIL] production planner accepted a successful transaction with missing mandatory requirements\\n' >&2
+    printf '[FAIL] production planner accepted a successful transaction with missing mandatory requirements\n' >&2
     exit 1
 fi
-printf '[PASS] production planner rejects unmet mandatory requirements after a successful transaction\\n'
+printf '[PASS] production planner rejects unmet mandatory requirements after a successful transaction\n'
