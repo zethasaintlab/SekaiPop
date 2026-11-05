@@ -24,18 +24,27 @@ if [[ "${1:-}" == --user ]]; then
 fi
 verb="${1:-}"
 shift || true
+while [[ "${1:-}" == --* ]]; do shift; done
 service="${1:-}"
 case "$verb" in
 	cat)
+        if [[ "${MOCK_PROVIDER_MODE:-0}" == 1 ]]; then exit 0; fi
         [[ "$scope" == "${MOCK_SCOPE:-system}" && "$service" == "${MOCK_SERVICE:-}" ]]
         ;;
     is-enabled)
-        [[ "$scope" == "${MOCK_SCOPE:-system}" && "$service" == "${MOCK_SERVICE:-}" ]] || exit 1
+        [[ "$scope" == "${MOCK_SCOPE:-system}" ]] || exit 1
         printf '%s\n' "${MOCK_STATE:-unknown}"
         ;;
     is-active)
-        [[ "$scope" == "${MOCK_SCOPE:-system}" && "$service" == "${MOCK_SERVICE:-}" ]] || exit 1
-        printf '%s\n' "${MOCK_ACTIVE:-inactive}"
+        [[ "$scope" == "${MOCK_SCOPE:-system}" ]] || exit 1
+        case "$service" in
+            power-profiles-daemon.service) state="${MOCK_PPD_ACTIVE:-${MOCK_ACTIVE:-inactive}}" ;;
+            tlp.service) state="${MOCK_TLP_ACTIVE:-${MOCK_ACTIVE:-inactive}}" ;;
+            tlp-pd.service) state="${MOCK_TLP_PD_ACTIVE:-${MOCK_ACTIVE:-inactive}}" ;;
+            *) state="${MOCK_ACTIVE:-inactive}" ;;
+        esac
+        [[ "$state" == active ]] || exit 1
+        printf '%s\n' "$state"
         ;;
     start|enable|stop|disable)
         printf '%s %s\n' "$scope" "$verb${*:+ $*}" >> "$MOCK_LOG"
@@ -172,3 +181,15 @@ expected=$'system enable --now NetworkManager.service\nsystem disable --now Netw
     exit 1
 }
 printf '[PASS] Unreverted partial service action fails reconciliation and is retried by deployment rollback\n'
+
+# A non-Fedora TLP backend must not cause the installer to start a competing PPD service.
+export SP_DISTRO_ID=debian MOCK_PROVIDER_MODE=1 MOCK_SCOPE=system MOCK_STATE=enabled
+export MOCK_ACTIVE=active MOCK_PPD_ACTIVE=inactive MOCK_TLP_ACTIVE=active MOCK_TLP_PD_ACTIVE=inactive
+unset DBUS_SESSION_BUS_ADDRESS
+: > "$MOCK_LOG"
+sp_setup_services >/dev/null 2>&1
+if grep -Fq 'power-profiles-daemon.service' "$MOCK_LOG"; then
+    printf '[FAIL] Active TLP backend must prevent PowerProfiles daemon activation\n' >&2
+    exit 1
+fi
+printf '[PASS] Active non-Fedora TLP backend prevents conflicting PPD activation\n'
