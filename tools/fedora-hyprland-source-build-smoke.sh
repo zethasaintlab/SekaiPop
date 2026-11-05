@@ -109,7 +109,7 @@ done
 printf '\nELF runtime dependency validation:\n'
 for binary in "$PREFIX/bin/Hyprland" "$PREFIX/libexec/xdg-desktop-portal-hyprland"; do
     readelf -d "$binary" | grep -Fq "$PREFIX/lib64" || {
-        printf 'Missing private-prefix RUNPATH/RPATH in %s\\n' "$binary" >&2
+        printf 'Missing private-prefix RUNPATH/RPATH in %s\n' "$binary" >&2
         exit 1
     }
 done
