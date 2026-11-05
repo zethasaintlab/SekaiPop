@@ -179,8 +179,8 @@ sp_plan_and_install_dependencies() {
     sp_build_package_plan
     if (( ${#SP_MISSING_CORE[@]} || ${#SP_INSTALL_CORE[@]} )); then
         sp_error 'Native package transaction returned success, but mandatory requirements remain unsatisfied after revalidation.'
-        (( ${#SP_MISSING_CORE[@]} )) && printf '  Unavailable: %s\\n' "${SP_MISSING_CORE[@]}" >&2
-        (( ${#SP_INSTALL_CORE[@]} )) && printf '  Not installed: %s\\n' "${SP_INSTALL_CORE[@]}" >&2
+        (( ${#SP_MISSING_CORE[@]} )) && printf '  Unavailable: %s\n' "${SP_MISSING_CORE[@]}" >&2
+        (( ${#SP_INSTALL_CORE[@]} )) && printf '  Not installed: %s\n' "${SP_INSTALL_CORE[@]}" >&2
         return 1
     fi
     sp_ok 'Native package transaction completed; mandatory requirements were revalidated.'
