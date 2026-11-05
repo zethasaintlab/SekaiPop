@@ -67,3 +67,6 @@ Automated shell fixtures and ShellCheck validate installer logic and regression 
 
 
 See [NATIVE-VM-VALIDATION.md](NATIVE-VM-VALIDATION.md) for the clean-install, runtime, shader, restore, and result-recording protocol.
+
+
+Maintainer dependency inventory: [DEPENDENCY-AUDIT.md](DEPENDENCY-AUDIT.md). Regenerate it with `python3 tools/audit-dependencies.py` after changing QML or shell integrations.
