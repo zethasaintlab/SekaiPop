@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Debian 13 trixie. Quickshell and Hyprland are from the official trixie-backports suite.
-# The installer refuses to add or rewrite APT sources; users must have backports configured.
+# Official trixie-backports must already be configured; the installer validates sources read-only.
 declare -Ag DISTRO_PACKAGE_MAP=(
     [quickshell]='quickshell/trixie-backports' [hyprland]='hyprland/trixie-backports'
     [qt6-base]='qt6-base-dev-tools' [qt6-declarative]='qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-effects qml6-module-qtquick-layouts qml6-module-qtquick-shapes qml6-module-qtqml-models qml6-module-qt-labs-folderlistmodel'

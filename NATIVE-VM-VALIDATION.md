@@ -11,8 +11,8 @@ This document defines the manual acceptance boundary for SekaiPop's universal in
 | Fedora 44 | x86_64, mutable, systemd | Existing trusted Hyprland >= 0.55 |
 | Fedora 45 | x86_64, mutable, systemd | Existing trusted Hyprland >= 0.55 |
 | Arch Linux | x86_64, rolling, systemd | Normal synchronized repositories; stale DB requires explicit full-upgrade authorization |
-| Debian 13 | x86_64, trixie, systemd | Official trixie-backports already configured |
-| Ubuntu 26.10 | x86_64, systemd | Universe already enabled |
+| Debian 13 | x86_64, trixie, systemd | Official trixie-backports (main) already configured with the system Debian archive keyring |
+| Ubuntu 26.10 | x86_64, systemd | Official Universe already enabled for release, updates, and security |
 | EndeavourOS / CachyOS | x86_64, systemd | Arch-compatible package profile; additional native validation required |
 
 Kali, openSUSE, Fedora Atomic/ostree, unsupported derivatives, and non-x86_64 architectures must be rejected. Fedora derivatives are not implicitly supported.
@@ -33,7 +33,7 @@ systemctl --version
 ```
 
 Expected:
-- Working tree is clean and the commit is the reviewed PR #6 merge.
+- Working tree is clean; record the exact installer commit SHA and use that same reviewed revision for every test result.
 - Distribution ID, release, codename, and architecture match one explicitly supported profile.
 - Architecture is `x86_64`.
 - systemd is the active init system.
@@ -70,7 +70,7 @@ grep -RhsE '^(deb |URIs:|Suites:|Components:)' /etc/apt/sources.list /etc/apt/so
 apt-cache policy quickshell hyprland qt6-base-dev qt6-declarative-dev
 ```
 
-Verify official trixie-backports was configured by the administrator before testing. The installer must not create or modify APT source definitions.
+Record whether official trixie-backports is already configured. If it is missing, stop the test and configure it manually before running SekaiPop. Example Deb822 entry (create it yourself as `/etc/apt/sources.list.d/debian-backports.sources`):\n\n```text\nTypes: deb\nURIs: https://deb.debian.org/debian\nSuites: trixie-backports\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n```\n\nThen run `sudo apt update`. Verify the source is enabled and official before continuing. SekaiPop must not create or modify this file.
 
 On Ubuntu 26.10:
 
@@ -79,7 +79,7 @@ grep -RhsE '^(deb |URIs:|Suites:|Components:)' /etc/apt/sources.list /etc/apt/so
 apt-cache policy quickshell hyprland qt6-base-dev qt6-declarative-dev
 ```
 
-Verify Universe is already enabled. The installer must not enable it.
+Record whether official Universe is already enabled for the release, updates, and security suites. If it is missing or incomplete, stop the test, enable Universe using Ubuntu's supported repository-management tool (for example, `sudo add-apt-repository universe` where available), then run `sudo apt update`. Reinspect the active source configuration and verify that all three suites expose Universe through official Ubuntu archive URIs. SekaiPop must not create or modify source files.
 
 ## 3. Read-only detection and package planning
 
@@ -95,7 +95,7 @@ Run:
 Expected:
 - Exact distribution/release detection; no `ID_LIKE` fallback.
 - Unsupported releases and excluded distributions fail closed.
-- Package plans use only repositories already configured by the administrator.
+- Read-only `--plan` and `--check` do not add repositories. They report missing required official APT sources. Actual installation fails closed until Debian backports or Ubuntu Universe is configured manually.
 - No COPR, PPA, AUR helper, third-party repository, unverified package source, or unpinned source build is enabled.
 - Existing trusted Hyprland >= 0.55 satisfies the compositor requirement; a missing or incompatible compositor is reported rather than silently replaced.
 - Qt 6.7 or newer is required.
@@ -128,7 +128,7 @@ Repeat in separate snapshots with:
 
 Expected:
 - Native package manager resolves the declared package candidates.
-- Repository metadata is refreshed only for APT/DNF when requested; repository definitions remain unchanged.
+- APT/DNF metadata is refreshed before candidate resolution when requested. SekaiPop never edits APT sources; Debian backports and Ubuntu Universe must already be configured. If metadata refresh fails, the installer stops without changing APT source configuration.
 - Existing user settings and custom data are preserved.
 - The persistent `~/.local/state/sekaipop` directory is not replaced as part of Quickshell deployment.
 - Package transactions are not falsely described as rolled back if deployment later fails.
@@ -313,3 +313,53 @@ For every tested baseline, record:
 - Exact failing command, exit status, and diagnostic log for failures.
 
 A distribution baseline is certified only after clean installation, runtime/graphical validation, and restore-cycle acceptance have all passed on that baseline. CI package-plan success alone does not certify a distribution.
+
+ 
+## 11. Fedora pinned Hyprland source-build smoke (container only)
+
+The CI source-build job is a **container build and install-prefix smoke test**, not a native host provider and not a host installation. It acquires immutable upstream source pins and Fedora build dependencies during the image build, then builds and installs with container networking disabled. It does not modify the host package database, systemd directories, desktop-session registry, or boot configuration.
+
+Run from a clean repository checkout with Docker or a compatible Docker CLI:
+
+```bash
+set -Eeuo pipefail
+SMOKE_DIR="$PWD/.sekaipop-hyprland-smoke"
+mkdir -p "$SMOKE_DIR/44" "$SMOKE_DIR/45"
+
+for release in 44 45; do
+  docker build --progress=plain \
+    --build-arg FEDORA_VERSION="$release" \
+    --file tools/fedora-hyprland-build-smoke.Dockerfile \
+    --tag "sekaipop-fedora-hyprland:$release" .
+
+  docker run --rm --network none \
+    --volume "$SMOKE_DIR/$release:/artifacts" \
+    --env SEKAIPOP_HYPR_PREFIX="/artifacts/prefix" \
+    "sekaipop-fedora-hyprland:$release"
+done
+```
+
+The image build needs network access to retrieve pinned upstream source and official Fedora build dependencies. The runtime build phase runs with `--network none`. Output is isolated beneath `.sekaipop-hyprland-smoke/`. Remove it after inspection:
+
+```bash
+rm -rf -- .sekaipop-hyprland-smoke
+```
+
+The smoke must end with `FEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK`. It verifies pinned pkg-config versions, executable artifacts, ELF dependency resolution, private-prefix RPATH/RUNPATH, session desktop entry, portal descriptor, D-Bus service, portal user service, and the Hyprland systemd user target:
+
+- `prefix/bin/Hyprland`
+- `prefix/bin/start-hyprland`
+- `prefix/bin/hyprctl`
+- `prefix/bin/hyprwire-scanner`
+- `prefix/libexec/xdg-desktop-portal-hyprland`
+- `prefix/lib64/systemd/user/hyprland-session.target`
+- `prefix/share/wayland-sessions/hyprland.desktop`
+- `prefix/share/xdg-desktop-portal/portals/hyprland.portal`
+- `prefix/share/dbus-1/services/org.freedesktop.impl.portal.desktop.hyprland.service`
+- `prefix/lib/systemd/user/xdg-desktop-portal-hyprland.service`
+
+Every CMake install manifest is validated artifact-by-artifact. Both lexical and symlink-resolved paths must remain inside the private prefix. Missing files, path traversal, and symlinks escaping the prefix fail the smoke. The Hyprland manifest must explicitly contain the required systemd session target. An artifact installed into `/usr`, `/lib64`, or another system path is a failure, even if the build succeeds.
+
+A failed Docker build, non-zero container exit, missing success marker, missing required artifact, unresolved ELF dependency, or prefix escape is a failed smoke test. Preserve the full build log when reporting a failure.
+
+**Important scope boundary:** this smoke does not integrate the compiled compositor into the SekaiPop installer lifecycle. The current Fedora installer still requires a compatible trusted Hyprland installation already present on the target host. It does not install this container-built prefix onto the host, register its session target, configure runtime library paths, or switch the display-manager session. Native installation must continue to follow the existing-Hyprland precondition in Sections 1 and 3. Do not interpret the container smoke as proof of a complete automatic Fedora compositor installation.

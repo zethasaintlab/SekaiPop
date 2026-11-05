@@ -2,6 +2,7 @@
 source "$SEKAIPOP_INSTALLER_ROOT/installer/core/common.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/core/detect.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/core/cli.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/provisioning/apt-repositories.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/catalog/requirements.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/package-managers/interface.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/core/plan.sh"
@@ -102,6 +103,7 @@ sp_validate_preflight() {
 }
 sp_plan_and_install_dependencies() {
     sp_load_package_manager
+    if (( SP_DRY_RUN )); then sp_apt_report_required_sources; else sp_apt_validate_required_sources; fi
     if (( SP_DRY_RUN )); then
         sp_load_distro_profile
         if [[ "$SP_BACKEND" == arch ]] && ! sp_pacman_sync_db_fresh; then
@@ -118,15 +120,29 @@ sp_plan_and_install_dependencies() {
         return 0
     fi
     if [[ "$SP_BACKEND" == dnf5 || "$SP_BACKEND" == apt ]]; then
-        if (( ! SP_NO_UPDATE )); then sp_confirm "Refresh configured native repository metadata for $SP_DISTRO_NAME?" || sp_die 'Metadata refresh declined. Use --no-update to continue with the current package cache.'; pm_refresh_metadata
-        else sp_info 'Repository metadata refresh skipped (--no-update).'; fi
+        if (( ! SP_NO_UPDATE )); then
+            sp_confirm "Refresh configured native repository metadata for $SP_DISTRO_NAME?" || {
+                sp_die 'Metadata refresh declined. Use --no-update only when all required official sources are already configured.'
+            }
+            if ! pm_refresh_metadata; then
+                sp_die 'Native repository metadata refresh failed. No APT source configuration was changed by SekaiPop.'
+            fi
+        else
+            sp_info 'Repository metadata refresh skipped (--no-update).'
+        fi
     elif [[ "$SP_BACKEND" == arch ]]; then
         if ! sp_pacman_sync_db_fresh; then
             if (( SP_SYSTEM_UPGRADE )); then
                 sp_warn 'Arch sync databases are missing or older than 7 days. A full system synchronization and upgrade is required before dependency resolution.'
                 sp_confirm 'Run pacman -Syu --needed now? This will upgrade the entire Arch system.' ||
                     sp_die 'Arch synchronization cancelled. No package database refresh or package transaction was attempted.'
-                pm_refresh_metadata
+                if pm_refresh_metadata; then
+                    :
+                else
+                    local refresh_status=$?
+                    sp_error "Arch full-system synchronization failed (exit $refresh_status); dependency planning was aborted."
+                    return "$refresh_status"
+                fi
             else
                 sp_die 'Arch sync databases are missing or older than 7 days. Refusing an unsafe partial synchronization; rerun with --system-upgrade to authorize pacman -Syu --needed.'
             fi
@@ -138,14 +154,30 @@ sp_plan_and_install_dependencies() {
     if (("${#SP_MISSING_CORE[@]}")); then
         sp_error 'Native configured repositories do not provide every mandatory requirement.'
         if [[ "$SP_DISTRO_ID" == fedora ]]; then sp_error 'The verified Fedora official package profile does not provide the required Hyprland >= 0.55 baseline. Install a compatible compositor from a source you independently trust, then rerun; this installer will not enable a COPR. The Hyprland portal remains an optional desktop feature unless a trusted provider is already configured.'
-        elif [[ "$SP_DISTRO_ID" == debian ]]; then sp_error 'Verify that official Debian 13 trixie-backports is already configured and that Quickshell/Hyprland candidates are visible; this installer will not edit APT sources.'; fi
+        elif [[ "$SP_DISTRO_ID" == debian ]]; then sp_error 'Verify that the official Debian 13 trixie-backports bootstrap completed and that Quickshell/Hyprland candidates are visible in APT metadata.'; fi
         return 1
     fi
     (("${#SP_MISSING_OPTIONAL[@]}")) || sp_warn 'Some optional feature packages are unavailable. Core installation can continue; those features will be listed in the final report.'
     (("${#SP_INSTALL_PKGS[@]} == 0")) && { sp_ok 'All selected package requirements are already satisfied.'; return 0; }
     sp_confirm "Install ${#SP_INSTALL_PKGS[@]} native package(s) on $SP_DISTRO_NAME?" || sp_die 'Package installation cancelled.'
-    pm_install "${SP_INSTALL_PKGS[@]}"
-    sp_ok 'Native package transaction completed.'
+    if pm_install "${SP_INSTALL_PKGS[@]}"; then
+        :
+    else
+        local install_status=$?
+        sp_error "Native package transaction failed (exit $install_status); dependency provisioning was not completed."
+        return "$install_status"
+    fi
+
+    # A successful package-manager exit is necessary but not sufficient. Re-query
+    # the installed state so a no-op/partial backend result cannot pass the gate.
+    sp_build_package_plan
+    if (( ${#SP_MISSING_CORE[@]} || ${#SP_INSTALL_CORE[@]} )); then
+        sp_error 'Native package transaction returned success, but mandatory requirements remain unsatisfied after revalidation.'
+        (( ${#SP_MISSING_CORE[@]} )) && printf '  Unavailable: %s\n' "${SP_MISSING_CORE[@]}" >&2
+        (( ${#SP_INSTALL_CORE[@]} )) && printf '  Not installed: %s\n' "${SP_INSTALL_CORE[@]}" >&2
+        return 1
+    fi
+    sp_ok 'Native package transaction completed; mandatory requirements were revalidated.'
 }
 sp_rollback_failed_dependency_only() {
     local reason="$1" service_rollback_failed=0
@@ -266,8 +298,23 @@ sekaipop_main() {
     (( SP_DRY_RUN || SP_CHECK )) || sp_acquire_installer_lock
     sp_make_log
     sp_info "Detected $SP_DISTRO_NAME | ID=$SP_DISTRO_ID | backend=$SP_BACKEND | release policy=$SP_RELEASE_POLICY"
-    (( SP_NO_DEPS )) || sp_plan_and_install_dependencies
-    if (( SP_DEPS_ONLY )); then sp_info 'Dependency-only mode: application source deployment is skipped.'; (( SP_DRY_RUN )) || sp_dependency_only_setup; return 0; fi
+    if (( ! SP_NO_DEPS )); then
+        if ! sp_plan_and_install_dependencies; then
+            sp_error 'Dependency planning/installation failed; deployment was not started.'
+            return 1
+        fi
+    fi
+    if (( SP_DEPS_ONLY )); then
+        sp_info 'Dependency-only mode: application source deployment is skipped.'
+        if (( ! SP_DRY_RUN )); then
+            if ! sp_check_all; then
+                sp_error 'Dependency-only runtime verification failed; desktop integration was not started.'
+                return 1
+            fi
+            sp_dependency_only_setup
+        fi
+        return 0
+    fi
     if (( SP_DRY_RUN )); then
         sp_info 'Deployment plan:'
         sp_info "  Quickshell destination: $SP_QS_DEST (staged replacement; preserves settings, presets, custom data; does not touch ~/.local/state/sekaipop)"

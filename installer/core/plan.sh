@@ -248,13 +248,13 @@ sp_print_package_plan() {
         printf '\nUnavailable optional requirements (%d; those features remain disabled):\n' "${#SP_MISSING_OPTIONAL[@]}"
         printf '  %s\n' "${SP_MISSING_OPTIONAL[@]}"
     fi
-    printf '\nRepository policy: configured native distribution repositories only. No AUR, COPR, PPA, third-party RPM/DEB, or source build is enabled by this installer.\n'
+    printf '\nRepository policy: configured official distribution archives only. Debian backports and Ubuntu Universe must already be enabled; APT sources are validated read-only and are never created or modified. No AUR, COPR, PPA, third-party RPM/DEB, or unpinned source build is enabled.\n'
     if [[ "$SP_BACKEND" == arch ]] && (("${#SP_INSTALL_PKGS[@]}")); then
         if (( SP_SYSTEM_UPGRADE )); then printf 'Arch transaction: pacman -Syu --needed (explicitly authorized by --system-upgrade).\n'
         else printf 'Arch transaction: pacman -S --needed against the existing sync DB; no isolated -Sy.\n'; fi
     fi
     if [[ "$SP_DISTRO_ID" == fedora ]]; then
-        printf 'Fedora note: Hyprland is not available from Fedora 44 official repositories in this verified baseline; an existing compatible Hyprland is required.\n'
+        printf 'Fedora note: no compatible Hyprland provider is verified for Fedora 44/45 in this baseline; an existing compatible Hyprland is required.\n'
     fi
     printf '\n'
 }

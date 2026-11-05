@@ -107,8 +107,8 @@ The multi-distro installer is designed for a **mutable, systemd-based x86_64 des
 | EndeavourOS | Rolling | pacman | Inherits the Arch package profile; not independently covered by package-plan CI. |
 | CachyOS | Rolling | pacman | Inherits the Arch package profile; not independently covered by package-plan CI. |
 | Fedora | 44 and 45 | DNF5 | Compatible Hyprland >= 0.55 must already be installed; no COPR is enabled. Fedora 45 has an exact release gate and does not assume a stable tuned-ppd candidate. |
-| Debian | 13 (trixie) | APT | Official <code>trixie-backports</code> must already be configured for Quickshell and Hyprland. |
-| Ubuntu | 26.10 (Stonking Stingray) | APT | Universe must already be enabled. |
+| Debian | 13 (trixie) | APT | Official <code>trixie-backports</code> must already be configured; Quickshell and Hyprland are suite-targeted. |
+| Ubuntu | 26.10 (Stonking Stingray) | APT | Official Universe must already be enabled for release, updates, and security suites. |
 
 **Not supported:** openSUSE, Gentoo, NixOS, Kali Linux, Fedora Atomic/ostree variants, other unverified derivatives, and architectures other than x86_64. The installer uses exact <code>ID</code>, <code>VERSION_ID</code>, and release-codename checks. <code>ID_LIKE</code> is informational only and does not route Linux Mint or another derivative to Debian/Arch/Fedora.
 
@@ -152,7 +152,7 @@ The complete repository is required: the installer deploys the existing <code>se
 
 ### Package source and desktop safety
 
-Only repositories already configured by the user are queried. No AUR helper, COPR, PPA, arbitrary RPM/DEB source, or source build is enabled. The installer does not alter GPU drivers, global portal defaults, KDE settings, or unrelated Quickshell processes. It uses path-scoped Quickshell instance operations.
+The installer treats APT repository configuration as administrator-managed and read-only. Debian 13 must already have official <code>trixie-backports</code> (main), and Ubuntu 26.10 must already have official Universe enabled for release, updates, and security. Missing sources cause a fail-closed diagnostic; the installer never edits APT sources. No AUR helper, COPR, PPA, arbitrary RPM/DEB source, or unpinned source build is enabled. Fedora still requires a compatible Hyprland from a source the user independently trusts. The installer does not alter GPU drivers, global portal defaults, KDE settings, or unrelated Quickshell processes. It uses path-scoped Quickshell instance operations.
 
 ### Checking and restoring
 

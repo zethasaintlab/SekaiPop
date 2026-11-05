@@ -19,15 +19,15 @@
 | Arch Linux | Rolling, x86_64 | pacman -Syu only with explicit authorization; never isolated -Sy. |
 | EndeavourOS | Rolling, x86_64 | Arch profile. |
 | CachyOS | Rolling, x86_64 | Arch profile. |
-| Fedora | 44, x86_64 | DNF5; compatible Hyprland must already exist. |
-| Debian | 13 trixie, x86_64 | Official trixie-backports must be configured. |
-| Ubuntu | 26.10 stonking, x86_64 | Universe must already be enabled. |
+| Fedora | 44 and 45, x86_64 | DNF5; compatible Hyprland must already exist; no COPR is enabled. |
+| Debian | 13 trixie, x86_64 | Official trixie-backports (main) must already be configured; Quickshell/Hyprland are individually suite-targeted. |
+| Ubuntu | 26.10 stonking, x86_64 | Official Universe must already be enabled for release, updates, and security. |
 
 openSUSE, Gentoo, NixOS, Kali, Fedora Atomic/ostree variants, unverified derivatives, and non-x86_64 architectures are excluded.
 
 ## Validation boundary
 
-The local overlay validation reported 47 routing/CLI assertions, 14 integration scenarios, and Bash syntax checks passed. Those tests use mocked package-manager and desktop commands. They do not establish live package transactions, VM certification, or GUI compatibility. ShellCheck/Lua syntax checks and native distro/graphical tests remain release gates. The checked-in GitHub Actions workflow reruns the repository smoke and integration tests.
+The checked-in GitHub Actions workflow runs ShellCheck, shell/runtime regression fixtures, launcher JavaScript tests, integration/service/runtime tests, a static dependency inventory, and native package-manager candidate resolution in Arch, Fedora 44/45, Debian 13, and Ubuntu 26.10 containers. These checks validate script behavior and package availability only; they do not establish clean native installation, VM certification, graphical-session compatibility, NVIDIA behavior, or suspend/resume/restore acceptance. See NATIVE-VM-VALIDATION.md for the required certification protocol.
 
 ## Source references
 

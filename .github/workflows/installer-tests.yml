@@ -4,6 +4,9 @@ on:
   pull_request:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
 jobs:
   shell-tests:
     runs-on: ubuntu-24.04
@@ -15,7 +18,7 @@ jobs:
         run: |
           while IFS= read -r -d '' script; do
             bash -n "$script"
-          done < <(find installer tests -type f -name '*.sh' -print0)
+          done < <(find installer tests tools -type f -name '*.sh' -print0)
           bash -n install.sh install-deps.sh check-deps.sh install-multi.sh
       - name: Ensure ShellCheck is available
         run: |
@@ -25,7 +28,7 @@ jobs:
       - name: ShellCheck installer and regression tests
         shell: bash
         run: |
-          mapfile -d '' scripts < <(find installer tests -type f -name '*.sh' -print0)
+          mapfile -d '' scripts < <(find installer tests tools -type f -name '*.sh' -print0)
           shellcheck --severity=error "${scripts[@]}" install.sh install-deps.sh check-deps.sh install-multi.sh
       - name: Run installer smoke tests
         run: bash tests/run-tests.sh
@@ -77,11 +80,11 @@ jobs:
         run: |
           set -Eeuo pipefail
           docker pull "$CONTAINER_IMAGE"
-          docker run --rm \
+          docker run --rm -i \
             --env DISTRO_ID="$DISTRO_ID" \
             --volume "$GITHUB_WORKSPACE:/workspace" \
             --workdir /workspace \
-            "$CONTAINER_IMAGE" bash -s <<'CONTAINER_SCRIPT'
+            "$CONTAINER_IMAGE" bash -s <<'CONTAINER_SCRIPT' | tee "$RUNNER_TEMP/container-${DISTRO_ID}.log"
               set -Eeuo pipefail
               case "$DISTRO_ID" in
                 arch)
@@ -98,6 +101,9 @@ jobs:
           HYPRLAND
                   chmod +x /usr/local/bin/Hyprland
                   dnf5 makecache --refresh
+                  # Minimal Fedora container images omit su; install the native
+                  # util-linux provider so the package-plan test runs unprivileged.
+                  dnf5 install -y util-linux
                   ;;
                 debian)
                   printf "%s\\n" "deb http://deb.debian.org/debian trixie-backports main" \
@@ -129,4 +135,31 @@ jobs:
               # package-plan discovery and the installer itself run unprivileged.
               useradd --create-home --shell /bin/bash sekaipop-ci
               su -s /bin/bash -c "cd /workspace && ./install.sh --plan --profile standard --no-update --no-log" sekaipop-ci
+              if [[ "$DISTRO_ID" == fedora ]]; then
+                bash tools/audit-fedora-hyprland-build-deps.sh
+              fi
+              printf 'CI_CONTAINER_SCRIPT_EXECUTED=1\\n'
           CONTAINER_SCRIPT
+          grep -Fq 'CI_CONTAINER_SCRIPT_EXECUTED=1' "$RUNNER_TEMP/container-${DISTRO_ID}.log"
+
+  fedora-hyprland-source-build:
+    name: Fedora ${{ matrix.fedora }} pinned Hyprland offline source build
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        fedora: ["44", "45"]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Acquire official build dependencies and verify immutable source pins
+        run: |
+          docker build --progress=plain \
+            --build-arg FEDORA_VERSION="${{ matrix.fedora }}" \
+            --file tools/fedora-hyprland-build-smoke.Dockerfile \
+            --tag "sekaipop-fedora-hyprland:${{ matrix.fedora }}" .
+      - name: Build compositor and portal with network disabled
+        run: |
+          docker run --rm --network none \
+            "sekaipop-fedora-hyprland:${{ matrix.fedora }}"

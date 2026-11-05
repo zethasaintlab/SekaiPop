@@ -7,7 +7,7 @@ pass() { printf '[PASS] %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf '[FAIL] %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 contains() { grep -Fq -- "$2" "$1"; }
 not_contains() { ! grep -RFq -- "$2" "$1"; }
-for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-quickshell-activation.sh "$ROOT"/tests/test-fedora-power-provider.sh "$ROOT"/tests/test-deployment-transaction.sh "$ROOT"/tests/test-pacman-safety.sh "$ROOT"/tests/test-installer-lock.sh "$ROOT"/tests/test-shader-plan.sh "$ROOT"/tests/test-power-profile-api.sh "$ROOT"/tests/test-hyprland-touchpad-key.sh; do
+for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-quickshell-activation.sh "$ROOT"/tests/test-fedora-power-provider.sh "$ROOT"/tests/test-deployment-transaction.sh "$ROOT"/tests/test-pacman-safety.sh "$ROOT"/tests/test-installer-lock.sh "$ROOT"/tests/test-shader-plan.sh "$ROOT"/tests/test-power-profile-api.sh "$ROOT"/tests/test-hyprland-touchpad-key.sh "$ROOT"/tests/test-dependency-failure-gate.sh "$ROOT"/tests/test-private-prefix-validation.sh "$ROOT"/tests/test-fedora-hyprland-source-fetch-safety.sh; do
     if bash -n "$script"; then pass "Bash syntax: $(basename "$script")"; else fail "Bash syntax: $(basename "$script")"; fi
 done
 if env SEKAIPOP_INSTALLER_ROOT="$ROOT" "$ROOT/install.sh" --help >/dev/null; then pass 'Help works without distro detection'; else fail 'Help works without distro detection'; fi
@@ -85,5 +85,11 @@ if bash "$ROOT/tests/test-installer-lock.sh"; then pass 'Installer concurrency l
 if bash "$ROOT/tests/test-shader-plan.sh"; then pass 'Qt Shader Tools planning fixtures'; else fail 'Qt Shader Tools planning fixtures'; fi
 if bash "$ROOT/tests/test-power-profile-api.sh"; then pass 'PowerProfiles D-Bus API fixtures'; else fail 'PowerProfiles D-Bus API fixtures'; fi
 if bash "$ROOT/tests/test-hyprland-touchpad-key.sh"; then pass 'Hyprland Lua touchpad key fixtures'; else fail 'Hyprland Lua touchpad key fixtures'; fi
+if bash "$ROOT/tests/test-apt-repository-bootstrap.sh"; then pass 'Read-only official APT repository validation fixtures'; else fail 'Read-only official APT repository validation fixtures'; fi
+if bash "$ROOT/tests/test-dependency-failure-gate.sh"; then pass 'Dependency failure blocks all deployment modes'; else fail 'Dependency failure blocks all deployment modes'; fi
+if bash "$ROOT/tests/test-package-install-failure.sh"; then pass 'Production planner propagates package transaction failure'; else fail 'Production planner propagates package transaction failure'; fi
+if bash "$ROOT/tests/test-dependency-only-runtime-gate.sh"; then pass 'Dependency-only mode gates desktop integration on runtime verification'; else fail 'Dependency-only mode gates desktop integration on runtime verification'; fi
+if bash "$ROOT/tests/test-private-prefix-validation.sh"; then pass 'CMake install manifests are confined to the private prefix'; else fail 'CMake install manifests are confined to the private prefix'; fi
+if bash "$ROOT/tests/test-fedora-hyprland-source-fetch-safety.sh"; then pass 'Fedora source fetch preserves pre-existing archive files'; else fail 'Fedora source fetch preserves pre-existing archive files'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
