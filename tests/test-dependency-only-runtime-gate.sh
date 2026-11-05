@@ -18,7 +18,11 @@ sp_parse_args() {
     SP_DEPS_ONLY=1
     SP_BACKEND=apt
 }
-sp_detect_distribution() { :; }
+sp_detect_distribution() {
+    SP_DISTRO_NAME='Debian fixture'
+    SP_DISTRO_ID=debian
+    SP_RELEASE_POLICY=stable
+}
 sp_validate_preflight() { :; }
 sp_acquire_installer_lock() { :; }
 sp_make_log() { :; }
