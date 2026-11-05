@@ -161,14 +161,14 @@ jobs:
         run: |
           set -Eeuo pipefail
           BASE_TAG="fedora:${{ matrix.fedora }}"
-          docker pull "$BASE_TAG"
+          docker pull --platform linux/amd64 "$BASE_TAG"
           BASE_IMAGE_REF="$(docker image inspect "$BASE_TAG" --format '{{range .RepoDigests}}{{println .}}{{end}}' | awk '/@sha256:[0-9a-f]{64}$/ {print; exit}')"
           [[ "$BASE_IMAGE_REF" =~ @sha256:[0-9a-f]{64}$ ]] || {
             printf 'Could not resolve an immutable Fedora base image digest for %s.\n' "$BASE_TAG" >&2
             exit 1
           }
           printf 'FEDORA_BASE_IMAGE_REF=%s\n' "$BASE_IMAGE_REF"
-          docker build --pull --progress=plain \
+          docker build --platform linux/amd64 --pull --progress=plain \
             --build-arg FEDORA_BASE_IMAGE="$BASE_IMAGE_REF" \
             --file tools/fedora-hyprland-build-smoke.Dockerfile \
             --tag "sekaipop-fedora-hyprland:${{ matrix.fedora }}" .
@@ -177,7 +177,7 @@ jobs:
           set -Eeuo pipefail
           PROVENANCE_DIR="$RUNNER_TEMP/fedora-hyprland-${{ matrix.fedora }}"
           mkdir -p "$PROVENANCE_DIR"
-          docker run --rm --network none \
+          docker run --platform linux/amd64 --rm --network none \
             --env "SEKAIPOP_BUILD_GIT_COMMIT=$GITHUB_SHA" \
             --env "SEKAIPOP_PROVENANCE_OUTPUT=/artifacts/BUILD-PROVENANCE" \
             --volume "$PROVENANCE_DIR:/artifacts" \
