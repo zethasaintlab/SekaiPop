@@ -77,6 +77,7 @@ def main() -> int:
     for path in shell_files:
         rel = path.relative_to(ROOT).as_posix()
         source = path.read_text(encoding="utf-8", errors="replace")
+        source = "\\n".join(line for line in source.splitlines() if not line.lstrip().startswith("#"))
         for match in SHELL_PROBE.finditer(source):
             name = match.group(1)
             if name not in SHELL_BUILTINS and not name.startswith(INTERNAL_PREFIXES):
@@ -85,10 +86,7 @@ def main() -> int:
             name = command_name(match.group(1))
             if name and name not in SHELL_BUILTINS and not name.startswith(INTERNAL_PREFIXES):
                 shell_calls[name].add(rel)
-        for match in SHELL_LINE_COMMAND.finditer(source):
-            name = match.group(1)
-            if name not in SHELL_BUILTINS and name not in SHELL_KEYWORDS and not name.startswith(INTERNAL_PREFIXES) and not name.startswith("$"):
-                shell_calls[name].add(rel)
+
 
     if args.format == "tsv":
         print("section\tname\toccurrences\tfiles")
@@ -96,7 +94,6 @@ def main() -> int:
             ("qml-import", imports),
             ("qml-executable", qml_commands),
             ("shell-probe", shell_probes),
-            ("shell-call-candidate", shell_calls),
         ):
             for name, paths in sorted(values.items()):
                 print(f"{section}\t{name}\t{len(paths)}\t{';'.join(sorted(paths))}")
@@ -111,7 +108,6 @@ def main() -> int:
         ("QML import modules", imports),
         ("Explicit executable references in QML Process/execDetached commands", qml_commands),
         ("Explicit shell executable probes", shell_probes),
-        ("Shell command candidates (review required)", shell_calls),
     ):
         print(f"## {title}\n")
         if not values:
