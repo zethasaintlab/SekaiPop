@@ -9,7 +9,7 @@ declare -Ag DISTRO_PACKAGE_MAP=(
     [dbus]='dbus-user-session' [polkit]='polkitd' [graphics-egl]='libegl1 libgl1' [pipewire]='pipewire' [wireplumber]='wireplumber'
     [pipewire-pulse]='pipewire-pulse pulseaudio-utils' [network-manager]='network-manager' [bluetooth]='bluez' [upower]='upower'
     [libnotify]='libnotify-bin' [wl-clipboard]='wl-clipboard' [jq]='jq' [curl]='curl' [git]='git'
-    [xdg-utils]='xdg-utils' [xdg-user-dirs]='xdg-user-dirs' [fontconfig]='fontconfig' [util-linux]='util-linux' [procps]='procps' [python3]='python3' [python-numpy]='python3-numpy'
+    [xdg-utils]='xdg-utils' [xdg-user-dirs]='xdg-user-dirs' [fontconfig]='fontconfig' [util-linux]='util-linux' [diffutils]='diffutils' [procps]='procps' [python3]='python3' [python-numpy]='python3-numpy'
     [portal]='xdg-desktop-portal' [portal-hyprland]='xdg-desktop-portal-hyprland' [portal-gtk]='xdg-desktop-portal-gtk'
     [xwayland]='xwayland' [noto-fonts]='fonts-noto-core' [noto-fonts-cjk]='fonts-noto-cjk' [noto-fonts-emoji]='fonts-noto-color-emoji'
     [jetbrains-mono]='fonts-jetbrains-mono' [cava]='cava' [grim]='grim' [slurp]='slurp' [cliphist]='cliphist' [wtype]='wtype'
