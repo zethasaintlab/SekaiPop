@@ -34,6 +34,12 @@ Nix is a viable **opt-in experimental provider candidate**, not an approved defa
 7. Test Intel, AMD, and NVIDIA separately; NVIDIA is a hard acceptance gate, not an assumed success.
 8. Keep the provider disabled by default until clean Fedora 44 and 45 VM tests pass.
 
+## Source-build version-coherence update
+
+A source-level CMake audit now exists in [PROVISIONING-ROADMAP.md](PROVISIONING-ROADMAP.md#version-coherent-cmake-closure-audit) for a concrete candidate pair: Hyprland v0.57.1, xdg-desktop-portal-hyprland v1.5.0, and hyprtoolkit v0.6.0. It records exact commits, the CMake dependency floors, pinned glaze FetchContent, udis86/sdbus-cpp fallbacks, and the portal's stale hyprland-protocols submodule (0.7.1 despite a >= 0.8.0 requirement).
+
+This matters because the generic current upstream installation guide is not a version lockfile. In the exact CMake files inspected for that candidate pair, hyprwire is not declared as a dependency; hyprtoolkit is required by the portal share-picker. Do not combine a generic current build order with arbitrary older component pins. The detailed audit is still incomplete and does not approve or implement a Fedora provider.
+
 ## Source-build alternative
 
 A first-party pinned source builder remains possible but is a large maintenance commitment. Hyprland's current upstream build order includes Lua, hyprland-protocols, hyprwayland-scanner, hyprutils, hyprgraphics, hyprlang, hyprcursor, aquamarine, xdg-desktop-portal-hyprland, hyprwire, hyprtoolkit, and Hyprland.
