@@ -47,7 +47,10 @@ sp_apt_sources_has_suite_component() {
                 /^[[:space:]]*#/ { next }
                 $1 == "deb" || $1 == "deb-src" {
                     i = 2
-                    if ($i ~ /^\[/) i++
+                    if ($i ~ /^\[/) {
+                        while (i <= NF && $i !~ /\]$/) i++
+                        i++
+                    }
                     source_suite = $(i + 1)
                     if (source_suite == wanted_suite) {
                         for (j = i + 2; j <= NF; j++) if ($j == wanted_component) found = 1
