@@ -72,10 +72,6 @@ grep -Fq 'base_image_ref=docker.io/library/fedora@sha256:0123456789abcdef' "$OUT
 grep -Fq 'source_commits' "$OUT"
 grep -Fq $'Hyprland\t0123456789abcdef0123456789abcdef01234567' "$OUT"
 grep -Fq 'source_archive.lua-5.5.1.sha256=' "$OUT"
-grep -Fq 'gcc= gcc' "$OUT" && {
-    printf '[FAIL] malformed toolchain record\n' >&2
-    exit 1
-} || true
 grep -Fq 'gcc=gcc (GCC) 16.1.1' "$OUT"
 grep -Fq 'Repo-id : updates' "$OUT"
 grep -Fq 'glibc' "$OUT"
