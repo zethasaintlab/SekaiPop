@@ -8,8 +8,8 @@
 | EndeavourOS | pacman | Rolling, x86_64 | Inherits the Arch package profile; not independently covered by the current package-plan CI matrix. |
 | CachyOS | pacman | Rolling, x86_64 | Inherits the Arch package profile; not independently covered by the current package-plan CI matrix. |
 | Fedora | DNF5 | Fedora 44 and 45, x86_64 | Compatible Hyprland >= 0.55 must already exist; no COPR is enabled. Fedora 45 has a separate release gate and does not assume a stable tuned-ppd candidate. |
-| Debian | APT | Debian 13 (trixie), x86_64 | Configure official trixie-backports yourself; only Quickshell and Hyprland are suite-targeted. |
-| Ubuntu | APT | Ubuntu 26.10 (Stonking Stingray), x86_64 | Universe must already be enabled. |
+| Debian | APT | Debian 13 (trixie), x86_64 | Installer can add official trixie-backports with confirmation; only Quickshell and Hyprland are suite-targeted. |
+| Ubuntu | APT | Ubuntu 26.10 (Stonking Stingray), x86_64 | Installer can enable official Universe with confirmation. |
 
 The installer requires a mutable systemd desktop and x86_64. It detects /etc/os-release by exact ID, VERSION_ID, and (where applicable) VERSION_CODENAME. ID_LIKE is informational only and never enables an unsupported derivative.
 
@@ -51,7 +51,7 @@ The complete checkout is required because the installer deploys the existing sek
 
 ## Package-source policy
 
-Only repositories already configured by the user are queried. This installer does not add AUR helpers, COPR repositories, PPAs, external RPM/DEB sources, or downloaded build scripts. Consent flags do not whitelist arbitrary sources. Users must review and configure third-party providers independently.
+The installer may provision only the official Debian 13 trixie-backports and Ubuntu 26.10 Universe sources required by their profiles, using the distribution archive keyrings and explicit confirmation. It does not add AUR helpers, COPR repositories, PPAs, external RPM/DEB sources, or arbitrary mirrors. Consent flags do not whitelist arbitrary sources. Fedora still requires a compatible Hyprland from a source the user independently trusts; no COPR is enabled.
 
 The installer does not alter GPU drivers, kernel modules, Secure Boot, global portal defaults, desktop session environment, or unrelated Quickshell instances. It never kills every qs process.
 
