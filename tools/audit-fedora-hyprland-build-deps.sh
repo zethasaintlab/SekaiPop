@@ -79,7 +79,8 @@ printf '\nPinned Hypr* components are source inputs, not assumed Fedora RPMs:\n'
 printf '%s\n' 'hyprland-protocols 0.8.0' 'hyprwayland-scanner 0.4.6' \
     'hyprutils 0.14.3' 'hyprgraphics 0.6.0' 'hyprlang 0.6.8' \
     'hyprcursor 0.1.13' 'aquamarine 0.16.0' 'hyprtoolkit 0.6.0' \
-    'glaze 7.2.0' 'xdg-desktop-portal-hyprland 1.5.0' 'Hyprland 0.57.1'
+    'glaze 7.2.0' 'xdg-desktop-portal-hyprland 1.5.0' \
+    'hyprwire @ a546e42d45e161682f729ebf52375bd4800d7041' 'Hyprland 0.57.1'
 printf 'See docs/PROVISIONING-ROADMAP.md for immutable commits and minimum versions.\n'
 
 exit "$failed"
