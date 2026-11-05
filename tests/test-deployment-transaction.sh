@@ -213,3 +213,49 @@ grep -Fq -- 'one or more system/user service states could not be reverted' "$NO_
 pass 'Dependency-only rollback reports service-state recovery failures explicitly'
 
 printf '\nDependency-only transaction fixtures passed.\n'
+
+# A restore must not modify either destination unless both current trees have
+# first been copied successfully into the recovery snapshot.
+RESTORE_HOME="$TMP/restore-copy-failure"
+SP_CONFIG_HOME="$RESTORE_HOME/.config"
+SP_STATE_DIR="$RESTORE_HOME/.local/state/sekaipop"
+SP_BACKUP_ROOT="$SP_STATE_DIR/installer-backups"
+SP_QS_DEST="$SP_CONFIG_HOME/quickshell/sekaipop"
+SP_HYPR_DEST="$SP_CONFIG_HOME/hypr"
+SP_TIMESTAMP=20261102180400
+mkdir -p "$SP_BACKUP_ROOT/source/config/sekaipop" "$SP_BACKUP_ROOT/source/config/hypr" "$SP_QS_DEST" "$SP_HYPR_DEST"
+printf 'snapshot-shell\\n' > "$SP_BACKUP_ROOT/source/config/sekaipop/original.marker"
+printf 'snapshot-hypr\\n' > "$SP_BACKUP_ROOT/source/config/hypr/original.marker"
+cat > "$SP_BACKUP_ROOT/source/manifest" <<'MANIFEST'
+quickshell_included=yes
+hyprland_included=yes
+quickshell_exists=yes
+hyprland_exists=yes
+MANIFEST
+printf 'current-shell\\n' > "$SP_QS_DEST/current.marker"
+printf 'current-hypr\\n' > "$SP_HYPR_DEST/current.marker"
+mkdir -p "$TMP/failing-copy-bin"
+cat > "$TMP/failing-copy-bin/cp" <<'CP'
+#!/usr/bin/env bash
+destination="${!#}"
+case "$destination" in
+    */restore-*/config/sekaipop-current) exit 42 ;;
+esac
+exec /usr/bin/cp "$@"
+CP
+chmod +x "$TMP/failing-copy-bin/cp"
+if ( PATH="$TMP/failing-copy-bin:$PATH"; sp_confirm() { return 0; }; sp_restore_latest "$SP_BACKUP_ROOT/source" ) > "$TMP/restore-copy-failure.log" 2>&1; then
+    fail 'A failed recovery snapshot copy must abort restore'
+fi
+[[ "$(cat "$SP_QS_DEST/current.marker")" == current-shell ]] || fail 'Quickshell destination remains unchanged when its recovery copy fails'
+[[ "$(cat "$SP_HYPR_DEST/current.marker")" == current-hypr ]] || fail 'Hyprland destination remains unchanged when its recovery copy fails'
+grep -Fq 'nothing was restored' "$TMP/restore-copy-failure.log" || fail 'Recovery-copy failure explains that restore did not begin'
+pass 'Restore aborts before changing user configuration when the recovery snapshot cannot be completed'
+
+# A malformed explicit snapshot must fail closed rather than silently restore nothing.
+mkdir -p "$SP_BACKUP_ROOT/malformed"
+if ( sp_confirm() { return 0; }; sp_restore_latest "$SP_BACKUP_ROOT/malformed" ) > "$TMP/malformed-snapshot.log" 2>&1; then
+    fail 'An explicit snapshot without a manifest must be rejected'
+fi
+[[ "$(cat "$SP_QS_DEST/current.marker")" == current-shell ]] || fail 'Malformed snapshot cannot modify the current Quickshell tree'
+pass 'Explicit snapshots with missing manifests are rejected without touching user configuration'
