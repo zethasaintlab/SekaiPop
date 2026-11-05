@@ -62,7 +62,7 @@ export SEKAIPOP_BASE_IMAGE_REF="docker.io/library/fedora@sha256:0123456789abcdef
 export SEKAIPOP_BUILD_GIT_COMMIT="abcdef0123456789abcdef0123456789abcdef01"
 
 OUT="$TMP/output/BUILD-PROVENANCE"
-"$WRITER" "$OUT" "$TMP/sources" | grep -Fq 'FEDORA_BUILD_PROVENANCE_OK' || {
+bash "$WRITER" "$OUT" "$TMP/sources" | grep -Fq 'FEDORA_BUILD_PROVENANCE_OK' || {
     printf '[FAIL] provenance generation marker missing\n' >&2
     exit 1
 }
@@ -81,21 +81,21 @@ grep -Fq 'glibc' "$OUT"
 printf '[PASS] provenance records Fedora, immutable image, source commits, toolchain, RPMs and repositories\n'
 
 printf 'preserve this file\n' > "$TMP/output/existing"
-if "$WRITER" "$TMP/output/existing" "$TMP/sources" >/dev/null 2>&1; then
+if bash "$WRITER" "$TMP/output/existing" "$TMP/sources" >/dev/null 2>&1; then
     printf '[FAIL] existing provenance output was overwritten\n' >&2
     exit 1
 fi
 grep -Fq 'preserve this file' "$TMP/output/existing"
 printf '[PASS] existing provenance output is refused and preserved\n'
 
-if env -u SEKAIPOP_BASE_IMAGE_REF "$WRITER" "$TMP/output/no-digest" "$TMP/sources" >/dev/null 2>&1; then
+if env -u SEKAIPOP_BASE_IMAGE_REF bash "$WRITER" "$TMP/output/no-digest" "$TMP/sources" >/dev/null 2>&1; then
     printf '[FAIL] mutable or missing base image reference was accepted\n' >&2
     exit 1
 fi
 printf '[PASS] missing immutable base image reference is rejected\n'
 
 mv "$TMP/sources/Hyprland" "$TMP/sources/Hyprland.missing"
-if "$WRITER" "$TMP/output/missing-source" "$TMP/sources" >/dev/null 2>&1; then
+if bash "$WRITER" "$TMP/output/missing-source" "$TMP/sources" >/dev/null 2>&1; then
     printf '[FAIL] missing pinned source was accepted\n' >&2
     exit 1
 fi
