@@ -55,7 +55,7 @@ pass 'APT source detection ignores commented examples'
 
 cat > "$SP_APT_SOURCES_DIR/legacy.list" <<'SOURCE'
 # example comment
-deb [arch=amd64] https://deb.debian.org/debian trixie-backports main contrib
+deb [arch=amd64 signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://deb.debian.org/debian trixie-backports main contrib
 deb https://archive.ubuntu.com/ubuntu jammy universe
 SOURCE
 sp_apt_sources_has_suite_component trixie-backports main || fail 'Legacy APT list entry with options was not parsed'
