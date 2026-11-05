@@ -77,6 +77,25 @@ mapfile -t events < "$PACMAN_EVENT_LOG"
 pass 'A fresh Arch sync database retains the single-transaction pacman -Syu --needed path'
 
 : > "$PACMAN_EVENT_LOG"
+plan_calls=0
+SP_SYSTEM_UPGRADE=1
+SP_ARCH_SYNC_UPGRADED=0
+sp_pacman_sync_db_fresh() { return 1; }
+pm_refresh_metadata() {
+    printf 'refresh-failure\\n' >> "$PACMAN_EVENT_LOG"
+    return 19
+}
+if sp_plan_and_install_dependencies; then
+    fail 'A failed Arch full-system synchronization must abort dependency planning'
+else
+    refresh_status=$?
+fi
+[[ "$refresh_status" == 19 ]] || fail 'Arch synchronization failure preserves the package-manager exit status'
+mapfile -t events < "$PACMAN_EVENT_LOG"
+[[ "${#events[@]}" == 1 && "${events[0]}" == refresh-failure ]] || fail 'A failed Arch synchronization does not continue into package planning or installation'
+pass 'Arch synchronization failures stop dependency planning and preserve the original status'
+
+: > "$PACMAN_EVENT_LOG"
 SP_SYSTEM_UPGRADE=0
 SP_ARCH_SYNC_UPGRADED=0
 sp_pacman_sync_db_fresh() { return 1; }
