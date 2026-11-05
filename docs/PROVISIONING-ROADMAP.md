@@ -102,6 +102,7 @@ The pinned Hyprland `CMakeLists.txt` requires CMake >= 3.30 and C++26. Its decla
 - `aquamarine >= 0.15.0`, `hyprlang >= 0.6.7`, `hyprcursor >= 0.1.7`, `hyprutils >= 0.14.3`, and `hyprgraphics >= 0.5.1`
 - `hyprland-protocols >= 0.8.0`
 - `sdbus-c++ >= 2.0.0` unless RTKit support is explicitly disabled
+- `hyprwire` is a required dependency of the nested `hyprctl/CMakeLists.txt` target (the top-level CMake does not declare it directly). The pinned Hyprwire v0.3.1 CMake contract requires `hyprutils >= 0.9.0` and `libffi`; its nested scanner target additionally requires `pugixml`. The build installs both `libhyprwire`/`hyprwire.pc` and `hyprwire-scanner`, which Hyprland's `hyprctl` build invokes to generate protocol sources.
 - XCB, XFixes, ICCCM, Composite, Res, and xcb-errors when XWayland is enabled (the default build path)
 - Python 3 for the Lua API stub generation target
 
