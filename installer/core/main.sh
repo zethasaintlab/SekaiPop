@@ -167,12 +167,23 @@ sp_plan_and_install_dependencies() {
     (("${#SP_INSTALL_PKGS[@]} == 0")) && { sp_ok 'All selected package requirements are already satisfied.'; return 0; }
     sp_confirm "Install ${#SP_INSTALL_PKGS[@]} native package(s) on $SP_DISTRO_NAME?" || sp_die 'Package installation cancelled.'
     if pm_install "${SP_INSTALL_PKGS[@]}"; then
-        sp_ok 'Native package transaction completed.'
+        :
     else
         local install_status=$?
         sp_error "Native package transaction failed (exit $install_status); dependency provisioning was not completed."
         return "$install_status"
     fi
+
+    # A successful package-manager exit is necessary but not sufficient. Re-query
+    # the installed state so a no-op/partial backend result cannot pass the gate.
+    sp_build_package_plan
+    if (( ${#SP_MISSING_CORE[@]} || ${#SP_INSTALL_CORE[@]} )); then
+        sp_error 'Native package transaction returned success, but mandatory requirements remain unsatisfied after revalidation.'
+        (( ${#SP_MISSING_CORE[@]} )) && printf '  Unavailable: %s\\n' "${SP_MISSING_CORE[@]}" >&2
+        (( ${#SP_INSTALL_CORE[@]} )) && printf '  Not installed: %s\\n' "${SP_INSTALL_CORE[@]}" >&2
+        return 1
+    fi
+    sp_ok 'Native package transaction completed; mandatory requirements were revalidated.'
 }
 sp_rollback_failed_dependency_only() {
     local reason="$1" service_rollback_failed=0
