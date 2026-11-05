@@ -2,6 +2,7 @@
 source "$SEKAIPOP_INSTALLER_ROOT/installer/core/common.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/core/detect.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/core/cli.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/provisioning/apt-repositories.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/catalog/requirements.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/package-managers/interface.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/core/plan.sh"
@@ -102,6 +103,7 @@ sp_validate_preflight() {
 }
 sp_plan_and_install_dependencies() {
     sp_load_package_manager
+    if (( SP_DRY_RUN )); then sp_apt_bootstrap_plan; else sp_apt_bootstrap_official_sources; fi
     if (( SP_DRY_RUN )); then
         sp_load_distro_profile
         if [[ "$SP_BACKEND" == arch ]] && ! sp_pacman_sync_db_fresh; then
@@ -118,8 +120,22 @@ sp_plan_and_install_dependencies() {
         return 0
     fi
     if [[ "$SP_BACKEND" == dnf5 || "$SP_BACKEND" == apt ]]; then
-        if (( ! SP_NO_UPDATE )); then sp_confirm "Refresh configured native repository metadata for $SP_DISTRO_NAME?" || sp_die 'Metadata refresh declined. Use --no-update to continue with the current package cache.'; pm_refresh_metadata
-        else sp_info 'Repository metadata refresh skipped (--no-update).'; fi
+        if (( ! SP_NO_UPDATE )); then
+            sp_confirm "Refresh configured native repository metadata for $SP_DISTRO_NAME?" || {
+                sp_apt_bootstrap_rollback
+                sp_die 'Metadata refresh declined. Use --no-update only when all required official sources are already configured.'
+            }
+            if ! pm_refresh_metadata; then
+                sp_apt_bootstrap_rollback
+                sp_die 'Native repository metadata refresh failed. Newly added SekaiPop APT sources were rolled back.'
+            fi
+        else
+            if (("${#SP_APT_BOOTSTRAP_CREATED[@]}")); then
+                sp_apt_bootstrap_rollback
+                sp_die 'New official APT sources require a metadata refresh; --no-update cannot be used for this first-time bootstrap.'
+            fi
+            sp_info 'Repository metadata refresh skipped (--no-update).'
+        fi
     elif [[ "$SP_BACKEND" == arch ]]; then
         if ! sp_pacman_sync_db_fresh; then
             if (( SP_SYSTEM_UPGRADE )); then
