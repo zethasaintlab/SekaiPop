@@ -39,7 +39,9 @@ jobs:
       - name: Run runtime detection fixtures
         run: bash tests/test-runtime-detection.sh
       - name: Generate static dependency inventory
-        run: python3 tools/audit-dependencies.py
+        run: |
+          python3 tools/audit-dependencies.py
+          python3 tools/audit-dependencies.py --format tsv
 
   package-plan:
     name: ${{ matrix.distro }} package resolution (container)
