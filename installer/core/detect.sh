@@ -50,12 +50,13 @@ sp_detect_distribution() {
     [[ "$SP_ARCH" == x86_64 ]] || sp_die "Unsupported architecture '$SP_ARCH'; only x86_64 has been selected for the initial release." 1
     case "$SP_DISTRO_ID:$SP_DISTRO_VERSION:$SP_DISTRO_CODENAME" in
         fedora:44:*) SP_RELEASE_POLICY='Fedora 44; official Quickshell package verified; Hyprland must already be installed from a source the user trusts' ;;
+        fedora:45:*) SP_RELEASE_POLICY='Fedora 45; native DNF5/Qt/Quickshell profile; compatible Hyprland must already be installed from a source the user trusts; no COPR is enabled' ;;
         debian:13:trixie) SP_RELEASE_POLICY='Debian 13 (trixie); requires official trixie-backports enabled for Quickshell and Hyprland' ;;
         ubuntu:26.10:stonking) SP_RELEASE_POLICY='Ubuntu 26.10 (Stonking Stingray); official Universe package candidates' ;;
         arch:*:*) SP_RELEASE_POLICY='Arch Linux rolling; package and runtime version checks apply' ;;
         endeavouros:*:*) SP_RELEASE_POLICY='EndeavourOS rolling; package and runtime version checks apply' ;;
         cachyos:*:*) SP_RELEASE_POLICY='CachyOS rolling; package and runtime version checks apply' ;;
-        *) sp_die "Unsupported or unverified release: $SP_DISTRO_NAME ($SP_DISTRO_VERSION ${SP_DISTRO_CODENAME:-}). Supported baselines: Fedora 44, Debian 13 trixie, Ubuntu 26.10 stonking, Arch Linux, EndeavourOS, and CachyOS rolling." 1 ;;
+        *) sp_die "Unsupported or unverified release: $SP_DISTRO_NAME ($SP_DISTRO_VERSION ${SP_DISTRO_CODENAME:-}). Supported baselines: Fedora 44/45, Debian 13 trixie, Ubuntu 26.10 stonking, Arch Linux, EndeavourOS, and CachyOS rolling." 1 ;;
     esac
 
     sp_detect_package_manager
