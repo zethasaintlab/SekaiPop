@@ -29,6 +29,8 @@ SHELL_BUILTINS = {
     "ulimit", "umask", "unalias", "unset", "wait",
 }
 INTERNAL_PREFIXES = ("sp_", "pm_", "qs_", "hypr_", "sekaipop_")
+NON_COMMAND_NAMES = {"is", "are", "was", "were", "the", "this", "that", "which", "what", "where", "when", "why", "how"}
+QML_IPC_METHODS = {"set_property"}
 
 
 def files_under(root: pathlib.Path, suffix: str) -> list[pathlib.Path]:
@@ -44,7 +46,10 @@ def command_name(raw: str) -> str | None:
     token = value.split()[0].strip("\"'")
     if not token or token.startswith("$"):
         return None
-    return pathlib.PurePosixPath(token).name
+    name = pathlib.PurePosixPath(token).name
+    if name in QML_IPC_METHODS:
+        return None
+    return name
 
 
 def main() -> int:
@@ -75,7 +80,7 @@ def main() -> int:
         source = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("#"))
         for match in SHELL_PROBE.finditer(source):
             name = match.group(1)
-            if name not in SHELL_BUILTINS and not name.startswith(INTERNAL_PREFIXES):
+            if name not in SHELL_BUILTINS and name not in NON_COMMAND_NAMES and not name.startswith(INTERNAL_PREFIXES):
                 shell_probes[name].add(rel)
         for match in SHELL_EXEC.finditer(source):
             name = command_name(match.group(1))
