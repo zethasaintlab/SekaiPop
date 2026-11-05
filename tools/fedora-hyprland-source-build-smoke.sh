@@ -37,6 +37,13 @@ PROVENANCE="$WORK/BUILD-PROVENANCE.txt"
     meson --version
     printf '%s\n' '-- pkg-config --'
     pkg-config --version
+    printf '\n%s\n' '=== Source commits ==='
+    for source_dir in "$SOURCES"/*; do
+        [[ -d "$source_dir/.git" || -f "$source_dir/.git" ]] || continue
+        printf '%s\t%s\n' "$(basename "$source_dir")" "$(git -C "$source_dir" rev-parse HEAD)"
+    done
+    printf '\n%s\n' '=== Lua source archive SHA256 ==='
+    sha256sum "$SOURCES/lua-5.5.1.tar.gz"
 } > "$PROVENANCE"
 
 export PATH="$PREFIX/bin:$PATH"
