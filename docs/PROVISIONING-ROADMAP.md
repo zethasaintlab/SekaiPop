@@ -88,7 +88,7 @@ This is a source-manifest candidate, **not a successful build**. It does not app
 | udis86 fallback | submodule commit | `5336633af70f3917760a6d441ff02d93477b0c86` | Hyprland fallback if system udis86 >= 1.7.2 is unavailable |
 | Tracy | optional submodule | `05cceee0df3b8d7c6fa87e9638af311dbabc63cb` | Used only when USE_TRACY is enabled; keep it disabled in a normal release build |
 
-The exact tag-to-commit resolutions above were read from the upstream Git references. Submodule commits were read from the Git trees of the pinned parent commits.
+The exact tag-to-commit resolutions above were read from the upstream Git references. Submodule commits were read from the Git trees of the pinned parent commits. The Hyprwire commit is taken from the `hyprwire` node in the pinned Hyprland v0.57.1 `flake.lock`; its `VERSION` file reports 0.3.1.
 
 ### Hyprland v0.57.1 configure-time contract
 
