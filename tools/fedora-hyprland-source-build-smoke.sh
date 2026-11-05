@@ -122,6 +122,8 @@ binaries=(
     "$PREFIX/bin/Hyprland"
     "$PREFIX/bin/start-hyprland"
     "$PREFIX/bin/hyprland-share-picker"
+    "$PREFIX/bin/hyprctl"
+    "$PREFIX/bin/hyprwire-scanner"
     "$PREFIX/libexec/xdg-desktop-portal-hyprland"
 )
 for binary in "${binaries[@]}"; do
