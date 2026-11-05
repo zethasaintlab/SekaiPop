@@ -155,8 +155,18 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Acquire official build dependencies and verify immutable source pins
         run: |
-          docker build --progress=plain \
+          set -Eeuo pipefail
+          BASE_TAG="fedora:${{ matrix.fedora }}"
+          docker pull "$BASE_TAG"
+          BASE_IMAGE_REF="$(docker image inspect "$BASE_TAG" --format '{{range .RepoDigests}}{{println .}}{{end}}' | awk '/@sha256:[0-9a-f]{64}$/ {print; exit}')"
+          [[ "$BASE_IMAGE_REF" =~ @sha256:[0-9a-f]{64}$ ]] || {
+            printf 'Could not resolve an immutable Fedora base image digest for %s.\\n' "$BASE_TAG" >&2
+            exit 1
+          }
+          printf 'FEDORA_BASE_IMAGE_REF=%s\\n' "$BASE_IMAGE_REF"
+          docker build --pull --progress=plain \
             --build-arg FEDORA_VERSION="${{ matrix.fedora }}" \
+            --build-arg FEDORA_BASE_IMAGE="$BASE_IMAGE_REF" \
             --file tools/fedora-hyprland-build-smoke.Dockerfile \
             --tag "sekaipop-fedora-hyprland:${{ matrix.fedora }}" .
       - name: Build compositor and portal with network disabled
