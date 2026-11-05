@@ -5,6 +5,8 @@ DEST="${1:-/opt/sekaipop/sources}"
 mkdir -p -- "$DEST"
 [[ -d "$DEST" && ! -L "$DEST" ]] || { printf 'Unsafe source destination: %s\n' "$DEST" >&2; exit 2; }
 
+LUA_ARCHIVE="$DEST/lua-5.5.1.tar.gz"
+LUA_PART="$LUA_ARCHIVE.part"
 [[ ! -e "$LUA_ARCHIVE" && ! -L "$LUA_ARCHIVE" ]] || { printf "Refusing existing Lua archive: %s\\n" "$LUA_ARCHIVE" >&2; exit 2; }
 [[ ! -e "$LUA_PART" && ! -L "$LUA_PART" ]] || { printf "Refusing existing Lua partial archive: %s\\n" "$LUA_PART" >&2; exit 2; }
 
@@ -50,8 +52,6 @@ fetch_tagged_repo xdg-desktop-portal-hyprland hyprwm xdg-desktop-portal-hyprland
 fetch_commit_repo hyprwire hyprwm hyprwire a546e42d45e161682f729ebf52375bd4800d7041
 fetch_commit_repo udis86 canihavesomecoffee udis86 5336633af70f3917760a6d441ff02d93477b0c86
 
-LUA_ARCHIVE="$DEST/lua-5.5.1.tar.gz"
-LUA_PART="$LUA_ARCHIVE.part"
 LUA_SHA256=1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce
 LUA_URLS=(
     https://www.lua.org/ftp/lua-5.5.1.tar.gz
