@@ -5,7 +5,18 @@ sp_latest_backup_dir() {
     find "$SP_BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | grep -v '^restore-' | sort | tail -n1 | while IFS= read -r name; do [[ -n "$name" ]] && printf '%s/%s\n' "$SP_BACKUP_ROOT" "$name"; done
 }
 sp_manifest_value() { local manifest="$1" key="$2"; awk -F= -v wanted="$key" '$1 == wanted {sub(/^[^=]*=/, ""); print; exit}' "$manifest" 2>/dev/null; }
-sp_tree_content_equal() { local left="$1" right="$2"; [[ -d "$left" && -d "$right" ]] && sp_have diff && diff -qr -- "$left" "$right" >/dev/null 2>&1; }
+sp_tree_content_equal() {
+    local left="$1" right="$2"
+    [[ -d "$left" && -d "$right" ]] || return 1
+    sp_have diff || return 1
+    diff -qr -- "$left" "$right" >/dev/null 2>&1 || return 1
+    # Content equality alone is insufficient for a rollback snapshot: executable
+    # bits, private config permissions, symlink targets, empty directories and
+    # mtimes are part of the filesystem state restored by cp -a.
+    cmp -s \
+        <(cd "$left" && find . -printf '%P\0%y\0%m\0%s\0%T@\0%l\0' | LC_ALL=C sort -z) \
+        <(cd "$right" && find . -printf '%P\0%y\0%m\0%s\0%T@\0%l\0' | LC_ALL=C sort -z)
+}
 sp_create_backup() {
     local include_qs="${1:-1}" include_hypr="${2:-1}" backup_dir latest
     local latest_qs_included latest_hypr_included latest_qs_exists latest_hypr_exists
@@ -56,17 +67,28 @@ sp_create_backup() {
     SP_BACKUP_DIR="$backup_dir"; sp_info "Configuration snapshot saved: $backup_dir"
 }
 sp_restore_latest() {
-    local latest='' candidate snapshot backup_qs backup_hypr restore_backup
+    local requested_snapshot="${1:-}" latest='' candidate snapshot backup_qs backup_hypr restore_backup
     local qs_included qs_exists hypr_included hypr_exists manifest
-    if [[ ! -d "$SP_BACKUP_ROOT" ]]; then sp_restore_legacy_hypr_backup; return $?; fi
+    if [[ ! -d "$SP_BACKUP_ROOT" ]]; then
+        [[ -z "$requested_snapshot" ]] && sp_restore_legacy_hypr_backup && return 0
+        sp_die "The transaction backup root is missing; cannot restore requested snapshot: $requested_snapshot"
+    fi
     [[ ! -L "$SP_BACKUP_ROOT" ]] || sp_die "Refusing symlinked installer backup directory: $SP_BACKUP_ROOT"
-    while IFS= read -r candidate; do
-        [[ "$candidate" == restore-* ]] && continue
-        manifest="$SP_BACKUP_ROOT/$candidate/manifest"; [[ -f "$manifest" ]] || continue
-        if [[ "$(sp_manifest_value "$manifest" quickshell_included)" == yes || "$(sp_manifest_value "$manifest" hyprland_included)" == yes || -d "$SP_BACKUP_ROOT/$candidate/config/hypr" || -d "$SP_BACKUP_ROOT/$candidate/config/sekaipop" ]]; then latest="$candidate"; fi
-    done < <(find "$SP_BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
-    if [[ -z "$latest" ]]; then sp_restore_legacy_hypr_backup; return $?; fi
-    snapshot="$SP_BACKUP_ROOT/$latest"; manifest="$snapshot/manifest"; backup_hypr="$snapshot/config/hypr"; backup_qs="$snapshot/config/sekaipop"
+    if [[ -n "$requested_snapshot" ]]; then
+        [[ "$requested_snapshot" == "$SP_BACKUP_ROOT/"* && -d "$requested_snapshot" && ! -L "$requested_snapshot" ]] ||
+            sp_die "Refusing invalid transaction snapshot path: $requested_snapshot"
+        snapshot="$requested_snapshot"
+        latest="${snapshot##*/}"
+    else
+        while IFS= read -r candidate; do
+            [[ "$candidate" == restore-* ]] && continue
+            manifest="$SP_BACKUP_ROOT/$candidate/manifest"; [[ -f "$manifest" ]] || continue
+            if [[ "$(sp_manifest_value "$manifest" quickshell_included)" == yes || "$(sp_manifest_value "$manifest" hyprland_included)" == yes || -d "$SP_BACKUP_ROOT/$candidate/config/hypr" || -d "$SP_BACKUP_ROOT/$candidate/config/sekaipop" ]]; then latest="$candidate"; fi
+        done < <(find "$SP_BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+        if [[ -z "$latest" ]]; then sp_restore_legacy_hypr_backup; return $?; fi
+        snapshot="$SP_BACKUP_ROOT/$latest"
+    fi
+    manifest="$snapshot/manifest"; backup_hypr="$snapshot/config/hypr"; backup_qs="$snapshot/config/sekaipop"
     qs_included="$(sp_manifest_value "$manifest" quickshell_included)"; hypr_included="$(sp_manifest_value "$manifest" hyprland_included)"
     qs_exists="$(sp_manifest_value "$manifest" quickshell_exists)"; hypr_exists="$(sp_manifest_value "$manifest" hyprland_exists)"
     if [[ -z "$qs_included" ]]; then qs_included=no; [[ -d "$backup_qs" ]] && qs_included=yes; fi
