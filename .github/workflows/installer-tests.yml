@@ -38,6 +38,8 @@ jobs:
         run: bash tests/test-systemd.sh
       - name: Run runtime detection fixtures
         run: bash tests/test-runtime-detection.sh
+      - name: Generate static dependency inventory
+        run: python3 tools/audit-dependencies.py
 
   package-plan:
     name: ${{ matrix.distro }} package resolution (container)
