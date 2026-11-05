@@ -8,8 +8,8 @@
 | EndeavourOS | pacman | Rolling, x86_64 | Inherits the Arch package profile; not independently covered by the current package-plan CI matrix. |
 | CachyOS | pacman | Rolling, x86_64 | Inherits the Arch package profile; not independently covered by the current package-plan CI matrix. |
 | Fedora | DNF5 | Fedora 44 and 45, x86_64 | Compatible Hyprland >= 0.55 must already exist; no COPR is enabled. Fedora 45 has a separate release gate and does not assume a stable tuned-ppd candidate. |
-| Debian | APT | Debian 13 (trixie), x86_64 | Installer can add official trixie-backports with confirmation; only Quickshell and Hyprland are suite-targeted. |
-| Ubuntu | APT | Ubuntu 26.10 (Stonking Stingray), x86_64 | Installer can enable official Universe with confirmation. |
+| Debian | APT | Debian 13 (trixie), x86_64 | Official trixie-backports (main) must already be configured; only Quickshell and Hyprland are suite-targeted. |
+| Ubuntu | APT | Ubuntu 26.10 (Stonking Stingray), x86_64 | Official Universe must already be enabled for release, updates, and security. |
 
 The installer requires a mutable systemd desktop and x86_64. It detects /etc/os-release by exact ID, VERSION_ID, and (where applicable) VERSION_CODENAME. ID_LIKE is informational only and never enables an unsupported derivative.
 
@@ -51,7 +51,7 @@ The complete checkout is required because the installer deploys the existing sek
 
 ## Package-source policy
 
-The installer may provision only the official Debian 13 trixie-backports and Ubuntu 26.10 Universe sources required by their profiles, using the distribution archive keyrings and explicit confirmation. It does not add AUR helpers, COPR repositories, PPAs, external RPM/DEB sources, or arbitrary mirrors. Consent flags do not whitelist arbitrary sources. Fedora still requires a compatible Hyprland from a source the user independently trusts; no COPR is enabled.
+APT source configuration is administrator-managed and read-only. Debian 13 must already have official trixie-backports (main), and Ubuntu 26.10 must already have official Universe enabled for release, updates, and security. Missing or mismatched sources cause a fail-closed diagnostic; no consent flag can authorize repository changes. The installer does not add AUR helpers, COPR repositories, PPAs, external RPM/DEB sources, or arbitrary mirrors. Fedora still requires a compatible Hyprland from a source the user independently trusts; no COPR is enabled.
 
 The installer does not alter GPU drivers, kernel modules, Secure Boot, global portal defaults, desktop session environment, or unrelated Quickshell instances. It never kills every qs process.
 

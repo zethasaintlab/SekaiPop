@@ -11,8 +11,8 @@ This document defines the manual acceptance boundary for SekaiPop's universal in
 | Fedora 44 | x86_64, mutable, systemd | Existing trusted Hyprland >= 0.55 |
 | Fedora 45 | x86_64, mutable, systemd | Existing trusted Hyprland >= 0.55 |
 | Arch Linux | x86_64, rolling, systemd | Normal synchronized repositories; stale DB requires explicit full-upgrade authorization |
-| Debian 13 | x86_64, trixie, systemd | System Debian archive keyring available; installer may bootstrap official trixie-backports after confirmation |
-| Ubuntu 26.10 | x86_64, systemd | System Ubuntu archive keyring available; installer may enable official Universe after confirmation |
+| Debian 13 | x86_64, trixie, systemd | Official trixie-backports (main) already configured with the system Debian archive keyring |
+| Ubuntu 26.10 | x86_64, systemd | Official Universe already enabled for release, updates, and security |
 | EndeavourOS / CachyOS | x86_64, systemd | Arch-compatible package profile; additional native validation required |
 
 Kali, openSUSE, Fedora Atomic/ostree, unsupported derivatives, and non-x86_64 architectures must be rejected. Fedora derivatives are not implicitly supported.
@@ -70,7 +70,7 @@ grep -RhsE '^(deb |URIs:|Suites:|Components:)' /etc/apt/sources.list /etc/apt/so
 apt-cache policy quickshell hyprland qt6-base-dev qt6-declarative-dev
 ```
 
-Record whether official trixie-backports is already configured. If it is missing, the installer may create its dedicated official Deb822 source after confirmation. Verify that the resulting URI is `https://deb.debian.org/debian`, the archive keyring is the system Debian keyring, and existing source files remain unchanged.
+Record whether official trixie-backports is already configured. If it is missing, stop the test and configure it manually before running SekaiPop. Example Deb822 entry (create it yourself as `/etc/apt/sources.list.d/debian-backports.sources`):\n\n```text\nTypes: deb\nURIs: https://deb.debian.org/debian\nSuites: trixie-backports\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n```\n\nThen run `sudo apt update`. Verify the source is enabled and official before continuing. SekaiPop must not create or modify this file.
 
 On Ubuntu 26.10:
 
@@ -79,7 +79,7 @@ grep -RhsE '^(deb |URIs:|Suites:|Components:)' /etc/apt/sources.list /etc/apt/so
 apt-cache policy quickshell hyprland qt6-base-dev qt6-declarative-dev
 ```
 
-Record whether official Universe is already enabled. If it is missing, the installer may create dedicated official Deb822 entries for the release, updates, and security archives after confirmation. Verify canonical Ubuntu archive URIs, the system Ubuntu archive keyring, and preservation of existing source files.
+Record whether official Universe is already enabled for the release, updates, and security suites. If it is missing or incomplete, stop the test, enable Universe using Ubuntu's supported repository-management tool (for example, `sudo add-apt-repository universe` where available), then run `sudo apt update`. Reinspect the active source configuration and verify that all three suites expose Universe through official Ubuntu archive URIs. SekaiPop must not create or modify source files.
 
 ## 3. Read-only detection and package planning
 
@@ -95,7 +95,7 @@ Run:
 Expected:
 - Exact distribution/release detection; no `ID_LIKE` fallback.
 - Unsupported releases and excluded distributions fail closed.
-- Read-only `--plan` and `--check` do not add repositories. They report the official APT bootstrap that would be required; actual installation may add only the allowlisted official Debian/Ubuntu sources after confirmation.
+- Read-only `--plan` and `--check` do not add repositories. They report missing required official APT sources. Actual installation fails closed until Debian backports or Ubuntu Universe is configured manually.
 - No COPR, PPA, AUR helper, third-party repository, unverified package source, or unpinned source build is enabled.
 - Existing trusted Hyprland >= 0.55 satisfies the compositor requirement; a missing or incompatible compositor is reported rather than silently replaced.
 - Qt 6.7 or newer is required.
@@ -128,7 +128,7 @@ Repeat in separate snapshots with:
 
 Expected:
 - Native package manager resolves the declared package candidates.
-- APT/DNF metadata is refreshed before candidate resolution when requested. Debian/Ubuntu may receive only the allowlisted official APT source entries after explicit confirmation; existing source files are not rewritten. If metadata refresh fails, only newly created source files that remain unchanged are rolled back.
+- APT/DNF metadata is refreshed before candidate resolution when requested. SekaiPop never edits APT sources; Debian backports and Ubuntu Universe must already be configured. If metadata refresh fails, the installer stops without changing APT source configuration.
 - Existing user settings and custom data are preserved.
 - The persistent `~/.local/state/sekaipop` directory is not replaced as part of Quickshell deployment.
 - Package transactions are not falsely described as rolled back if deployment later fails.

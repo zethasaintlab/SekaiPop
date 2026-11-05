@@ -2,12 +2,12 @@
 
 Audit snapshot: 2026-11-05. This document records verified upstream constraints for the next provisioning milestone. It is not a claim that source provisioning is already implemented.
 
-## Current automated repository bootstrap
+## APT repository policy (read-only)
 
-- Debian 13: the installer can create a dedicated Deb822 entry for the official `trixie-backports` archive when missing. Quickshell and Hyprland remain individually suite-targeted.
-- Ubuntu 26.10: the installer can create a dedicated Deb822 entry for the official Universe component, release updates, and security updates when missing. It includes official `main` only if no existing main component is configured.
-- Both paths use the distribution archive keyring, require confirmation, refresh metadata before candidate resolution, and roll back only newly created source files that remain byte-for-byte unchanged if metadata refresh fails.
-- No third-party repository, COPR, PPA, AUR helper, or external package signing key is enabled.
+- Debian 13: official `trixie-backports` (main) must already be configured. Quickshell and Hyprland remain individually suite-targeted.
+- Ubuntu 26.10: official Universe must already be enabled for the release, updates, and security suites.
+- The installer parses legacy `.list` and Deb822 `.sources` files, including folded continuation fields and disabled stanzas, to verify the official source identity. It never creates, edits, or removes APT source files; missing required sources fail closed with manual instructions.
+- APT metadata refresh operates only against the administrator's already-configured sources. No third-party repository, COPR, PPA, AUR helper, or external package signing key is enabled.
 
 ## Fedora Hyprland feasibility
 

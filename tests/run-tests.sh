@@ -85,7 +85,7 @@ if bash "$ROOT/tests/test-installer-lock.sh"; then pass 'Installer concurrency l
 if bash "$ROOT/tests/test-shader-plan.sh"; then pass 'Qt Shader Tools planning fixtures'; else fail 'Qt Shader Tools planning fixtures'; fi
 if bash "$ROOT/tests/test-power-profile-api.sh"; then pass 'PowerProfiles D-Bus API fixtures'; else fail 'PowerProfiles D-Bus API fixtures'; fi
 if bash "$ROOT/tests/test-hyprland-touchpad-key.sh"; then pass 'Hyprland Lua touchpad key fixtures'; else fail 'Hyprland Lua touchpad key fixtures'; fi
-if bash "$ROOT/tests/test-apt-repository-bootstrap.sh"; then pass 'Official APT repository bootstrap fixtures'; else fail 'Official APT repository bootstrap fixtures'; fi
+if bash "$ROOT/tests/test-apt-repository-bootstrap.sh"; then pass 'Read-only official APT repository validation fixtures'; else fail 'Read-only official APT repository validation fixtures'; fi
 if bash "$ROOT/tests/test-dependency-failure-gate.sh"; then pass 'Dependency failure blocks all deployment modes'; else fail 'Dependency failure blocks all deployment modes'; fi
 if bash "$ROOT/tests/test-package-install-failure.sh"; then pass 'Production planner propagates package transaction failure'; else fail 'Production planner propagates package transaction failure'; fi
 if bash "$ROOT/tests/test-dependency-only-runtime-gate.sh"; then pass 'Dependency-only mode gates desktop integration on runtime verification'; else fail 'Dependency-only mode gates desktop integration on runtime verification'; fi

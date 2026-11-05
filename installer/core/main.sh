@@ -103,7 +103,7 @@ sp_validate_preflight() {
 }
 sp_plan_and_install_dependencies() {
     sp_load_package_manager
-    if (( SP_DRY_RUN )); then sp_apt_bootstrap_plan; else sp_apt_bootstrap_official_sources; fi
+    if (( SP_DRY_RUN )); then sp_apt_report_required_sources; else sp_apt_validate_required_sources; fi
     if (( SP_DRY_RUN )); then
         sp_load_distro_profile
         if [[ "$SP_BACKEND" == arch ]] && ! sp_pacman_sync_db_fresh; then
@@ -122,18 +122,12 @@ sp_plan_and_install_dependencies() {
     if [[ "$SP_BACKEND" == dnf5 || "$SP_BACKEND" == apt ]]; then
         if (( ! SP_NO_UPDATE )); then
             sp_confirm "Refresh configured native repository metadata for $SP_DISTRO_NAME?" || {
-                sp_apt_bootstrap_rollback
                 sp_die 'Metadata refresh declined. Use --no-update only when all required official sources are already configured.'
             }
             if ! pm_refresh_metadata; then
-                sp_apt_bootstrap_rollback
-                sp_die 'Native repository metadata refresh failed. Newly added SekaiPop APT sources were rolled back.'
+                sp_die 'Native repository metadata refresh failed. No APT source configuration was changed by SekaiPop.'
             fi
         else
-            if (("${#SP_APT_BOOTSTRAP_CREATED[@]}")); then
-                sp_apt_bootstrap_rollback
-                sp_die 'New official APT sources require a metadata refresh; --no-update cannot be used for this first-time bootstrap.'
-            fi
             sp_info 'Repository metadata refresh skipped (--no-update).'
         fi
     elif [[ "$SP_BACKEND" == arch ]]; then

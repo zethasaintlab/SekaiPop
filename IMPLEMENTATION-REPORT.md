@@ -20,8 +20,8 @@
 | EndeavourOS | Rolling, x86_64 | Arch profile. |
 | CachyOS | Rolling, x86_64 | Arch profile. |
 | Fedora | 44 and 45, x86_64 | DNF5; compatible Hyprland must already exist; no COPR is enabled. |
-| Debian | 13 trixie, x86_64 | Installer can add official trixie-backports after confirmation; Quickshell/Hyprland are individually suite-targeted. |
-| Ubuntu | 26.10 stonking, x86_64 | Installer can enable official Universe after confirmation. |
+| Debian | 13 trixie, x86_64 | Official trixie-backports (main) must already be configured; Quickshell/Hyprland are individually suite-targeted. |
+| Ubuntu | 26.10 stonking, x86_64 | Official Universe must already be enabled for release, updates, and security. |
 
 openSUSE, Gentoo, NixOS, Kali, Fedora Atomic/ostree variants, unverified derivatives, and non-x86_64 architectures are excluded.
 
