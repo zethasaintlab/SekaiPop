@@ -68,7 +68,7 @@ done
 # availability is not fully represented by the compositor pkg-config list.
 packages=(
     cmake ninja-build gcc-c++ meson pkgconf-pkg-config python3 cpio
-    make readline-devel ncurses-devel git curl tar gzip xz binutils
+    make readline-devel ncurses-devel libffi-devel git curl tar gzip xz binutils
     xorg-x11-server-Xwayland lua5.5-devel lua-devel
 )
 for package in "${packages[@]}"; do
