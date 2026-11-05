@@ -2,11 +2,23 @@
 set -Eeuo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+TMP="$(mktemp -d)"
+trap 'rm -rf -- "$TMP"' EXIT
 export SEKAIPOP_INSTALLER_ROOT="$ROOT"
-source "$ROOT/installer/core/main.sh"
 
-# Exercise the production dependency planner while replacing only its external
-# package-manager/repository boundary with deterministic failure fixtures.
+cat > "$TMP/apt-get" <<'APT_GET'
+#!/usr/bin/env bash
+exit "${APT_GET_STATUS:-0}"
+APT_GET
+chmod +x "$TMP/apt-get"
+PATH="$TMP:$PATH"
+
+source "$ROOT/installer/core/main.sh"
+source "$ROOT/installer/package-managers/apt.sh"
+sp_sudo() { "$@"; }
+
+# Exercise the production dependency planner and APT backend. Only repository
+# discovery and package-state queries are deterministic test fixtures.
 SP_DRY_RUN=0
 SP_BACKEND=apt
 SP_NO_UPDATE=1
@@ -20,7 +32,7 @@ SP_MISSING_OPTIONAL=()
 SP_INSTALL_PKGS=()
 SP_INSTALL_CORE=()
 scenario=transaction-failure
-install_status=42
+APT_GET_STATUS=42
 plan_calls=0
 
 sp_load_package_manager() { :; }
@@ -40,19 +52,18 @@ sp_build_package_plan() {
 }
 sp_print_package_plan() { :; }
 sp_confirm() { return 0; }
-pm_install() { return "$install_status"; }
 
 if sp_plan_and_install_dependencies; then
-    printf '[FAIL] production planner swallowed native package transaction failure\n' >&2
+    printf '[FAIL] production planner swallowed native APT transaction failure\n' >&2
     exit 1
 fi
-printf '[PASS] production planner propagates native package transaction failure\n'
+printf '[PASS] production planner propagates native APT transaction failure\n'
 
 scenario=post-install-missing
-install_status=0
+APT_GET_STATUS=0
 plan_calls=0
 if sp_plan_and_install_dependencies; then
-    printf '[FAIL] production planner accepted a successful transaction with missing mandatory requirements\n' >&2
+    printf '[FAIL] production planner accepted a successful APT transaction with missing mandatory requirements\n' >&2
     exit 1
 fi
-printf '[PASS] production planner rejects unmet mandatory requirements after a successful transaction\n'
+printf '[PASS] production planner rejects unmet mandatory requirements after a successful APT transaction\n'
