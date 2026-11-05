@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+TMP="$(mktemp -d)"
+trap 'rm -rf -- "$TMP"' EXIT
+
+export SEKAIPOP_INSTALLER_ROOT="$ROOT"
+export SP_APT_SOURCES_DIR="$TMP/sources"
+export SP_APT_MAIN_SOURCES="$TMP/sources.list"
+mkdir -p "$SP_APT_SOURCES_DIR"
+source "$ROOT/installer/core/common.sh"
+source "$ROOT/installer/provisioning/apt-repositories.sh"
+
+sp_sudo() { "$@"; }
+sp_confirm() { return 0; }
+fail() { printf '[FAIL] %s\n' "$*" >&2; exit 1; }
+pass() { printf '[PASS] %s\n' "$*"; }
+
+SP_BACKEND=apt SP_DISTRO_ID=debian SP_DISTRO_VERSION=13 SP_DISTRO_CODENAME=trixie
+sp_apt_bootstrap_official_sources
+debian_source="$SP_APT_SOURCES_DIR/sekaipop-trixie-backports.sources"
+[[ -f "$debian_source" ]] || fail 'Debian backports source was not created'
+grep -Fq 'URIs: https://deb.debian.org/debian' "$debian_source" || fail 'Debian source does not use the official archive'
+grep -Fq 'Suites: trixie-backports' "$debian_source" || fail 'Debian backports suite is incorrect'
+grep -Fq 'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg' "$debian_source" || fail 'Debian archive keyring is not pinned'
+[[ "${#SP_APT_BOOTSTRAP_CREATED[@]}" == 1 ]] || fail 'New Debian source was not tracked for rollback'
+pass 'Debian 13 official backports source is provisioned and tracked'
+
+sp_apt_bootstrap_official_sources
+[[ "${#SP_APT_BOOTSTRAP_CREATED[@]}" == 0 ]] || fail 'Idempotent Debian bootstrap incorrectly marked existing source as newly created'
+pass 'Debian backports bootstrap is idempotent'
+
+sp_apt_bootstrap_rollback
+[[ ! -e "$debian_source" ]] || fail 'Rollback did not remove the installer-managed Debian source'
+pass 'APT source rollback removes only newly managed source'
+
+printf '%s\n' '# trixie-backports is mentioned only in this comment' > "$SP_APT_MAIN_SOURCES"
+if sp_apt_sources_contain trixie-backports; then fail 'Comment was incorrectly treated as an enabled APT suite'; fi
+pass 'APT source detection ignores commented examples'
+
+SP_DISTRO_ID=ubuntu SP_DISTRO_VERSION=26.10 SP_DISTRO_CODENAME=stonking
+sp_apt_bootstrap_official_sources
+ubuntu_source="$SP_APT_SOURCES_DIR/sekaipop-universe.sources"
+[[ -f "$ubuntu_source" ]] || fail 'Ubuntu Universe source was not created'
+grep -Fq 'URIs: https://archive.ubuntu.com/ubuntu' "$ubuntu_source" || fail 'Ubuntu source does not use the official archive'
+grep -Fq 'Suites: stonking stonking-updates' "$ubuntu_source" || fail 'Ubuntu release/update suites are incorrect'
+grep -Fq 'URIs: https://security.ubuntu.com/ubuntu' "$ubuntu_source" || fail 'Ubuntu security archive is missing'
+grep -Fq 'Suites: stonking-security' "$ubuntu_source" || fail 'Ubuntu security suite is incorrect'
+grep -Fq 'Components: universe' "$ubuntu_source" || fail 'Ubuntu Universe component is missing'
+grep -Fq 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' "$ubuntu_source" || fail 'Ubuntu archive keyring is not pinned'
+pass 'Ubuntu 26.10 Universe source includes official release and security archives'
+
+sp_apt_bootstrap_rollback
+[[ ! -e "$ubuntu_source" ]] || fail 'Rollback did not remove the installer-managed Ubuntu source'
+pass 'Ubuntu source rollback succeeds'
+
+printf 'APT repository bootstrap assertions: all passed\n'
