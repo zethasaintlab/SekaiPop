@@ -38,7 +38,7 @@ Nix is a viable **opt-in experimental provider candidate**, not an approved defa
 
 A source-level CMake audit now exists in [PROVISIONING-ROADMAP.md](PROVISIONING-ROADMAP.md#version-coherent-cmake-closure-audit) for a concrete candidate pair: Hyprland v0.57.1, xdg-desktop-portal-hyprland v1.5.0, and hyprtoolkit v0.6.0. It records exact commits, the CMake dependency floors, pinned glaze FetchContent, udis86/sdbus-cpp fallbacks, and the portal's stale hyprland-protocols submodule (0.7.1 despite a >= 0.8.0 requirement).
 
-This matters because the generic current upstream installation guide is not a version lockfile. In the exact CMake files inspected for that candidate pair, hyprwire is not declared as a dependency; hyprtoolkit is required by the portal share-picker. Do not combine a generic current build order with arbitrary older component pins. The detailed audit is still incomplete and does not approve or implement a Fedora provider.
+This matters because the generic current upstream installation guide is not a version lockfile. The first CMake audit missed a nested target dependency: Hyprland v0.57.1's `hyprctl/CMakeLists.txt` requires `hyprwire` and invokes `hyprwire-scanner`. The pinned Hyprland `flake.lock` records Hyprwire commit `a546e42d45e161682f729ebf52375bd4800d7041` (version 0.3.1). The Fedora offline smoke manifest now acquires that exact commit and builds it against pinned hyprutils before configuring Hyprland. Hyprtoolkit remains required by the portal share-picker. Do not combine a generic current build order with arbitrary older component pins. The detailed audit is still incomplete and does not approve or implement a Fedora provider.
 
 ## Source-build alternative
 
