@@ -13,17 +13,32 @@ sp_apt_sources_has_suite_component() {
         [[ -f "$file" && ! -L "$file" ]] || continue
         if [[ "$file" == *.sources ]]; then
             awk -v wanted_suite="$suite" -v wanted_component="$component" -v wanted_uris="$wanted_uris" '
-                BEGIN { RS = ""; FS = "\n"; expected_count = split(wanted_uris, expected, /[[:space:]]+/) }
+                function normalize_uri(uri) { sub(/\\/+$/, "", uri); return uri }
+                function has_token(list, wanted, count, tokens, i) {
+                    count = split(list, tokens, /[[:space:]]+/)
+                    for (i = 1; i <= count; i++) if (tokens[i] == wanted) return 1
+                    return 0
+                }
+                BEGIN {
+                    RS = ""; FS = "\n"
+                    expected_count = split(wanted_uris, expected, /[[:space:]]+/)
+                    for (j = 1; j <= expected_count; j++) expected[j] = normalize_uri(expected[j])
+                }
                 {
-                    suites = components = uris = ""; enabled = "yes"; field = ""
+                    suites = components = uris = types = ""
+                    enabled = "yes"; trusted = "no"; allow_insecure = "no"; allow_weak = "no"; field = ""
                     for (i = 1; i <= NF; i++) {
-                        line = $i; sub(/\r$/, "", line)
+                        line = $i; sub(/\\r$/, "", line)
                         if (line ~ /^[[:space:]]/) {
                             value = line; sub(/^[[:space:]]+/, "", value)
                             if (field == "suites") suites = suites " " value
                             else if (field == "components") components = components " " value
                             else if (field == "uris") uris = uris " " value
+                            else if (field == "types") types = types " " value
                             else if (field == "enabled") enabled = tolower(value)
+                            else if (field == "trusted") trusted = tolower(value)
+                            else if (field == "allow-insecure") allow_insecure = tolower(value)
+                            else if (field == "allow-weak") allow_weak = tolower(value)
                             continue
                         }
                         colon = index(line, ":")
@@ -33,12 +48,20 @@ sp_apt_sources_has_suite_component() {
                         if (field == "suites") suites = value
                         else if (field == "components") components = value
                         else if (field == "uris") uris = value
+                        else if (field == "types") types = value
                         else if (field == "enabled") enabled = tolower(value)
+                        else if (field == "trusted") trusted = tolower(value)
+                        else if (field == "allow-insecure") allow_insecure = tolower(value)
+                        else if (field == "allow-weak") allow_weak = tolower(value)
                     }
-                    if (enabled == "no") next
+                    if (enabled == "no" || !has_token(types, "deb") ||
+                        trusted == "yes" || allow_insecure == "yes" || allow_weak == "yes") next
                     if (wanted_uris != "") {
                         nu = split(uris, uri_tokens, /[[:space:]]+/); uri_found = 0
-                        for (i = 1; i <= nu; i++) for (j = 1; j <= expected_count; j++) if (uri_tokens[i] == expected[j]) uri_found = 1
+                        for (i = 1; i <= nu; i++) {
+                            uri = normalize_uri(uri_tokens[i])
+                            for (j = 1; j <= expected_count; j++) if (uri == expected[j]) uri_found = 1
+                        }
                         if (!uri_found) next
                     }
                     ns = split(suites, suite_tokens, /[[:space:]]+/)
@@ -52,12 +75,21 @@ sp_apt_sources_has_suite_component() {
             ' "$file" && return 0
         else
             awk -v wanted_suite="$suite" -v wanted_component="$component" -v wanted_uris="$wanted_uris" '
-                BEGIN { expected_count = split(wanted_uris, expected, /[[:space:]]+/) }
+                function normalize_uri(uri) { sub(/\\/+$/, "", uri); return uri }
+                BEGIN {
+                    expected_count = split(wanted_uris, expected, /[[:space:]]+/)
+                    for (j = 1; j <= expected_count; j++) expected[j] = normalize_uri(expected[j])
+                }
                 /^[[:space:]]*#/ { next }
-                $1 == "deb" || $1 == "deb-src" {
-                    i = 2
-                    if ($i ~ /^\[/) { while (i <= NF && $i !~ /\]$/) i++; i++ }
-                    source_uri = $(i); source_suite = $(i + 1)
+                $1 == "deb" {
+                    i = 2; options = ""
+                    if ($i ~ /^\\[/) {
+                        while (i <= NF && $i !~ /\\]$/) { options = options " " $i; i++ }
+                        options = options " " $i
+                        i++
+                    }
+                    if (tolower(options) ~ /(^|[[:space:]])(trusted|allow-insecure|allow-weak)=yes([[:space:]]|$)/) next
+                    source_uri = normalize_uri($(i)); source_suite = $(i + 1)
                     uri_found = (wanted_uris == "")
                     for (j = 1; j <= expected_count; j++) if (source_uri == expected[j]) uri_found = 1
                     if (uri_found && source_suite == wanted_suite) for (j = i + 2; j <= NF; j++) if ($j == wanted_component) found = 1

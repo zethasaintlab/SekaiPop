@@ -34,6 +34,31 @@ SOURCE
 sp_apt_validate_required_sources
 pass 'Deb822 folded continuation fields are parsed'
 cat > "$SP_APT_SOURCES_DIR/debian.sources" <<'SOURCE'
+Types: deb-src
+URIs: https://deb.debian.org/debian
+Suites: trixie-backports
+Components: main
+SOURCE
+expect_rejected debian 13 trixie
+pass 'Deb822 source-only deb-src stanzas do not satisfy binary package repositories'
+cat > "$SP_APT_SOURCES_DIR/debian.sources" <<'SOURCE'
+Types: deb deb-src
+URIs: https://deb.debian.org/debian/
+Suites: trixie-backports
+Components: main
+SOURCE
+sp_apt_validate_required_sources
+pass 'Deb822 mixed deb/deb-src stanzas and canonical trailing-slash URIs are accepted'
+cat > "$SP_APT_SOURCES_DIR/debian.sources" <<'SOURCE'
+Types: deb
+URIs: https://deb.debian.org/debian
+Suites: trixie-backports
+Components: main
+Trusted: yes
+SOURCE
+expect_rejected debian 13 trixie
+pass 'Deb822 trusted=yes sources cannot satisfy official repository validation'
+cat > "$SP_APT_SOURCES_DIR/debian.sources" <<'SOURCE'
 Types: deb
 URIs: https://mirror.example.invalid/debian
 Suites: trixie-backports
@@ -50,6 +75,21 @@ Enabled: no
 SOURCE
 expect_rejected debian 13 trixie
 pass 'Disabled Debian Deb822 stanzas are rejected'
+cat > "$SP_APT_SOURCES_DIR/legacy.list" <<'SOURCE'
+deb-src https://deb.debian.org/debian trixie-backports main
+SOURCE
+expect_rejected debian 13 trixie
+pass 'Legacy deb-src entries do not satisfy binary package repositories'
+cat > "$SP_APT_SOURCES_DIR/legacy.list" <<'SOURCE'
+deb [trusted=yes] https://deb.debian.org/debian trixie-backports main
+SOURCE
+expect_rejected debian 13 trixie
+pass 'Legacy trusted=yes sources cannot satisfy official repository validation'
+cat > "$SP_APT_SOURCES_DIR/legacy.list" <<'SOURCE'
+deb https://deb.debian.org/debian/ trixie-backports main
+SOURCE
+sp_apt_validate_required_sources
+pass 'Legacy official archive URI trailing slashes are normalized'
 cat > "$SP_APT_SOURCES_DIR/legacy.list" <<'SOURCE'
 # trixie-backports main
 deb [arch=amd64 signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://deb.debian.org/debian trixie-backports main contrib
