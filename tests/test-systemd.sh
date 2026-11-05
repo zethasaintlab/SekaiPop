@@ -88,13 +88,13 @@ assert_case() {
     fi
 }
 
-assert_case 'Disabled inactive system service is enabled and started' system disabled inactive 
+assert_case 'Disabled inactive system service is enabled and started' system disabled inactive $'system enable NetworkManager.service\nsystem start NetworkManager.service'
 assert_case 'Enabled inactive system service is started without re-enabling' system enabled inactive 'system start NetworkManager.service'
 assert_case 'Enabled-runtime inactive system service is started' system enabled-runtime inactive 'system start NetworkManager.service'
 assert_case 'Static inactive system service is started without enable' system static inactive 'system start NetworkManager.service'
 assert_case 'Active disabled system service is left unchanged' system disabled active ''
 assert_case 'Masked system service is left unchanged' system masked inactive ''
-assert_case 'Disabled inactive user service is enabled and started' user disabled inactive 
+assert_case 'Disabled inactive user service is enabled and started' user disabled inactive $'user enable pipewire.service\nuser start pipewire.service'
 assert_case 'Enabled inactive user service is started without re-enabling' user enabled inactive 'user start pipewire.service'
 
 printf '\nSystemd service assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
@@ -142,7 +142,7 @@ export MOCK_SCOPE=system MOCK_SERVICE=NetworkManager.service MOCK_STATE=disabled
 sp_service_transaction_begin
 sp_reconcile_service system NetworkManager.service
 sp_service_transaction_commit
-[[ "$(<"$MOCK_LOG")" ==  ]] ||
+[[ "$(<"$MOCK_LOG")" == $'system enable NetworkManager.service\nsystem start NetworkManager.service' ]] ||
     { printf '[FAIL] Committed service transaction must not immediately roll back\n' >&2; exit 1; }
 printf '[PASS] Successful transaction commits service changes without reverting them\n'
 
