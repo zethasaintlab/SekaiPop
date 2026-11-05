@@ -87,5 +87,6 @@ if bash "$ROOT/tests/test-power-profile-api.sh"; then pass 'PowerProfiles D-Bus 
 if bash "$ROOT/tests/test-hyprland-touchpad-key.sh"; then pass 'Hyprland Lua touchpad key fixtures'; else fail 'Hyprland Lua touchpad key fixtures'; fi
 if bash "$ROOT/tests/test-apt-repository-bootstrap.sh"; then pass 'Official APT repository bootstrap fixtures'; else fail 'Official APT repository bootstrap fixtures'; fi
 if bash "$ROOT/tests/test-dependency-failure-gate.sh"; then pass 'Dependency failure blocks all deployment modes'; else fail 'Dependency failure blocks all deployment modes'; fi
+if bash "$ROOT/tests/test-package-install-failure.sh"; then pass 'Production planner propagates package transaction failure'; else fail 'Production planner propagates package transaction failure'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
