@@ -107,6 +107,12 @@ for module in hyprland-protocols hyprwayland-scanner hyprutils hyprgraphics hypr
 done
 
 printf '\nELF runtime dependency validation:\n'
+for binary in "$PREFIX/bin/Hyprland" "$PREFIX/libexec/xdg-desktop-portal-hyprland"; do
+    readelf -d "$binary" | grep -Fq "$PREFIX/lib64" || {
+        printf 'Missing private-prefix RUNPATH/RPATH in %s\\n' "$binary" >&2
+        exit 1
+    }
+done
 binaries=(
     "$PREFIX/bin/Hyprland"
     "$PREFIX/bin/start-hyprland"
@@ -115,7 +121,7 @@ binaries=(
 )
 for binary in "${binaries[@]}"; do
     [[ -x "$binary" ]] || { printf 'Missing expected executable: %s\n' "$binary" >&2; exit 1; }
-    output="$(ldd "$binary" 2>&1)"
+    output="$(env -u LD_LIBRARY_PATH ldd "$binary" 2>&1)"
     if grep -Fq 'not found' <<< "$output"; then
         printf 'Unresolved ELF dependency in %s:\n%s\n' "$binary" "$output" >&2
         exit 1
