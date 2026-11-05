@@ -57,7 +57,7 @@ pass 'Fedora-specific provider wrapper remains distro-scoped'
 
 SP_DISTRO_ID=debian
 OWNER_REPLY='b false'
-declare -gA DISTRO_PACKAGE_MAP=([power-profiles-daemon]='power-profiles-daemon')
+declare -gA DISTRO_PACKAGE_MAP=(['power-profiles-daemon']='power-profiles-daemon')
 SP_PROFILE_REQS=(power-profiles-daemon)
 sp_resolve_package_spec() { printf '%s' "$1"; }
 pm_query_installed() { return 1; }
