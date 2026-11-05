@@ -120,7 +120,7 @@ The portal's in-tree `hyprland-share-picker` has a separate CMake target and req
 
 ### Version-coherence correction
 
-The current upstream installation guide's build-order list is a guide to the current upstream tree, not a lockfile for every older release. In the exact Hyprland v0.57.1 + portal v1.5.0 + hyprtoolkit v0.6.0 source set audited above, the inspected top-level CMake files do not declare hyprwire as a build dependency. Do not add hyprwire merely because it appears in a newer generic build-order list; include it only if the exact selected source manifests or transitive CMake files require it. Conversely, do not omit hyprtoolkit: portal v1.5.0's share-picker target requires it explicitly.
+The current upstream installation guide's build-order list is a guide to the current upstream tree, not a lockfile for every older release. The initial audit missed a nested dependency: Hyprland v0.57.1's `hyprctl/CMakeLists.txt` explicitly requires `hyprwire` and invokes `hyprwire-scanner`. The pinned Hyprland `flake.lock` independently records Hyprwire commit `a546e42d45e161682f729ebf52375bd4800d7041` (version 0.3.1), so that exact immutable source is now included in the smoke manifest and built before Hyprland. The portal v1.5.0 share-picker separately requires hyprtoolkit; it remains in the closure.
 
 ### Remaining build audit gates
 
