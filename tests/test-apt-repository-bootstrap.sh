@@ -85,6 +85,20 @@ deb [trusted=yes] https://deb.debian.org/debian trixie-backports main
 SOURCE
 expect_rejected debian 13 trixie
 pass 'Legacy trusted=yes sources cannot satisfy official repository validation'
+cat > "$SP_APT_SOURCES_DIR/debian.sources" <<'SOURCE'
+Types: deb
+URIs: https://deb.debian.org/debian
+Suites: trixie-backports
+Components: main
+Allow-Insecure: yes
+SOURCE
+expect_rejected debian 13 trixie
+pass 'Deb822 Allow-Insecure=yes sources cannot satisfy official repository validation'
+cat > "$SP_APT_SOURCES_DIR/legacy.list" <<'SOURCE'
+deb [allow-weak=yes] https://deb.debian.org/debian trixie-backports main
+SOURCE
+expect_rejected debian 13 trixie
+pass 'Legacy allow-weak=yes sources cannot satisfy official repository validation'
 cat > "$SP_APT_SOURCES_DIR/legacy.list" <<'SOURCE'
 deb https://deb.debian.org/debian/ trixie-backports main
 SOURCE
