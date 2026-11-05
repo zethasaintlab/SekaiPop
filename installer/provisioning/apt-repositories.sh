@@ -13,7 +13,7 @@ sp_apt_sources_has_suite_component() {
         [[ -f "$file" && ! -L "$file" ]] || continue
         if [[ "$file" == *.sources ]]; then
             awk -v wanted_suite="$suite" -v wanted_component="$component" -v wanted_uris="$wanted_uris" '
-                function normalize_uri(uri) { sub(/\\/+$/, "", uri); return uri }
+                function normalize_uri(uri) { sub(/\/+$/, "", uri); return uri }
                 function has_token(list, wanted, count, tokens, i) {
                     count = split(list, tokens, /[[:space:]]+/)
                     for (i = 1; i <= count; i++) if (tokens[i] == wanted) return 1
@@ -28,7 +28,7 @@ sp_apt_sources_has_suite_component() {
                     suites = components = uris = types = ""
                     enabled = "yes"; trusted = "no"; allow_insecure = "no"; allow_weak = "no"; field = ""
                     for (i = 1; i <= NF; i++) {
-                        line = $i; sub(/\\r$/, "", line)
+                        line = $i; sub(/\r$/, "", line)
                         if (line ~ /^[[:space:]]/) {
                             value = line; sub(/^[[:space:]]+/, "", value)
                             if (field == "suites") suites = suites " " value
@@ -75,7 +75,7 @@ sp_apt_sources_has_suite_component() {
             ' "$file" && return 0
         else
             awk -v wanted_suite="$suite" -v wanted_component="$component" -v wanted_uris="$wanted_uris" '
-                function normalize_uri(uri) { sub(/\\/+$/, "", uri); return uri }
+                function normalize_uri(uri) { sub(/\/+$/, "", uri); return uri }
                 BEGIN {
                     expected_count = split(wanted_uris, expected, /[[:space:]]+/)
                     for (j = 1; j <= expected_count; j++) expected[j] = normalize_uri(expected[j])
@@ -83,8 +83,8 @@ sp_apt_sources_has_suite_component() {
                 /^[[:space:]]*#/ { next }
                 $1 == "deb" {
                     i = 2; options = ""
-                    if ($i ~ /^\\[/) {
-                        while (i <= NF && $i !~ /\\]$/) { options = options " " $i; i++ }
+                    if ($i ~ /^\[/) {
+                        while (i <= NF && $i !~ /\]$/) { options = options " " $i; i++ }
                         options = options " " $i
                         i++
                     }
