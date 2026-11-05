@@ -104,8 +104,8 @@ The multi-distro installer is designed for a **mutable, systemd-based x86_64 des
 | Distribution | Supported baseline | Package backend | Conditions |
 |---|---|---|---|
 | Arch Linux | Rolling | pacman | A stale sync database requires explicit <code>--system-upgrade</code> authorization for a full system upgrade. |
-| EndeavourOS | Rolling | pacman | Uses the Arch package profile. |
-| CachyOS | Rolling | pacman | Uses the Arch package profile. |
+| EndeavourOS | Rolling | pacman | Inherits the Arch package profile; not independently covered by package-plan CI. |
+| CachyOS | Rolling | pacman | Inherits the Arch package profile; not independently covered by package-plan CI. |
 | Fedora | 44 and 45 | DNF5 | Compatible Hyprland >= 0.55 must already be installed; no COPR is enabled. Fedora 45 has an exact release gate and does not assume a stable tuned-ppd candidate. |
 | Debian | 13 (trixie) | APT | Official <code>trixie-backports</code> must already be configured for Quickshell and Hyprland. |
 | Ubuntu | 26.10 (Stonking Stingray) | APT | Universe must already be enabled. |
