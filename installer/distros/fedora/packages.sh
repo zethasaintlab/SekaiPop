@@ -20,3 +20,9 @@ declare -Ag DISTRO_PACKAGE_MAP=(
     [python-aubio]='python3-aubio' [songrec]='' [mpvpaper]='' [nwg-displays]='nwg-displays'
     [hypridle]='hypridle' [nodejs]='nodejs' [pnpm]='pnpm'
 )
+
+# Fedora 45 currently exposes tuned-ppd in testing updates, not as a verified stable candidate.
+# Preserve an already-installed/active provider, but do not request an unverified package.
+if [[ "${SP_DISTRO_VERSION:-}" == 45 ]]; then
+    DISTRO_PACKAGE_MAP[power-profiles-daemon]=''
+fi
