@@ -137,7 +137,7 @@ sp_plan_and_install_dependencies() {
     sp_print_package_plan
     if (("${#SP_MISSING_CORE[@]}")); then
         sp_error 'Native configured repositories do not provide every mandatory requirement.'
-        if [[ "$SP_DISTRO_ID" == fedora ]]; then sp_error 'Fedora 44 official repositories do not provide the required Hyprland >= 0.55 baseline in this verified package set. Install a compatible compositor from a source you independently trust, then rerun; this installer will not enable a COPR. The Hyprland portal remains an optional desktop feature unless a trusted provider is already configured.'
+        if [[ "$SP_DISTRO_ID" == fedora ]]; then sp_error 'The verified Fedora official package profile does not provide the required Hyprland >= 0.55 baseline. Install a compatible compositor from a source you independently trust, then rerun; this installer will not enable a COPR. The Hyprland portal remains an optional desktop feature unless a trusted provider is already configured.'
         elif [[ "$SP_DISTRO_ID" == debian ]]; then sp_error 'Verify that official Debian 13 trixie-backports is already configured and that Quickshell/Hyprland candidates are visible; this installer will not edit APT sources.'; fi
         return 1
     fi
