@@ -240,6 +240,7 @@ if (
         command /usr/bin/cp "$@"
     }
     sp_confirm() { return 0; }
+    sp_die() { printf '[EXPECTED FAILURE] %s\n' "$1" >&2; exit "${2:-1}"; }
     sp_restore_latest "$SP_BACKUP_ROOT/source"
 ) > "$TMP/restore-copy-failure.log" 2>&1; then
     fail 'A failed recovery snapshot copy must abort restore'
@@ -251,7 +252,7 @@ pass 'Restore aborts before changing user configuration when the recovery snapsh
 
 # A malformed explicit snapshot must fail closed rather than silently restore nothing.
 mkdir -p "$SP_BACKUP_ROOT/malformed"
-if ( sp_confirm() { return 0; }; sp_restore_latest "$SP_BACKUP_ROOT/malformed" ) > "$TMP/malformed-snapshot.log" 2>&1; then
+if ( sp_confirm() { return 0; }; sp_die() { printf '[EXPECTED FAILURE] %s\n' "$1" >&2; exit "${2:-1}"; }; sp_restore_latest "$SP_BACKUP_ROOT/malformed" ) > "$TMP/malformed-snapshot.log" 2>&1; then
     fail 'An explicit snapshot without a manifest must be rejected'
 fi
 [[ "$(cat "$SP_QS_DEST/current.marker")" == current-shell ]] || fail 'Malformed snapshot cannot modify the current Quickshell tree'
