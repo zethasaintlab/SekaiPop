@@ -12,7 +12,7 @@ Record exact versions:
     rpm -q dnf5 qt6-qtbase qt6-qtdeclarative qt6-qtmultimedia quickshell
     Hyprland --version
     qs --version
-    qsb --version
+    rpm -q qt6-qtshadertools
 
 If qsb is not installed, that is expected on a fresh Qt < 6.12 system before the installer resolves the Shader Tools dependency.
 
