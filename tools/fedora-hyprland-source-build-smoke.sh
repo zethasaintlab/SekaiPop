@@ -92,6 +92,11 @@ git -C "$SOURCES/udis86" archive --format=tar HEAD | tar -x -C "$SOURCES/Hyprlan
 cmake_build xdg-desktop-portal-hyprland \
     -DSYSTEMD_SERVICES=ON
 
+# Hyprland v0.57.1's hyprctl/CMakeLists.txt requires hyprwire. The immutable
+# upstream flake.lock pin is built from the same hyprutils prefix and installs
+# both the library pkg-config module and hyprwire-scanner used by hyprctl.
+cmake_build hyprwire
+
 # Force the pinned local Glaze source and prohibit FetchContent network access.
 cmake_build Hyprland \
     -DUSE_TRACY=OFF \
