@@ -154,7 +154,7 @@ sp_plan_and_install_dependencies() {
     if (("${#SP_MISSING_CORE[@]}")); then
         sp_error 'Native configured repositories do not provide every mandatory requirement.'
         if [[ "$SP_DISTRO_ID" == fedora ]]; then sp_error 'The verified Fedora official package profile does not provide the required Hyprland >= 0.55 baseline. Install a compatible compositor from a source you independently trust, then rerun; this installer will not enable a COPR. The Hyprland portal remains an optional desktop feature unless a trusted provider is already configured.'
-        elif [[ "$SP_DISTRO_ID" == debian ]]; then sp_error 'Verify that official Debian 13 trixie-backports is already configured and that Quickshell/Hyprland candidates are visible; this installer will not edit APT sources.'; fi
+        elif [[ "$SP_DISTRO_ID" == debian ]]; then sp_error 'Verify that the official Debian 13 trixie-backports bootstrap completed and that Quickshell/Hyprland candidates are visible in APT metadata.'; fi
         return 1
     fi
     (("${#SP_MISSING_OPTIONAL[@]}")) || sp_warn 'Some optional feature packages are unavailable. Core installation can continue; those features will be listed in the final report.'
@@ -282,7 +282,12 @@ sekaipop_main() {
     (( SP_DRY_RUN || SP_CHECK )) || sp_acquire_installer_lock
     sp_make_log
     sp_info "Detected $SP_DISTRO_NAME | ID=$SP_DISTRO_ID | backend=$SP_BACKEND | release policy=$SP_RELEASE_POLICY"
-    (( SP_NO_DEPS )) || sp_plan_and_install_dependencies
+    if (( ! SP_NO_DEPS )); then
+        if ! sp_plan_and_install_dependencies; then
+            sp_error 'Dependency planning/installation failed; deployment was not started.'
+            return 1
+        fi
+    fi
     if (( SP_DEPS_ONLY )); then sp_info 'Dependency-only mode: application source deployment is skipped.'; (( SP_DRY_RUN )) || sp_dependency_only_setup; return 0; fi
     if (( SP_DRY_RUN )); then
         sp_info 'Deployment plan:'
