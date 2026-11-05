@@ -45,8 +45,8 @@ Capture the installed desktop/runtime state:
 command -v Hyprland hyprctl qs qsb qtpaths6 || true
 Hyprland --version 2>&1 || true
 qs --version 2>&1 || true
-qtpaths6 --qt-version 2>&1 || true
-qsb --version 2>&1 || true
+qtpaths6 --query QT_VERSION 2>&1 || true
+
 ```
 
 On Fedora, also record configured repositories and relevant packages:
@@ -203,7 +203,7 @@ Expected:
 For shader behavior:
 
 ```bash
-qsb --version
+command -v qsb || true
 find "$HOME/.config/quickshell/sekaipop/shaders" -maxdepth 1 -type f -name '*.qsb' -printf '%f\n' | sort
 ```
 
