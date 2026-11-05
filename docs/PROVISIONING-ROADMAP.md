@@ -176,3 +176,19 @@ Until these requirements pass, Fedora's Hyprland prerequisite remains explicitly
 - Fedora GCC 16 toolchain change: https://fedoraproject.org/wiki/Releases/45/ChangeSet
 - Fedora 44 CMake package/changelog: https://packages.fedoraproject.org/pkgs/cmake/cmake/fedora-44.html
 - Fedora Hyprland package status: https://packages.fedoraproject.org/pkgs/hyprland/hyprland/index.html
+
+
+## Distribution package evidence refresh (2026-11-05)
+
+The official package metadata confirms that the native Hyprland baseline is viable on the two APT targets and remains blocked on Fedora:
+
+| Target | Official package evidence | Baseline conclusion |
+|---|---|---|
+| Debian 13 trixie-backports | `hyprland 0.55.2+ds-1~bpo13+1` | Meets the installer's `>= 0.55.0` version floor; runtime/API validation is still required. [Debian package details](https://packages.debian.org/stable-backports/hyprland) |
+| Ubuntu 26.10 Universe | `hyprland 0.56.2+ds-1` | Meets the version floor; runtime/API validation is still required. [Ubuntu package details](https://packages.ubuntu.com/eu/stonking/x11/hyprland) |
+| Fedora 44 | Official Fedora package index lists only Fedora 41/42 Hyprland builds | No official Fedora 44 candidate is established. [Fedora package index](https://packages.fedoraproject.org/pkgs/hyprland/hyprland/index.html) |
+| Fedora 45 | Official Fedora package index lists only Fedora 41/42 Hyprland builds | No official Fedora 45 candidate is established. [Fedora package index](https://packages.fedoraproject.org/pkgs/hyprland/hyprland/index.html) |
+
+Fedora 44 and 45 both publish stable GCC 16.2.1 packages, satisfying the upstream GCC major-version prerequisite in principle; a clean build still needs an actual C++26 compile/link test against the installed standard library. Fedora also publishes Nix 2.35.3-2 for both releases. Nix installation can therefore use the distribution package, but non-NixOS graphics/session integration remains a separate unvalidated engineering problem. Sources: [Fedora GCC](https://packages.fedoraproject.org/pkgs/gcc/gcc/), [Fedora Nix](https://packages.fedoraproject.org/pkgs/nix/nix/).
+
+These metadata facts narrow the investigation; they do not change the support status. Fedora remains blocked until a complete provider is built and validated. Container package-resolution tests currently stub the Hyprland executable and must not be represented as a Fedora Hyprland installation test.
