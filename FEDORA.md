@@ -12,7 +12,7 @@ The installer does not modify GPU drivers, Plasma portals, desktop defaults, or 
 
 ## Existing capability providers
 
-The standard profile accepts the ffmpeg executable as the FFmpeg capability regardless of the RPM package name that owns it; it does not install a second FFmpeg provider when the executable is already present. The Qt base mapping installs the runtime package only, not qt6-qtbase-devel.
+The standard profile accepts the ffmpeg executable as the FFmpeg capability regardless of the RPM package name that owns it; it does not install a second FFmpeg provider when the executable is already present. This checks executable availability only, not codec coverage; Fedora's free FFmpeg build has a restricted codec set, and the installer does not replace it with an unverified third-party codec provider. The Qt base mapping installs the runtime package only, not qt6-qtbase-devel.
 
 PowerProfiles is considered satisfied only when the canonical org.freedesktop.UPower.PowerProfiles D-Bus name is owned and the /org/freedesktop/UPower/PowerProfiles object exports that interface. The installer inspects TuneD PPD, TLP PPD, and power-profiles-daemon before proposing a provider. It does not install or activate a competing provider when a conflicting or ambiguous provider state is detected.
 
