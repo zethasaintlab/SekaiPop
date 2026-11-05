@@ -87,7 +87,7 @@ sp_apt_sources_has_suite_component() {
                         while (i <= NF && $i !~ /\]$/) { options = options " " $i; i++ }
                         options = options " " $i
                         i++
-                        gsub(/[\\[\\]]/, " ", options)
+                        gsub(/[][]/, " ", options)
                     }
                     if (tolower(options) ~ /(^|[[:space:]])(trusted|allow-insecure|allow-weak)=yes([[:space:]]|$)/) next
                     source_uri = normalize_uri($(i)); source_suite = $(i + 1)
