@@ -248,7 +248,7 @@ sp_print_package_plan() {
         printf '\nUnavailable optional requirements (%d; those features remain disabled):\n' "${#SP_MISSING_OPTIONAL[@]}"
         printf '  %s\n' "${SP_MISSING_OPTIONAL[@]}"
     fi
-    printf '\nRepository policy: official distribution archives only. Debian backports and Ubuntu Universe may be added with confirmation; no AUR, COPR, PPA, third-party RPM/DEB, or unpinned source build is enabled.\n'
+    printf '\nRepository policy: configured official distribution archives only. Debian backports and Ubuntu Universe must already be enabled; APT sources are validated read-only and are never created or modified. No AUR, COPR, PPA, third-party RPM/DEB, or unpinned source build is enabled.\n'
     if [[ "$SP_BACKEND" == arch ]] && (("${#SP_INSTALL_PKGS[@]}")); then
         if (( SP_SYSTEM_UPGRADE )); then printf 'Arch transaction: pacman -Syu --needed (explicitly authorized by --system-upgrade).\n'
         else printf 'Arch transaction: pacman -S --needed against the existing sync DB; no isolated -Sy.\n'; fi
