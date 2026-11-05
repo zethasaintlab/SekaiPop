@@ -81,6 +81,9 @@ plan_calls=0
 SP_SYSTEM_UPGRADE=1
 SP_ARCH_SYNC_UPGRADED=0
 sp_pacman_sync_db_fresh() { return 1; }
+# Keep the already-loaded backend in place so the injected refresh failure is
+# not replaced when the production planner selects its package manager.
+sp_load_package_manager() { :; }
 pm_refresh_metadata() {
     printf 'refresh-failure\n' >> "$PACMAN_EVENT_LOG"
     return 19
