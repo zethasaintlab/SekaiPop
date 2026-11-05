@@ -44,6 +44,7 @@ fetch_tagged_repo hyprland-protocols hyprwm hyprland-protocols v0.8.0 044a434ec3
 fetch_tagged_repo glaze stephenberry glaze v7.2.0 b518eec7a22e56ffa238b072c07f47efa7cea97f
 fetch_tagged_repo hyprtoolkit hyprwm hyprtoolkit v0.6.0 f8cbaf42e1f7fdc9c7565d7be3e935f6d56c7a39
 fetch_tagged_repo xdg-desktop-portal-hyprland hyprwm xdg-desktop-portal-hyprland v1.5.0 d1467fea8d1895cb7835829c2fbb271a0d37760a
+fetch_commit_repo hyprwire hyprwm hyprwire a546e42d45e161682f729ebf52375bd4800d7041
 fetch_commit_repo udis86 canihavesomecoffee udis86 5336633af70f3917760a6d441ff02d93477b0c86
 
 LUA_ARCHIVE="$DEST/lua-5.5.1.tar.gz"
