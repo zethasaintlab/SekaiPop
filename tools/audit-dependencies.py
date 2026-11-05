@@ -17,7 +17,7 @@ SHELL_ROOTS = (ROOT / "installer", ROOT / "sekaipop" / "scripts")
 QML_IMPORT = re.compile(r"^\s*import\s+([A-Za-z_][A-Za-z0-9_.]*)(?:\s+([0-9]+(?:\.[0-9]+)*))?", re.M)
 QML_COMMAND = re.compile(r"(?:\bcommand\s*:\s*\[|\bexecDetached\s*\(\s*\[)\s*['\"]([^'\"]+)['\"]", re.M)
 QML_COMMAND_STRING = re.compile(r"\bcommand\s*:\s*['\"]([^'\"]+)['\"]", re.M)
-SHELL_PROBE = re.compile(r"\b(?:sp_have|command\s+-v|type\s+-P|which)\s+['\"]?([A-Za-z0-9_.+-]+)")
+SHELL_PROBE = re.compile(r"""^\s*(?:if\s+|elif\s+|!?\s*)?(?:sp_have|command\s+-v|type\s+-P|which)\s+[\"']?([A-Za-z0-9_.+-]+)""", re.M)
 SHELL_EXEC = re.compile(r"^\s*(?:if\s+|elif\s+|!?\s*)?(?:exec|env|sudo|timeout)\s+([A-Za-z0-9_./+-]+)", re.M)
 SHELL_BUILTINS = {
     ":", ".", "alias", "bg", "break", "builtin", "caller", "cd", "command",
