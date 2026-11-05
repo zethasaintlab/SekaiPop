@@ -82,6 +82,7 @@ This is a source-manifest candidate, **not a successful build**. It does not app
 | hyprland-protocols | v0.8.0 | `044a434ec371f985655389bcef09286b1af3d77c` | Required protocol XML package |
 | glaze | v7.2.0 | `b518eec7a22e56ffa238b072c07f47efa7cea97f` | Exact FetchContent tag declared by this Hyprland CMake revision |
 | hyprtoolkit | v0.6.0 | `f8cbaf42e1f7fdc9c7565d7be3e935f6d56c7a39` | Required by the v1.5.0 portal share picker |
+| hyprwire | 0.3.1 | `a546e42d45e161682f729ebf52375bd4800d7041` | Required by Hyprland v0.57.1's `hyprctl` target; pin is also present in the same Hyprland commit's `flake.lock` |
 | xdg-desktop-portal-hyprland | v1.5.0 | `d1467fea8d1895cb7835829c2fbb271a0d37760a` | Hyprland portal backend |
 | sdbus-cpp fallback | submodule commit | `b7d85f936d622299ee57966c2b2aefde5e4f3684` | Portal's checked-in fallback; CMake reports version 2.0.0 |
 | udis86 fallback | submodule commit | `5336633af70f3917760a6d441ff02d93477b0c86` | Hyprland fallback if system udis86 >= 1.7.2 is unavailable |
