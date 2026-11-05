@@ -240,11 +240,13 @@ sp_dependency_only_setup() {
 sp_acquire_installer_lock() {
     local lock_dir lock_file
     command -v flock >/dev/null 2>&1 || sp_die 'flock is required to prevent concurrent installer transactions.'
-    if [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" ]]; then
+    if [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && ! -L "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" ]]; then
         lock_dir="$XDG_RUNTIME_DIR"
     else
         lock_dir="$HOME/.cache/sekaipop"
+        [[ ! -L "$lock_dir" ]] || sp_die "Refusing symlinked installer lock directory: $lock_dir"
         mkdir -p -- "$lock_dir" || sp_die "Cannot create installer lock directory: $lock_dir"
+        [[ -d "$lock_dir" && -O "$lock_dir" ]] || sp_die "Installer lock directory must be owned by the current user: $lock_dir"
         chmod 0700 "$lock_dir" || sp_die "Cannot secure installer lock directory: $lock_dir"
     fi
     lock_file="$lock_dir/installer.lock"
