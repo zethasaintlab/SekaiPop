@@ -57,7 +57,7 @@ cmake_build() {
         -DCMAKE_INSTALL_DATAROOTDIR=share \
         -DCMAKE_INSTALL_RPATH="$PREFIX/lib64;$PREFIX/lib" \
         -DCMAKE_BUILD_RPATH="$PREFIX/lib64;$PREFIX/lib" \
-        -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON \
+        -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
         -DCMAKE_BUILD_RPATH_USE_ORIGIN=ON \
         -DCMAKE_PREFIX_PATH="$PREFIX" \
         -DBUILD_TESTING=OFF \
@@ -67,17 +67,17 @@ cmake_build() {
         local configured_prefix configured_libdir
         configured_prefix="$(sed -n 's/^CMAKE_INSTALL_PREFIX:[^=]*=//p' "$cache")"
         configured_libdir="$(sed -n 's/^CMAKE_INSTALL_LIBDIR:[^=]*=//p' "$cache")"
-        printf 'Hyprland install cache: prefix=%s libdir=%s\\n' "$configured_prefix" "$configured_libdir"
+        printf 'Hyprland install cache: prefix=%s libdir=%s\n' "$configured_prefix" "$configured_libdir"
         [[ "$configured_prefix" == "$PREFIX" ]] || {
-            printf 'Unexpected Hyprland install prefix: %s\\n' "$configured_prefix" >&2
+            printf 'Unexpected Hyprland install prefix: %s\n' "$configured_prefix" >&2
             exit 1
         }
         [[ "$configured_libdir" == "$PREFIX/lib64" ]] || {
-            printf 'Unexpected Hyprland install libdir: %s\\n' "$configured_libdir" >&2
+            printf 'Unexpected Hyprland install libdir: %s\n' "$configured_libdir" >&2
             exit 1
         }
         grep -Fq "$PREFIX/lib64/systemd/user" "$build_dir/cmake_install.cmake" || {
-            printf 'Generated Hyprland install script does not target the private systemd directory.\\n' >&2
+            printf 'Generated Hyprland install script does not target the private systemd directory.\n' >&2
             grep -n -C 3 'hyprland-session.target' "$build_dir/cmake_install.cmake" >&2 || true
             exit 1
         }
@@ -134,10 +134,15 @@ done
 
 printf '\nELF runtime dependency validation:\n'
 for binary in "$PREFIX/bin/Hyprland" "$PREFIX/libexec/xdg-desktop-portal-hyprland"; do
-    readelf -d "$binary" | grep -Fq "$PREFIX/lib64" || {
-        printf 'Missing private-prefix RUNPATH/RPATH in %s\n' "$binary" >&2
+    dynamic_tags="$(readelf -d "$binary")"
+    grep -Fq "$PREFIX/lib64" <<< "$dynamic_tags" || {
+        printf 'Missing private-prefix RUNPATH/RPATH in %s\\n' "$binary" >&2
         exit 1
     }
+    if grep -Eq '/opt/sekaipop/(work|sources)' <<< "$dynamic_tags"; then
+        printf 'Build/source tree path leaked into installed ELF RUNPATH/RPATH: %s\\n%s\\n' "$binary" "$dynamic_tags" >&2
+        exit 1
+    fi
 done
 binaries=(
     "$PREFIX/bin/Hyprland"
