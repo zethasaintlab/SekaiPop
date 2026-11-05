@@ -17,10 +17,11 @@ jobs:
             bash -n "$script"
           done < <(find installer tests -type f -name '*.sh' -print0)
           bash -n install.sh install-deps.sh check-deps.sh install-multi.sh
-      - name: Install ShellCheck
+      - name: Ensure ShellCheck is available
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y shellcheck
+          if ! command -v shellcheck >/dev/null 2>&1; then
+            sudo apt-get install --no-install-recommends -y shellcheck
+          fi
       - name: ShellCheck installer and regression tests
         shell: bash
         run: |
