@@ -62,7 +62,7 @@ sp_run_service_action() {
 }
 
 sp_reconcile_service() {
-    local scope="$1" service="$2" state active prompt
+    local scope="$1" service="$2" state active prompt action_failed=0 needs_start=0
     local -a systemctl_cmd=(systemctl) action=()
     [[ "$scope" == user ]] && systemctl_cmd+=(--user)
 
@@ -80,7 +80,8 @@ sp_reconcile_service() {
 
     case "$state" in
         disabled)
-            action=(enable --now)
+            action=(enable)
+            needs_start=1
             prompt="Enable and start existing $scope service $service?"
             ;;
         enabled|enabled-runtime|linked|linked-runtime|static|indirect|generated|alias)
@@ -96,15 +97,20 @@ sp_reconcile_service() {
     if sp_confirm "$prompt"; then
         local rollback_action=stop rollback_index
         [[ "${action[0]}" != enable ]] || rollback_action=disable-now
-        # Journal before running the operation: enable --now may partially enable
-        # a unit even when its subsequent start fails.
+        # Journal before the first operation: enable and start are separate so a
+        # failed start can be rolled back to the original disabled/inactive state.
         if (( SP_SERVICE_TRANSACTION_ACTIVE )); then
             SP_SERVICE_CHANGE_SCOPES+=("$scope")
             SP_SERVICE_CHANGE_NAMES+=("$service")
             SP_SERVICE_CHANGE_ROLLBACKS+=("$rollback_action")
         fi
         if ! sp_run_service_action "$scope" "${action[@]}" "$service"; then
-            sp_warn "Could not ${action[*]} $scope service $service; attempting to restore its previous state."
+            action_failed=1
+        elif (( needs_start )) && ! sp_run_service_action "$scope" start "$service"; then
+            action_failed=1
+        fi
+        if (( action_failed )); then
+            sp_warn "Could not complete ${action[*]} for $scope service $service; attempting to restore its previous state."
             if (( SP_SERVICE_TRANSACTION_ACTIVE )); then
                 if sp_service_rollback_one "$scope" "$rollback_action" "$service"; then
                     rollback_index=$(("${#SP_SERVICE_CHANGE_NAMES[@]}" - 1))
