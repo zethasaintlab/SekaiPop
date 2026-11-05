@@ -4,7 +4,7 @@
 declare -Ag DISTRO_PACKAGE_MAP=(
     [quickshell]='quickshell/trixie-backports' [hyprland]='hyprland/trixie-backports'
     [qt6-base]='qt6-base-dev qt6-base-dev-tools' [qt6-declarative]='qt6-declarative-dev qml6-module-qtquick qml6-module-qtquick-effects qml6-module-qtquick-shapes qml6-module-qt-labs-folderlistmodel'
-    [qt6-multimedia]='qt6-multimedia-dev qml6-module-qtmultimedia' [qt6-svg]='qt6-svg-dev' [qt6-imageformats]='qt6-image-formats-plugins'
+    [qt6-multimedia]='qt6-multimedia-dev qml6-module-qtmultimedia' [qt6-svg]='qt6-svg-plugins' [qt6-imageformats]='qt6-image-formats-plugins'
     [qt6-wayland]='qt6-wayland' [qt6-shadertools]='qt6-shader-baker'
     [dbus]='dbus-user-session' [polkit]='polkitd' [graphics-egl]='libegl1 libgl1' [pipewire]='pipewire' [wireplumber]='wireplumber'
     [pipewire-pulse]='pipewire-pulse pulseaudio-utils' [network-manager]='network-manager' [bluetooth]='bluez' [upower]='upower'
@@ -12,7 +12,7 @@ declare -Ag DISTRO_PACKAGE_MAP=(
     [xdg-utils]='xdg-utils' [xdg-user-dirs]='xdg-user-dirs' [fontconfig]='fontconfig' [python3]='python3' [python-numpy]='python3-numpy'
     [portal]='xdg-desktop-portal' [portal-hyprland]='xdg-desktop-portal-hyprland' [portal-gtk]='xdg-desktop-portal-gtk'
     [xwayland]='xwayland' [noto-fonts]='fonts-noto-core' [noto-fonts-cjk]='fonts-noto-cjk' [noto-fonts-emoji]='fonts-noto-color-emoji'
-    [nerd-font]='fonts-jetbrains-mono' [cava]='cava' [grim]='grim' [slurp]='slurp' [cliphist]='cliphist' [wtype]='wtype'
+    [jetbrains-mono]='fonts-jetbrains-mono' [cava]='cava' [grim]='grim' [slurp]='slurp' [cliphist]='cliphist' [wtype]='wtype'
     [hyprpicker]='hyprpicker' [imagemagick]='imagemagick' [tesseract]='tesseract-ocr tesseract-ocr-eng' [swappy]='swappy'
     [wf-recorder]='wf-recorder' [ffmpeg]='ffmpeg' [brightnessctl]='brightnessctl' [ddcutil]='ddcutil' [kitty]='kitty'
     [playerctl]='playerctl' [easyeffects]='easyeffects' [matugen]='' [power-profiles-daemon]='power-profiles-daemon'
