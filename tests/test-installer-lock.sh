@@ -31,10 +31,13 @@ fi
 wait "$holder"
 pass 'Concurrent installer transactions are serialized'
 
-ln -s "$TMP/attacker-target" "$XDG_RUNTIME_DIR/symlink.lock"
-if (lock_file="$XDG_RUNTIME_DIR/symlink.lock"; [[ ! -L "$lock_file" ]]) >/dev/null 2>&1; then
-    fail 'Symlink lock fixture is invalid'
+mkdir -p "$TMP/symlink-runtime"
+ln -s "$TMP/attacker-target" "$TMP/symlink-runtime/installer.lock"
+XDG_RUNTIME_DIR="$TMP/symlink-runtime"
+export XDG_RUNTIME_DIR
+if (sp_acquire_installer_lock) >/dev/null 2>&1; then
+    fail 'A symlinked lock file must be rejected'
 fi
-pass 'Lock directory is private to the current user'
+pass 'Symlinked lock files are rejected'
 
 printf '\nInstaller lock fixtures passed.\n'
