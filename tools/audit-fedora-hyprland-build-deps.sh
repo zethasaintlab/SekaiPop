@@ -57,7 +57,7 @@ capabilities=(
     xcb xcb-render xcb-xfixes xcb-composite xcb-icccm xcb-res xcb-errors
     wayland-client wayland-scanner libpipewire-0.3 libspa-0.2
     libseat libudev libdisplay-info hwdata
-    iniparser absl_flat_hash_map
+    iniparser absl_flat_hash_map pugixml libzip tomlplusplus
     libjpeg libwebp libmagic libpng librsvg-2.0 sdbus-c++
 )
 for capability in "${capabilities[@]}"; do
