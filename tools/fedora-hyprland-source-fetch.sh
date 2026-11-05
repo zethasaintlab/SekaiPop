@@ -48,16 +48,33 @@ fetch_commit_repo hyprwire hyprwm hyprwire a546e42d45e161682f729ebf52375bd4800d7
 fetch_commit_repo udis86 canihavesomecoffee udis86 5336633af70f3917760a6d441ff02d93477b0c86
 
 LUA_ARCHIVE="$DEST/lua-5.5.1.tar.gz"
-curl --fail --location --silent --show-error \
-    https://www.lua.org/ftp/lua-5.5.1.tar.gz \
-    --output "$LUA_ARCHIVE"
-printf '%s  %s\n' \
-    1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce \
-    "$LUA_ARCHIVE" | sha256sum --check --status || {
-        printf 'Lua 5.5.1 SHA256 verification failed.\n' >&2
-        exit 1
-    }
-printf 'SOURCE_SHA256_OK\tlua-5.5.1\t1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce\n'
+LUA_PART="$LUA_ARCHIVE.part"
+LUA_SHA256=1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce
+LUA_URLS=(
+    https://www.lua.org/ftp/lua-5.5.1.tar.gz
+    https://www2.tecgraf.puc-rio.br/lua/local/ftp/lua-5.5.1.tar.gz
+)
+rm -f -- "$LUA_PART" "$LUA_ARCHIVE"
+LUA_SOURCE_OK=0
+for lua_url in "\${LUA_URLS[@]}"; do
+    printf 'Fetching pinned Lua 5.5.1 from %s\n' "$lua_url"
+    if curl --fail --location --silent --show-error \
+        --connect-timeout 15 --max-time 120 \
+        --retry 2 --retry-all-errors --retry-delay 2 \
+        "$lua_url" --output "$LUA_PART" &&
+        printf '%s  %s\n' "$LUA_SHA256" "$LUA_PART" | sha256sum --check --status; then
+        mv -- "$LUA_PART" "$LUA_ARCHIVE"
+        LUA_SOURCE_OK=1
+        break
+    fi
+    rm -f -- "$LUA_PART"
+    printf 'Lua 5.5.1 download or SHA256 verification failed for %s; trying the next published mirror.\n' "$lua_url" >&2
+done
+(( LUA_SOURCE_OK == 1 )) || {
+    printf 'Could not acquire the official Lua 5.5.1 source archive from any pinned mirror with the expected SHA256.\n' >&2
+    exit 1
+}
+printf 'SOURCE_SHA256_OK\tlua-5.5.1\t%s\n' "$LUA_SHA256"
 
 # The portal's bundled hyprland-protocols submodule is v0.7.1, below its
 # own >=0.8.0 requirement. The separately pinned v0.8.0 source is installed
