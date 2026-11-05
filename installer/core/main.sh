@@ -310,7 +310,17 @@ sekaipop_main() {
             return 1
         fi
     fi
-    if (( SP_DEPS_ONLY )); then sp_info 'Dependency-only mode: application source deployment is skipped.'; (( SP_DRY_RUN )) || sp_dependency_only_setup; return 0; fi
+    if (( SP_DEPS_ONLY )); then
+        sp_info 'Dependency-only mode: application source deployment is skipped.'
+        if (( ! SP_DRY_RUN )); then
+            if ! sp_check_all; then
+                sp_error 'Dependency-only runtime verification failed; desktop integration was not started.'
+                return 1
+            fi
+            sp_dependency_only_setup
+        fi
+        return 0
+    fi
     if (( SP_DRY_RUN )); then
         sp_info 'Deployment plan:'
         sp_info "  Quickshell destination: $SP_QS_DEST (staged replacement; preserves settings, presets, custom data; does not touch ~/.local/state/sekaipop)"
