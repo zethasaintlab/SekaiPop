@@ -44,7 +44,7 @@ Upstream explicitly warns that symbolic-linking different shared-library version
 
 ## Pinned upstream component set under evaluation
 
-The following exact commits were resolved from upstream release tags in the initial audit. They are a partial pin set, not a complete source-build manifest.
+Historical note: the table below preserves the smaller set captured during the initial audit. It is intentionally incomplete and must not be mistaken for the current smoke-build manifest. The complete candidate closure used by the current Fedora 44/45 offline container smoke test is recorded in the later “Version-coherent CMake closure audit” section and in the repository's pinned source-fetch manifest.
 
 | Component | Release | Upstream commit |
 |---|---|---|
@@ -56,7 +56,7 @@ The following exact commits were resolved from upstream release tags in the init
 | hyprgraphics | v0.6.0 | `ade4ef0a887d2740efb9c9af2ddb175633365e1b` |
 | hyprwayland-scanner | v0.4.6 | `b8632713a6beaf28b56f2a7b0ab2fb7088dbb404` |
 
-The set above is insufficient to build the current upstream chain: it does not yet pin Lua, hyprland-protocols, xdg-desktop-portal-hyprland, hyprwire, hyprtoolkit, glaze, or all transitive build inputs. Do not start a production build from this partial list. Complete the manifest by resolving release tags to immutable commits, auditing each source's submodules and CMake FetchContent behavior, and recording licenses and source origins.
+The historical set above is insufficient by itself to build the current upstream chain. Do not use that table as the build input. The later closure audit and pinned source-fetch manifest add Lua, hyprland-protocols, xdg-desktop-portal-hyprland, hyprwire, hyprtoolkit, glaze, and the audited fallback submodules. The smoke manifest is sufficient for the currently tested isolated container build, but it is not yet a production provisioning manifest: source licensing/origin inventory, host runtime integration, transactional installation, and rollback behavior remain separate acceptance gates.
 
 ## Version-coherent CMake closure audit
 
@@ -122,18 +122,21 @@ The portal's in-tree `hyprland-share-picker` has a separate CMake target and req
 
 The current upstream installation guide's build-order list is a guide to the current upstream tree, not a lockfile for every older release. The initial audit missed a nested dependency: Hyprland v0.57.1's `hyprctl/CMakeLists.txt` explicitly requires `hyprwire` and invokes `hyprwire-scanner`. The pinned Hyprland `flake.lock` independently records Hyprwire commit `a546e42d45e161682f729ebf52375bd4800d7041` (version 0.3.1), so that exact immutable source is now included in the smoke manifest and built before Hyprland. The portal v1.5.0 share-picker separately requires hyprtoolkit; it remains in the closure.
 
-### Remaining build audit gates
+### Remaining provider acceptance gates
 
-This audit still does not prove that every native Fedora 44/45 build prerequisite is available at a sufficient version. Before implementing the provider:
+**Completed in CI (2026-11-05):** official Fedora 44/45 build dependency acquisition and immutable source-pin verification; offline container builds of the pinned compositor/portal closure; private-prefix installation including the Hyprland systemd user target; pkg-config version checks; ELF dependency checks for the six expected executables; Hyprland version and launcher checks; session desktop-entry and portal metadata presence checks. Both Fedora release jobs emitted `FEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK`.
 
-1. Resolve every listed pkg-config/CMake dependency to an official Fedora 44 and Fedora 45 package candidate and record the exact candidate version.
-2. Prove Fedora 44 can build against an isolated Lua 5.5 prefix without replacing the system Lua 5.4 ABI; verify Fedora 45's Lua 5.5 candidate independently.
-3. Decide whether udis86 and sdbus-cpp use official host packages or their pinned fallbacks; never let CMake fetch either source implicitly.
-4. Audit every nested CMake, Meson, shader-generation, and code-generation path for network access and generated files written into source trees.
-5. Build Hyprland, hyprtoolkit, and the portal in a clean Fedora 44/45 environment with network disabled after source acquisition.
-6. Verify the installed ELF dependency closure, pkg-config metadata, session/portal integration, and rollback from the isolated prefix.
+**Not yet proven:** the container smoke does not establish that the source provider is safe or usable on a real host. Before enabling it in the installer, the remaining gates are:
 
-Until those gates pass, these pins are a research artifact only and must not be enabled in the default Fedora install path.
+1. Run a clean Fedora 44 and Fedora 45 VM installation test using the real installer, with snapshots and no changes to a daily-driver host.
+2. Validate actual graphical login/session startup, Wayland socket and environment, NVIDIA and Mesa paths, Quickshell/QML loading, xdg-desktop-portal selection, screen sharing, D-Bus activation, systemd user integration, logout, suspend/resume, and recovery from a failed launch.
+3. Inspect the installed ELF RUNPATH/RPATH for build-tree leakage and prove that private libraries are loaded only through a scoped launcher; do not globally export `LD_LIBRARY_PATH`, add global symlinks, or run `ldconfig` for the private prefix.
+4. Implement a versioned provider release layout, staged installation, atomic activation where feasible, and a content-hash ownership manifest.
+5. Implement collision refusal and rollback that removes only files created by the transaction and unchanged since creation. Never claim DNF package transactions are reversible.
+6. Add upgrade, interrupted-install, partial-uninstall, and rollback tests; verify no unmanaged session, portal, D-Bus, systemd, or library files are overwritten.
+7. Complete source license/origin inventory and record build options, compiler/toolchain identity, dependency versions, source commits, and artifact checksums.
+
+The current result therefore advances the candidate from an unbuilt source manifest to a **successful isolated offline source-build smoke test**. It does not approve or enable a Fedora provider in the default installer path.
 
 ### Audited upstream source files
 
