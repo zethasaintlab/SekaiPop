@@ -220,7 +220,7 @@ grep -Eq '^Exec=.*(Hyprland|start-hyprland)' "$PREFIX/share/wayland-sessions/hyp
     exit 1
 }
 
-printf '\nprintf '\n=== FEDORA_HYPRLAND_BUILD_PROVENANCE_BEGIN ===\n'
+printf '\n=== FEDORA_HYPRLAND_BUILD_PROVENANCE_BEGIN ===\n'
 cat "$PROVENANCE"
 printf '=== FEDORA_HYPRLAND_BUILD_PROVENANCE_END ===\n'
 
