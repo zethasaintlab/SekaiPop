@@ -237,13 +237,31 @@ sp_dependency_only_setup() {
     fi
     sp_service_transaction_commit
 }
+sp_acquire_installer_lock() {
+    local lock_dir lock_file
+    command -v flock >/dev/null 2>&1 || sp_die 'flock is required to prevent concurrent installer transactions.'
+    if [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" ]]; then
+        lock_dir="$XDG_RUNTIME_DIR"
+    else
+        lock_dir="$HOME/.cache/sekaipop"
+        mkdir -p -- "$lock_dir" || sp_die "Cannot create installer lock directory: $lock_dir"
+        chmod 0700 "$lock_dir" || sp_die "Cannot secure installer lock directory: $lock_dir"
+    fi
+    lock_file="$lock_dir/installer.lock"
+    [[ ! -L "$lock_file" ]] || sp_die "Refusing symlinked installer lock file: $lock_file"
+    ( umask 077; : >> "$lock_file" ) || sp_die "Cannot create installer lock file: $lock_file"
+    exec {SP_INSTALLER_LOCK_FD}> "$lock_file" || sp_die "Cannot open installer lock file: $lock_file"
+    flock -n "$SP_INSTALLER_LOCK_FD" || sp_die 'Another SekaiPop installer transaction is already running. Wait for it to finish before retrying.'
+}
+
 sekaipop_main() {
     sp_parse_args "$@"
-    if (( SP_RESTORE )); then sp_require_normal_user; sp_restore_latest; return $?; fi
+    if (( SP_RESTORE )); then sp_require_normal_user; sp_acquire_installer_lock; sp_restore_latest; return $?; fi
     sp_detect_distribution
     if (( SP_SYSTEM_UPGRADE )) && [[ "$SP_BACKEND" != arch ]]; then sp_die '--system-upgrade is only available on Arch Linux, EndeavourOS, and CachyOS.' 2; fi
     if (( SP_CHECK )); then sp_load_package_manager; sp_check_all; return $?; fi
     (( SP_DRY_RUN )) || sp_validate_preflight
+    (( SP_DRY_RUN || SP_CHECK )) || sp_acquire_installer_lock
     sp_make_log
     sp_info "Detected $SP_DISTRO_NAME | ID=$SP_DISTRO_ID | backend=$SP_BACKEND | release policy=$SP_RELEASE_POLICY"
     (( SP_NO_DEPS )) || sp_plan_and_install_dependencies
