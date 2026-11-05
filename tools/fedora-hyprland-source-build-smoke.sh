@@ -106,7 +106,7 @@ cmake_build Hyprland \
     -DCMAKE_DISABLE_FIND_PACKAGE_glaze=TRUE
 
 printf '\nPinned pkg-config versions:\n'
-for module in hyprland-protocols hyprwayland-scanner hyprutils hyprgraphics hyprlang hyprcursor aquamarine hyprtoolkit lua5.5; do
+for module in hyprland-protocols hyprwayland-scanner hyprutils hyprgraphics hyprlang hyprcursor aquamarine hyprtoolkit hyprwire lua5.5; do
     version="$(pkg-config --modversion "$module")"
     printf '  %-24s %s\n' "$module" "$version"
 done
