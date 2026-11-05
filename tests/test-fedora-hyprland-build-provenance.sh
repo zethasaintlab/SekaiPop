@@ -5,7 +5,7 @@ ROOT="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
 WRITER="$ROOT/tools/fedora-hyprland-build-provenance.sh"
 TMP="$(mktemp -d)"
 trap 'rm -rf -- "$TMP"' EXIT
-mkdir -p "$TMP/bin" "$TMP/sources" "$TMP/output"
+mkdir -p "$TMP/bin" "$TMP/sources" "$TMP/output" "$TMP/repositories"
 cat > "$TMP/os-release" <<'OS'
 ID=fedora
 VERSION_ID=44
@@ -24,11 +24,6 @@ cat > "$TMP/bin/rpm" <<'RPM'
 printf 'gcc\t0:16.1.1-1.fc44\tx86_64\n'
 printf 'glibc\t0:2.43-1.fc44\tx86_64\n'
 RPM
-cat > "$TMP/bin/dnf5" <<'DNF'
-#!/usr/bin/env bash
-[[ "$1" == repolist && "$2" == --enabled && "$3" == -v ]] || exit 2
-printf 'Repo-id : fedora\nRepo-id : updates\n'
-DNF
 cat > "$TMP/bin/git" <<'GIT'
 #!/usr/bin/env bash
 if [[ "$1" == -C && "$3" == rev-parse ]]; then
@@ -56,9 +51,13 @@ TOOL
 for name in gcc g++ cmake ninja meson pkg-config uname; do
     ln -s tool-version "$TMP/bin/$name"
 done
-chmod +x "$TMP/bin/rpm" "$TMP/bin/dnf5" "$TMP/bin/git" "$TMP/bin/tool-version"
+chmod +x "$TMP/bin/rpm" "$TMP/bin/git" "$TMP/bin/tool-version"
 export PATH="$TMP/bin:$PATH"
 export SEKAIPOP_OS_RELEASE_FILE="$TMP/os-release"
+printf 'Repo-id : fedora\\nRepo-id : updates\\n' > "$TMP/repositories/enabled.txt"
+printf 'fedora.repo  abcdef0123456789\\n' > "$TMP/repositories/config-sha256.txt"
+export SEKAIPOP_DNF_REPO_INVENTORY="$TMP/repositories/enabled.txt"
+export SEKAIPOP_DNF_REPO_CONFIG_HASHES="$TMP/repositories/config-sha256.txt"
 export SEKAIPOP_BASE_IMAGE_REF="docker.io/library/fedora@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 export SEKAIPOP_BUILD_GIT_COMMIT="abcdef0123456789abcdef0123456789abcdef01"
 
@@ -76,6 +75,8 @@ grep -Fq $'Hyprland\t0123456789abcdef0123456789abcdef01234567' "$OUT"
 grep -Fq 'source_archive.lua-5.5.1.sha256=' "$OUT"
 grep -Fq 'gcc=gcc (GCC) 16.1.1' "$OUT"
 grep -Fq 'Repo-id : updates' "$OUT"
+grep -Fq '[dnf_repo_config_sha256]' "$OUT"
+grep -Fq 'fedora.repo  abcdef0123456789' "$OUT"
 grep -Fq 'glibc' "$OUT"
 printf '[PASS] provenance records Fedora, immutable image, source commits, toolchain, RPMs and repositories\n'
 
