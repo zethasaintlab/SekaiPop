@@ -7,6 +7,8 @@ ENV SEKAIPOP_BASE_IMAGE_REF=${FEDORA_BASE_IMAGE}
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
+COPY tools/fedora-dnf-repository-snapshot.py /usr/local/bin/fedora-dnf-repository-snapshot
+
 RUN dnf5 install -y \
     binutils \
     cmake \
@@ -65,8 +67,8 @@ RUN dnf5 install -y \
     tomlplusplus-devel \
     xorg-x11-server-Xwayland \
     && mkdir -p /opt/sekaipop \
-    && dnf5 repo info --enabled --json > /opt/sekaipop/ENABLED-DNF-REPOSITORIES \
-    && find /etc/yum.repos.d -maxdepth 1 -type f -name '*.repo' -print0 | sort -z | xargs -0 -r sha256sum > /opt/sekaipop/DNF-REPO-CONFIG-SHA256 \
+    && dnf5 repo info --json > /opt/sekaipop/DNF5-REPOSITORIES.json \
+    && python3 /usr/local/bin/fedora-dnf-repository-snapshot --repo-info /opt/sekaipop/DNF5-REPOSITORIES.json --inventory /opt/sekaipop/ENABLED-DNF-REPOSITORIES --hashes /opt/sekaipop/DNF-REPO-CONFIG-SHA256 \
     && dnf5 clean all
 
 COPY tools/fedora-hyprland-source-fetch.sh /usr/local/bin/fedora-hyprland-source-fetch
