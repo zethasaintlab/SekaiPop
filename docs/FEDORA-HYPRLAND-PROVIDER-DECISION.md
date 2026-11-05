@@ -148,3 +148,17 @@ The next read-only inventory, [CI run #72961919](https://github.com/zethasaintla
 The package candidates were resolved from the enabled Fedora repositories only. The only missing named package in the full inventory remains `lua5.5-devel`; this is expected to be supplied by the verified Lua 5.5.1 source artifact in an isolated prefix, not by replacing Fedora 44's Lua 5.4 ABI. Fedora 45's official `lua-devel` candidate is already 5.5.1. The system `udis86` provider check is part of the next inventory revision; if unavailable or below 1.7.2, the pinned Hyprland submodule commit `5336633af70f3917760a6d441ff02d93477b0c86` is the explicit offline fallback.
 
 This makes the official Fedora native dependency closure appear complete for the selected source set, subject to the final `udis86` check and a real offline build. It is still not build or desktop validation.
+
+
+### Complete native capability inventory result
+
+The expanded inventory at [CI run #73015392](https://github.com/zethasaintlab/SekaiPop/actions/runs/41973015392), commit `3376097086b55d9c2d3f1d5eae0f2b2f78577936`, passed **6/6 jobs**. It queried the full set of audited pkg-config modules from the pinned Hyprland, aquamarine, hyprgraphics, hyprcursor, hyprtoolkit, portal, and scanner CMake files, plus build tools and the XWayland runtime package.
+
+Results for both Fedora 44 and Fedora 45:
+
+- All queried official native pkg-config providers were found, including `pugixml`, `libzip`, `tomlplusplus`, `wayland-scanner`, `libpipewire-0.3`, `libspa-0.2`, `libseat`, `libdisplay-info`, `hwdata`, `absl_flat_hash_map`, `sdbus-c++`, and all graphics/XCB interfaces.
+- The official `xorg-x11-server-Xwayland` package candidate exists on both releases.
+- The only missing pkg-config provider is `udis86`; the pinned Hyprland CMake explicitly falls back to its checked-in submodule when no suitable system library exists. The parent Git tree pins that submodule at `5336633af70f3917760a6d441ff02d93477b0c86`, so this gap is covered by an immutable source input.
+- The only missing named development package is `lua5.5-devel`. Fedora 44 has `lua-devel 5.4.8`; Fedora 45 has `lua-devel 5.5.1`. For a single reproducible provider, the proposed smoke build will build the same SHA256-verified Lua 5.5.1 archive into a private prefix on both releases, avoiding any ambiguity about which Lua library CMake selects.
+
+No third-party repository or community package source was needed to satisfy the audited native dependency closure. This makes a fully pinned source-build provider technically viable on both Fedora releases, subject to the next decisive test: acquire all pinned inputs, disable network access, and compile/install the entire compositor + portal closure in a clean container. The inventory still does not prove that build succeeds or that the graphical session works.
