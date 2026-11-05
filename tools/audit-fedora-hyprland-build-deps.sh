@@ -55,7 +55,7 @@ capabilities=(
     pangocairo pixman-1 xcursor libdrm libeis-1.0 gbm gio-2.0 re2
     muparser lcms2 libcanberra gl egl glesv2 glslang
     xcb xcb-render xcb-xfixes xcb-composite xcb-icccm xcb-res xcb-errors
-    wayland-client libpipewire-0.3 libspa-0.2
+    wayland-client wayland-scanner libpipewire-0.3 libspa-0.2
     libseat libudev libdisplay-info hwdata
     iniparser absl_flat_hash_map
     libjpeg libwebp libmagic libpng librsvg-2.0 sdbus-c++
@@ -68,7 +68,7 @@ done
 # availability is not fully represented by the compositor pkg-config list.
 packages=(
     cmake ninja-build gcc-c++ meson pkgconf-pkg-config python3 cpio
-    lua5.5-devel lua-devel
+    xorg-x11-server-Xwayland lua5.5-devel lua-devel
 )
 for package in "${packages[@]}"; do
     query_package "$package" || failed=1
