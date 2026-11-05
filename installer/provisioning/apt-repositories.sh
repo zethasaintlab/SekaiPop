@@ -3,16 +3,29 @@
 # This module never adds PPAs, third-party archives, mirrors, or package signing keys.
 
 SP_APT_SOURCES_DIR="${SP_APT_SOURCES_DIR:-/etc/apt/sources.list.d}"
+SP_APT_MAIN_SOURCES="${SP_APT_MAIN_SOURCES:-/etc/apt/sources.list}"
 declare -ag SP_APT_BOOTSTRAP_CREATED=()
 
 sp_apt_sources_contain() {
     local needle="$1" file
     shopt -s nullglob
-    local -a files=("$SP_APT_SOURCES_DIR"/*.list "$SP_APT_SOURCES_DIR"/*.sources /etc/apt/sources.list)
+    local -a files=("$SP_APT_SOURCES_DIR"/*.list "$SP_APT_SOURCES_DIR"/*.sources "$SP_APT_MAIN_SOURCES")
     shopt -u nullglob
     for file in "${files[@]}"; do
         [[ -f "$file" && ! -L "$file" ]] || continue
-        grep -Fq -- "$needle" "$file" && return 0
+        awk -v needle="$needle" '
+            /^[[:space:]]*#/ { next }
+            $1 == "Components:" || $1 == "Suites:" {
+                for (i = 2; i <= NF; i++) if ($i == needle) found = 1
+            }
+            $1 == "deb" || $1 == "deb-src" {
+                i = 2
+                if ($i ~ /^\\[/) i++
+                i += 2
+                for (; i <= NF; i++) if ($i == needle) found = 1
+            }
+            END { exit !found }
+        ' "$file" && return 0
     done
     return 1
 }
