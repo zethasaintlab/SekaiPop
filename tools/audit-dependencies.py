@@ -19,10 +19,6 @@ QML_COMMAND = re.compile(r"(?:\bcommand\s*:\s*\[|\bexecDetached\s*\(\s*\[)\s*['\
 QML_COMMAND_STRING = re.compile(r"\bcommand\s*:\s*['\"]([^'\"]+)['\"]", re.M)
 SHELL_PROBE = re.compile(r"\b(?:sp_have|command\s+-v|type\s+-P|which)\s+['\"]?([A-Za-z0-9_.+-]+)")
 SHELL_EXEC = re.compile(r"^\s*(?:if\s+|elif\s+|!?\s*)?(?:exec|env|sudo|timeout)\s+([A-Za-z0-9_./+-]+)", re.M)
-SHELL_LINE_COMMAND = re.compile(
-    r"^\s*(?:if\s+|elif\s+|then\s+|else\s+|while\s+|until\s+|!?\s*)"
-    r"([A-Za-z_][A-Za-z0-9_.+-]*)\s+(?=[^=])", re.M
-)
 SHELL_BUILTINS = {
     ":", ".", "alias", "bg", "break", "builtin", "caller", "cd", "command",
     "continue", "declare", "dirs", "disown", "echo", "enable", "eval", "exec",
@@ -32,7 +28,6 @@ SHELL_BUILTINS = {
     "source", "suspend", "test", "times", "trap", "true", "type", "typeset",
     "ulimit", "umask", "unalias", "unset", "wait",
 }
-SHELL_KEYWORDS = {"case", "do", "done", "esac", "fi", "for", "function", "in", "select", "until", "while"}
 INTERNAL_PREFIXES = ("sp_", "pm_", "qs_", "hypr_", "sekaipop_")
 
 
@@ -62,7 +57,7 @@ def main() -> int:
     imports: dict[str, set[str]] = collections.defaultdict(set)
     qml_commands: dict[str, set[str]] = collections.defaultdict(set)
     shell_probes: dict[str, set[str]] = collections.defaultdict(set)
-    shell_calls: dict[str, set[str]] = collections.defaultdict(set)
+    shell_execs: dict[str, set[str]] = collections.defaultdict(set)
 
     for path in qml_files:
         rel = path.relative_to(ROOT).as_posix()
@@ -77,7 +72,7 @@ def main() -> int:
     for path in shell_files:
         rel = path.relative_to(ROOT).as_posix()
         source = path.read_text(encoding="utf-8", errors="replace")
-        source = "\\n".join(line for line in source.splitlines() if not line.lstrip().startswith("#"))
+        source = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("#"))
         for match in SHELL_PROBE.finditer(source):
             name = match.group(1)
             if name not in SHELL_BUILTINS and not name.startswith(INTERNAL_PREFIXES):
@@ -85,7 +80,7 @@ def main() -> int:
         for match in SHELL_EXEC.finditer(source):
             name = command_name(match.group(1))
             if name and name not in SHELL_BUILTINS and not name.startswith(INTERNAL_PREFIXES):
-                shell_calls[name].add(rel)
+                shell_execs[name].add(rel)
 
 
     if args.format == "tsv":
@@ -108,6 +103,7 @@ def main() -> int:
         ("QML import modules", imports),
         ("Explicit executable references in QML Process/execDetached commands", qml_commands),
         ("Explicit shell executable probes", shell_probes),
+        ("Explicit shell execution wrappers", shell_execs),
     ):
         print(f"## {title}\n")
         if not values:
