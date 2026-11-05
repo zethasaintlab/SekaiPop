@@ -133,3 +133,18 @@ The inventory is intentionally read-only and reports package availability, not a
 The source-build route is now a credible default-provider candidate: the tested official Fedora repositories appear to supply the native C++26, Wayland, graphics, PipeWire, portal, and toolkit prerequisites at or above the pinned floors. Fedora 44's Lua 5.5 gap is isolated and has a pinned upstream source artifact. This is materially stronger evidence than the previous package-name-only assessment.
 
 The next gate is a clean Fedora 44 and 45 **offline-after-acquisition** source build of the complete pinned closure, including all CMake FetchContent/submodule inputs, followed by ELF and session/portal inspection. No source provider is enabled in the installer until those tests pass.
+
+
+### Transitive scanner/cursor dependency audit
+
+The next read-only inventory, [CI run #72961919](https://github.com/zethasaintlab/SekaiPop/actions/runs/41972961919), passed **6/6 jobs** on commit `8d73713a5fd304bc48b30fe6ae116ea0c20a285b`. It additionally confirmed official Fedora providers for the source-level dependencies that were previously absent from the inventory:
+
+| CMake module | Fedora 44 | Fedora 45 |
+|---|---|---|
+| `pugixml` (hyprwayland-scanner) | 1.16 | 1.16 |
+| `libzip` (hyprcursor) | 1.11.4 | 1.12.1 |
+| `tomlplusplus` (hyprcursor) | 3.4.0 | 3.4.0 |
+
+The package candidates were resolved from the enabled Fedora repositories only. The only missing named package in the full inventory remains `lua5.5-devel`; this is expected to be supplied by the verified Lua 5.5.1 source artifact in an isolated prefix, not by replacing Fedora 44's Lua 5.4 ABI. Fedora 45's official `lua-devel` candidate is already 5.5.1. The system `udis86` provider check is part of the next inventory revision; if unavailable or below 1.7.2, the pinned Hyprland submodule commit `5336633af70f3917760a6d441ff02d93477b0c86` is the explicit offline fallback.
+
+This makes the official Fedora native dependency closure appear complete for the selected source set, subject to the final `udis86` check and a real offline build. It is still not build or desktop validation.
