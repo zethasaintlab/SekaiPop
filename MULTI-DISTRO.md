@@ -5,8 +5,8 @@
 | Distribution | Package backend | Supported release baseline | Important condition |
 |---|---|---|---|
 | Arch Linux | pacman | Rolling, x86_64 | No isolated pacman -Sy; a stale sync DB requires explicit --system-upgrade for a full -Syu transaction. |
-| EndeavourOS | pacman | Rolling, x86_64 | Uses the Arch package profile. |
-| CachyOS | pacman | Rolling, x86_64 | Uses the Arch package profile. |
+| EndeavourOS | pacman | Rolling, x86_64 | Inherits the Arch package profile; not independently covered by the current package-plan CI matrix. |
+| CachyOS | pacman | Rolling, x86_64 | Inherits the Arch package profile; not independently covered by the current package-plan CI matrix. |
 | Fedora | DNF5 | Fedora 44 and 45, x86_64 | Compatible Hyprland >= 0.55 must already exist; no COPR is enabled. Fedora 45 has a separate release gate and does not assume a stable tuned-ppd candidate. |
 | Debian | APT | Debian 13 (trixie), x86_64 | Configure official trixie-backports yourself; only Quickshell and Hyprland are suite-targeted. |
 | Ubuntu | APT | Ubuntu 26.10 (Stonking Stingray), x86_64 | Universe must already be enabled. |
