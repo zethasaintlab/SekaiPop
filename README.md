@@ -106,7 +106,7 @@ The multi-distro installer is designed for a **mutable, systemd-based x86_64 des
 | Arch Linux | Rolling | pacman | A stale sync database requires explicit <code>--system-upgrade</code> authorization for a full system upgrade. |
 | EndeavourOS | Rolling | pacman | Uses the Arch package profile. |
 | CachyOS | Rolling | pacman | Uses the Arch package profile. |
-| Fedora | 44 | DNF5 | Compatible Hyprland >= 0.55 must already be installed; no COPR is enabled. |
+| Fedora | 44 and 45 | DNF5 | Compatible Hyprland >= 0.55 must already be installed; no COPR is enabled. Fedora 45 has an exact release gate and does not assume a stable tuned-ppd candidate. |
 | Debian | 13 (trixie) | APT | Official <code>trixie-backports</code> must already be configured for Quickshell and Hyprland. |
 | Ubuntu | 26.10 (Stonking Stingray) | APT | Universe must already be enabled. |
 
@@ -117,6 +117,7 @@ The multi-distro installer is designed for a **mutable, systemd-based x86_64 des
 - **Hyprland 0.55+** for SekaiPop's Lua configuration/API.
 - **Qt 6.7+**.
 - Quickshell with SekaiPop's required QML modules: Hyprland, Wayland, IO, Widgets, PAM, Polkit, Notifications, UPower, PipeWire, MPRIS and SystemTray.
+- Qt QML imports include QtQuick, QtQuick.Controls.impl, QtQuick.Effects, QtQuick.Layouts, QtQuick.Shapes, QtQml.Models, Qt.labs.folderlistmodel and QtMultimedia. The Fedora profile maps these to the native Qt Declarative and Multimedia runtime packages.
 - Shaders in the repository are built with Qt 6.12. Qt Shader Tools / <code>qsb</code> is required only when the effective Qt runtime is older than 6.12 and shader recompilation is needed.
 - Install and configure GPU drivers yourself. The installer never changes GPU drivers, kernel modules or Secure Boot.
 
