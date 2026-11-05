@@ -162,3 +162,10 @@ Results for both Fedora 44 and Fedora 45:
 - The only missing named development package is `lua5.5-devel`. Fedora 44 has `lua-devel 5.4.8`; Fedora 45 has `lua-devel 5.5.1`. For a single reproducible provider, the proposed smoke build will build the same SHA256-verified Lua 5.5.1 archive into a private prefix on both releases, avoiding any ambiguity about which Lua library CMake selects.
 
 No third-party repository or community package source was needed to satisfy the audited native dependency closure. This makes a fully pinned source-build provider technically viable on both Fedora releases, subject to the next decisive test: acquire all pinned inputs, disable network access, and compile/install the entire compositor + portal closure in a clean container. The inventory still does not prove that build succeeds or that the graphical session works.
+
+
+### First offline build attempt: submodule staging correction
+
+The first Fedora 44/45 offline build attempts ([run #73422135](https://github.com/zethasaintlab/SekaiPop/actions/runs/41973422135)) compiled and installed Lua 5.5.1, hyprland-protocols, hyprwayland-scanner, hyprutils, hyprgraphics, hyprlang, hyprcursor, aquamarine, and hyprtoolkit on both releases. They stopped before portal/Hyprland configuration because the source checkout contained an empty Git submodule directory and the smoke script treated any pre-existing path as a conflict.
+
+The smoke script now verifies that the submodule path is empty and populates it from the already verified udis86 commit using `git archive`; it refuses to overwrite any non-empty path. The follow-up run must still prove the portal and Hyprland builds, ELF closure, and session metadata.
