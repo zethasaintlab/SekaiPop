@@ -85,5 +85,6 @@ if bash "$ROOT/tests/test-installer-lock.sh"; then pass 'Installer concurrency l
 if bash "$ROOT/tests/test-shader-plan.sh"; then pass 'Qt Shader Tools planning fixtures'; else fail 'Qt Shader Tools planning fixtures'; fi
 if bash "$ROOT/tests/test-power-profile-api.sh"; then pass 'PowerProfiles D-Bus API fixtures'; else fail 'PowerProfiles D-Bus API fixtures'; fi
 if bash "$ROOT/tests/test-hyprland-touchpad-key.sh"; then pass 'Hyprland Lua touchpad key fixtures'; else fail 'Hyprland Lua touchpad key fixtures'; fi
+if bash "$ROOT/tests/test-apt-repository-bootstrap.sh"; then pass 'Official APT repository bootstrap fixtures'; else fail 'Official APT repository bootstrap fixtures'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
