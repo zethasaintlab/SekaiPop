@@ -68,6 +68,16 @@ class DnfRepositorySnapshotTests(unittest.TestCase):
         self.assertFalse(self.inventory.exists())
         self.assertFalse(self.hashes.exists())
 
+    def test_enabled_repository_without_metadata_identity_fails_closed(self):
+        result = self.run_snapshot([
+            {"id": "fedora", "is_enabled": True, "repo_file_path": str(self.config),
+             "revision": "", "timestamp": 0}
+        ])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no metadata revision", result.stderr)
+        self.assertFalse(self.inventory.exists())
+        self.assertFalse(self.hashes.exists())
+
     def test_existing_output_is_never_overwritten(self):
         self.inventory.write_text("preserve", encoding="utf-8")
         result = self.run_snapshot([
