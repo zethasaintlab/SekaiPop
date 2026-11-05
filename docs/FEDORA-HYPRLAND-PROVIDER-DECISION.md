@@ -61,3 +61,14 @@ Until one of the providers passes the acceptance gates:
 - Fedora Nix package announcement: https://discourse.nixos.org/t/nix-package-manager-now-available-in-fedora/73932
 - NixOS Wiki, Nix installation: https://wiki.nixos.org/wiki/Nix_Installation_Guide
 - Nixpkgs Hyprland module and session/portal integration: https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/programs/wayland/hyprland.nix
+
+
+## Updated official Fedora package evidence (2026-11-05)
+
+The live Fedora Packages metadata now makes the provider gap precise:
+
+- The official `hyprland` package page lists only Fedora 41 and Fedora 42 builds (0.44.1 and 0.45.2 respectively), and marks the package maintainer as orphaned. It does not list Fedora 44 or Fedora 45 builds. This is not a valid official provider for the supported releases: [Fedora Packages — hyprland](https://packages.fedoraproject.org/pkgs/hyprland/hyprland/index.html).
+- The compiler requirement is no longer a Fedora 44/45 blocker: Fedora Packages lists GCC 16.2.1 as stable on both Fedora 44 and Fedora 45. The source provider must still verify the actual C++26 compiler **and standard-library** compile/link probe in each clean build environment: [Fedora Packages — gcc](https://packages.fedoraproject.org/pkgs/gcc/gcc/).
+- Nix is available as a distribution-packaged option on both releases (2.35.3-2.fc44 and 2.35.3-2.fc45). This removes the need to install Nix through an upstream shell installer, but it does not solve the non-NixOS graphics, session, portal, or NVIDIA integration questions: [Fedora Packages — nix](https://packages.fedoraproject.org/pkgs/nix/nix/).
+
+The source-build candidate is therefore more feasible than a compiler-only assessment might suggest, but still not approved. The remaining hard blockers are the complete official package/version closure, Fedora 44's isolated Lua 5.5 requirement, hermetic acquisition/build of every pinned source and submodule, and real session/graphics/portal validation. Do not enable a source provider until every acceptance gate in the roadmap is evidenced.
