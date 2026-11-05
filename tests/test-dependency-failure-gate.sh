@@ -5,8 +5,9 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 export SEKAIPOP_INSTALLER_ROOT="$ROOT"
 source "$ROOT/installer/core/main.sh"
 
-marker="$(mktemp -u)"
-trap 'rm -f -- "$marker"' EXIT
+tmpdir="$(mktemp -d)"
+marker="$tmpdir/deployment-started"
+trap 'rm -rf -- "$tmpdir"' EXIT
 
 sp_parse_args() {
     SP_RESTORE=0
