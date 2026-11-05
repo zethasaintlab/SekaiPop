@@ -12,6 +12,8 @@ SOURCES=$2
 OS_RELEASE_FILE=${SEKAIPOP_OS_RELEASE_FILE:-/etc/os-release}
 BASE_IMAGE_REF=${SEKAIPOP_BASE_IMAGE_REF:-}
 BUILD_GIT_COMMIT=${SEKAIPOP_BUILD_GIT_COMMIT:-unrecorded}
+REPO_INVENTORY_FILE=${SEKAIPOP_DNF_REPO_INVENTORY:-/opt/sekaipop/ENABLED-DNF-REPOSITORIES}
+REPO_CONFIG_HASH_FILE=${SEKAIPOP_DNF_REPO_CONFIG_HASHES:-/opt/sekaipop/DNF-REPO-CONFIG-SHA256}
 
 [[ "$OUTPUT" == /* ]] || { printf 'Output path must be absolute.\n' >&2; exit 2; }
 [[ -d "$(dirname -- "$OUTPUT")" && ! -L "$(dirname -- "$OUTPUT")" ]] || {
@@ -39,7 +41,7 @@ BUILD_GIT_COMMIT=${SEKAIPOP_BUILD_GIT_COMMIT:-unrecorded}
     exit 2
 }
 
-for required in rpm dnf5 git gcc g++ cmake ninja meson pkg-config uname sha256sum sed sort; do
+for required in rpm git gcc g++ cmake ninja meson pkg-config uname sha256sum sed sort cat; do
     command -v "$required" >/dev/null 2>&1 || {
         printf 'Missing provenance command: %s\n' "$required" >&2
         exit 2
@@ -87,8 +89,20 @@ lua_sha256="${lua_sha256%% *}"
 
 rpm_inventory="$(rpm -qa --qf '%{NAME}\t%{EPOCHNUM}:%{VERSION}-%{RELEASE}\t%{ARCH}\n' | LC_ALL=C sort)"
 [[ -n "$rpm_inventory" ]] || { printf 'RPM inventory is empty.\n' >&2; exit 1; }
-repo_inventory="$(dnf5 repolist --enabled -v)"
-[[ -n "$repo_inventory" ]] || { printf 'Enabled DNF repository inventory is empty.\n' >&2; exit 1; }
+[[ -f "$REPO_INVENTORY_FILE" && ! -L "$REPO_INVENTORY_FILE" ]] || {
+    printf 'Enabled DNF repository inventory is missing or unsafe: %s\n' "$REPO_INVENTORY_FILE" >&2
+    exit 1
+}
+[[ -f "$REPO_CONFIG_HASH_FILE" && ! -L "$REPO_CONFIG_HASH_FILE" ]] || {
+    printf 'DNF repository config hash inventory is missing or unsafe: %s\n' "$REPO_CONFIG_HASH_FILE" >&2
+    exit 1
+}
+repo_inventory="$(cat "$REPO_INVENTORY_FILE")"
+repo_config_hashes="$(cat "$REPO_CONFIG_HASH_FILE")"
+[[ -n "$repo_inventory" && -n "$repo_config_hashes" ]] || {
+    printf 'DNF repository inventory or config hashes are empty.\n' >&2
+    exit 1
+}
 
 version_line() {
     local label=$1
@@ -126,6 +140,8 @@ trap cleanup EXIT
     printf '%s\n' "${source_commits[@]}"
     printf '\n[installed_rpms]\n'
     printf '%s\n' "$rpm_inventory"
+    printf '\n[dnf_repo_config_sha256]\n'
+    printf '%s\n' "$repo_config_hashes"
     printf '\n[enabled_dnf_repositories]\n'
     printf '%s\n' "$repo_inventory"
 } > "$tmp"
