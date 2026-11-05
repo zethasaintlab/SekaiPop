@@ -111,17 +111,17 @@ sp_reconcile_service() {
         fi
         if (( action_failed )); then
             sp_warn "Could not complete ${action[*]} for $scope service $service; attempting to restore its previous state."
-            if (( SP_SERVICE_TRANSACTION_ACTIVE )); then
-                if sp_service_rollback_one "$scope" "$rollback_action" "$service"; then
+            if sp_service_rollback_one "$scope" "$rollback_action" "$service"; then
+                if (( SP_SERVICE_TRANSACTION_ACTIVE )); then
                     rollback_index=$(("${#SP_SERVICE_CHANGE_NAMES[@]}" - 1))
                     unset "SP_SERVICE_CHANGE_SCOPES[rollback_index]" \
                         "SP_SERVICE_CHANGE_NAMES[rollback_index]" \
                         "SP_SERVICE_CHANGE_ROLLBACKS[rollback_index]"
-                else
-                    SP_SERVICE_ROLLBACK_FAILED=1
-                    sp_warn "Immediate rollback failed for $scope service $service; the deployment transaction must roll back."
-                    return 1
                 fi
+            else
+                SP_SERVICE_ROLLBACK_FAILED=1
+                sp_warn "Immediate rollback failed for $scope service $service; inspect the unit state before retrying."
+                return 1
             fi
         fi
     fi
