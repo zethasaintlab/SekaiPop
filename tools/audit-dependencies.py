@@ -13,7 +13,6 @@ import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 QML_ROOT = ROOT / "sekaipop"
-SHELL_ROOTS = (ROOT, )
 QML_IMPORT = re.compile(r"^\s*import\s+([A-Za-z_][A-Za-z0-9_.]*)(?:\s+([0-9]+(?:\.[0-9]+)*))?", re.M)
 QML_COMMAND = re.compile(r"(?:\bcommand\s*:\s*\[|\bexecDetached\s*\(\s*\[)\s*['\"]([^'\"]+)['\"]", re.M)
 QML_COMMAND_STRING = re.compile(r"\bcommand\s*:\s*['\"]([^'\"]+)['\"]", re.M)
