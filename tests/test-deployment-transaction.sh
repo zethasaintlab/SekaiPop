@@ -236,10 +236,7 @@ printf 'current-shell\n' > "$SP_QS_DEST/current.marker"
 printf 'current-hypr\n' > "$SP_HYPR_DEST/current.marker"
 if (
     cp() {
-        local destination="${!#}"
-        case "$destination" in
-            */restore-*/config/sekaipop-current) return 42 ;;
-        esac
+        if [[ "${3:-}" == "$SP_QS_DEST" ]]; then return 42; fi
         command /usr/bin/cp "$@"
     }
     sp_confirm() { return 0; }
