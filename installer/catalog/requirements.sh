@@ -6,7 +6,7 @@
 declare -ag SP_REQ_CORE=(
     quickshell hyprland qt6-base qt6-declarative qt6-multimedia qt6-svg
     dbus polkit graphics-egl pipewire wireplumber pipewire-pulse network-manager bluetooth upower
-    libnotify wl-clipboard jq curl git xdg-utils fontconfig util-linux
+    libnotify wl-clipboard jq curl git xdg-utils fontconfig util-linux diffutils
 )
 declare -ag SP_REQ_STANDARD=(
     qt6-imageformats qt6-wayland xdg-user-dirs python3 python-numpy
@@ -53,6 +53,7 @@ declare -Ag SP_REQ_DESCRIPTION=(
     [xdg-user-dirs]='xdg-user-dir support'
     [fontconfig]='fc-list/fc-cache font discovery and cache'
     [util-linux]='flock, setpriv and setsid utilities'
+    [diffutils]='diff used for backup and deployment snapshot comparison'
     [procps]='pkill process-control utility used by clipboard cleanup'
     [python3]='Python 3 runtime for optional audio-analysis integration'
     [python-numpy]='NumPy module for the audio analyzer; the shell has a fallback'
