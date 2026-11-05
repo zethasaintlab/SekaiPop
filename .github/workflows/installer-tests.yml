@@ -98,6 +98,9 @@ jobs:
           HYPRLAND
                   chmod +x /usr/local/bin/Hyprland
                   dnf5 makecache --refresh
+                  # Minimal Fedora container images omit su; install the native
+                  # util-linux provider so the package-plan test runs unprivileged.
+                  dnf5 install -y util-linux
                   ;;
                 debian)
                   printf "%s\\n" "deb http://deb.debian.org/debian trixie-backports main" \
