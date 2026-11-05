@@ -92,5 +92,6 @@ if bash "$ROOT/tests/test-dependency-only-runtime-gate.sh"; then pass 'Dependenc
 if bash "$ROOT/tests/test-private-prefix-validation.sh"; then pass 'CMake install manifests are confined to the private prefix'; else fail 'CMake install manifests are confined to the private prefix'; fi
 if bash "$ROOT/tests/test-fedora-hyprland-source-fetch-safety.sh"; then pass 'Fedora source fetch preserves pre-existing archive files'; else fail 'Fedora source fetch preserves pre-existing archive files'; fi
 if bash "$ROOT/tests/test-fedora-hyprland-build-provenance.sh"; then pass 'Fedora source-build provenance is immutable and complete'; else fail 'Fedora source-build provenance is immutable and complete'; fi
+if python3 "$ROOT/tests/test-fedora-dnf-repository-snapshot.py"; then pass 'DNF5 repository provenance resolves real config files and symlinks'; else fail 'DNF5 repository provenance resolves real config files and symlinks'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
