@@ -96,3 +96,40 @@ Primary source evidence:
 - [Hyprland v0.57.1 Nix overlay](https://github.com/hyprwm/Hyprland/blob/acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9/nix/overlays.nix)
 - [Hyprland v0.57.1 Nix runtime guard](https://github.com/hyprwm/Hyprland/blob/acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9/start/src/helpers/Nix.cpp)
 - [Hyprland Nix-on-any-distro guide](https://wiki.hypr.land/nix/hyprland-on-any-distro-using-nix/)
+
+
+## Fedora 44/45 official build-dependency inventory (2026-11-05)
+
+A read-only DNF5 capability inventory was run inside disposable official Fedora 44 and 45 container images. The command ran after `dnf5 makecache --refresh`, queried only enabled distribution repositories, and did not install any build dependencies or add repositories. Evidence is in [CI run #72597360](https://github.com/zethasaintlab/SekaiPop/actions/runs/41972597360), commit `fed655ae1393f696fe5f586b74a9fec94f6fc6d4`.
+
+The queried pkg-config providers were present on both releases for the audited CMake closure, including:
+
+- C++/graphics/runtime: `xkbcommon`, Wayland client/server, `wayland-protocols`, `libinput`, `uuid`, Cairo, Pango/PangoCairo, Pixman, Xcursor, libdrm, libEIS, GBM, GIO, re2, muparser, lcms2, libcanberra, GL/EGL/GLESv2, and glslang.
+- XWayland: XCB, render, XFixes, Composite, ICCCM, RES, and xcb-errors.
+- Portal and toolkit: `libpipewire-0.3`, `libspa-0.2`, libseat, libudev, libdisplay-info, hwdata, iniparser, Abseil flat hash map, libjpeg, libwebp, libmagic, libpng, librsvg, and sdbus-c++.
+
+Notable candidate versions observed in enabled official repositories:
+
+| Requirement | Fedora 44 candidate | Fedora 45 candidate | Pinned minimum |
+|---|---:|---:|---:|
+| xkbcommon | 1.13.1 | 1.13.1 | 1.11.0 |
+| wayland-protocols | 1.49 | 1.49 | 1.49 |
+| libinput | 1.31.3 | 1.32.0 | 1.29.0 |
+| libpipewire-0.3 | 1.6.11 | 1.6.11 | 1.1.82 |
+| libseat | 0.9.3 | 0.9.3 | 0.8.0 |
+| sdbus-c++ | 2.2.1 | 2.3.1 | 2.0.0 |
+| GCC C++ | 16.2.1 | 16.2.1 | 16 |
+| CMake | 4.3.0 | 4.3.0 | 3.30 |
+
+The only confirmed release-specific toolchain gap in this inventory is Lua 5.5:
+
+- Fedora 44's official `lua-devel` candidate is 5.4.8; no `lua5.5-devel` package candidate exists. The provider must build Lua 5.5.1 from the already pinned, SHA256-verified upstream archive into an isolated prefix and prove CMake links to that exact library.
+- Fedora 45's official `lua-devel` candidate is 5.5.1 and satisfies the pinned Hyprland requirement.
+
+The inventory is intentionally read-only and reports package availability, not a successful build. It does not validate every transitive source/build action, the exact selected candidate after package installation, runtime ELF closure, display-manager session discovery, portal activation, NVIDIA behavior, or rollback. The follow-up audit at current HEAD additionally checks the `wayland-scanner` pkg-config module and the XWayland package; that run is pending and must be inspected before treating this inventory as final.
+
+### Consequence for provider selection
+
+The source-build route is now a credible default-provider candidate: the tested official Fedora repositories appear to supply the native C++26, Wayland, graphics, PipeWire, portal, and toolkit prerequisites at or above the pinned floors. Fedora 44's Lua 5.5 gap is isolated and has a pinned upstream source artifact. This is materially stronger evidence than the previous package-name-only assessment.
+
+The next gate is a clean Fedora 44 and 45 **offline-after-acquisition** source build of the complete pinned closure, including all CMake FetchContent/submodule inputs, followed by ELF and session/portal inspection. No source provider is enabled in the installer until those tests pass.
