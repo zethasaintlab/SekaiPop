@@ -250,6 +250,45 @@ fi
 grep -Fq 'nothing was restored' "$TMP/restore-copy-failure.log" || fail 'Recovery-copy failure explains that restore did not begin'
 pass 'Restore aborts before changing user configuration when the recovery snapshot cannot be completed'
 
+# If the second tree fails during a two-tree restore, the first tree must
+# be returned to its exact pre-restore state from the recovery snapshot.
+PARTIAL_RESTORE_HOME="$TMP/partial-restore"
+SP_CONFIG_HOME="$PARTIAL_RESTORE_HOME/.config"
+SP_STATE_DIR="$PARTIAL_RESTORE_HOME/.local/state/sekaipop"
+SP_BACKUP_ROOT="$SP_STATE_DIR/installer-backups"
+SP_QS_DEST="$SP_CONFIG_HOME/quickshell/sekaipop"
+SP_HYPR_DEST="$SP_CONFIG_HOME/hypr"
+SP_TIMESTAMP=20261105235900
+mkdir -p "$SP_BACKUP_ROOT/source/config/sekaipop" "$SP_BACKUP_ROOT/source/config/hypr" "$SP_QS_DEST" "$SP_HYPR_DEST"
+printf 'snapshot-shell\n' > "$SP_BACKUP_ROOT/source/config/sekaipop/snapshot.marker"
+printf 'snapshot-hypr\n' > "$SP_BACKUP_ROOT/source/config/hypr/snapshot.marker"
+cat > "$SP_BACKUP_ROOT/source/manifest" <<'MANIFEST'
+quickshell_included=yes
+hyprland_included=yes
+quickshell_exists=yes
+hyprland_exists=yes
+MANIFEST
+printf 'current-shell\n' > "$SP_QS_DEST/current.marker"
+printf 'current-hypr\n' > "$SP_HYPR_DEST/current.marker"
+if (
+    eval "$(declare -f sp_replace_tree | sed '1s/^sp_replace_tree ()/sp_replace_tree_original ()/')"
+    sp_replace_tree() {
+        if [[ "$1" == "$SP_BACKUP_ROOT/source/config/hypr" ]]; then return 42; fi
+        sp_replace_tree_original "$@"
+    }
+    sp_confirm() { return 0; }
+    sp_die() { printf '[EXPECTED FAILURE] %s\n' "$1" >&2; exit 1; }
+    sp_restore_latest "$SP_BACKUP_ROOT/source"
+) > "$TMP/partial-restore.log" 2>&1; then
+    fail 'A failed second-tree restore must report failure'
+fi
+[[ "$(cat "$SP_QS_DEST/current.marker")" == current-shell ]] || fail 'Quickshell is restored to its pre-restore state after Hyprland restore failure'
+[[ "$(cat "$SP_HYPR_DEST/current.marker")" == current-hypr ]] || fail 'Hyprland remains at its pre-restore state after its restore failure'
+[[ ! -e "$SP_QS_DEST/snapshot.marker" && ! -e "$SP_HYPR_DEST/snapshot.marker" ]] || fail 'Partial snapshot contents are removed from both destinations'
+find "$SP_BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -name 'restore-*' -print -quit | grep -q . || fail 'Failed restore retains its pre-restore recovery snapshot'
+grep -Fq 'pre-restore configuration state was restored automatically' "$TMP/partial-restore.log" || fail 'Failed restore reports successful automatic recovery'
+pass 'Two-tree restore failure automatically restores the complete pre-restore configuration and retains recovery data'
+
 # A malformed explicit snapshot must fail closed rather than silently restore nothing.
 mkdir -p "$SP_BACKUP_ROOT/malformed"
 if ( sp_confirm() { return 0; }; sp_die() { printf '[EXPECTED FAILURE] %s\n' "$1" >&2; exit "${2:-1}"; }; sp_restore_latest "$SP_BACKUP_ROOT/malformed" ) > "$TMP/malformed-snapshot.log" 2>&1; then
