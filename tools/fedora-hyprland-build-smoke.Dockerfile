@@ -65,7 +65,7 @@ RUN dnf5 install -y \
     tomlplusplus-devel \
     xorg-x11-server-Xwayland \
     && mkdir -p /opt/sekaipop \
-    && dnf5 repolist --enabled -v > /opt/sekaipop/ENABLED-DNF-REPOSITORIES \
+    && dnf5 -v repolist --enabled > /opt/sekaipop/ENABLED-DNF-REPOSITORIES \
     && find /etc/yum.repos.d -maxdepth 1 -type f -name '*.repo' -print0 | sort -z | xargs -0 -r sha256sum > /opt/sekaipop/DNF-REPO-CONFIG-SHA256 \
     && dnf5 clean all
 
