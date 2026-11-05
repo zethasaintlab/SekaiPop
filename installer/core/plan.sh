@@ -254,7 +254,7 @@ sp_print_package_plan() {
         else printf 'Arch transaction: pacman -S --needed against the existing sync DB; no isolated -Sy.\n'; fi
     fi
     if [[ "$SP_DISTRO_ID" == fedora ]]; then
-        printf 'Fedora note: Hyprland is not available from Fedora 44 official repositories in this verified baseline; an existing compatible Hyprland is required.\n'
+        printf 'Fedora note: no compatible Hyprland provider is verified for Fedora 44/45 in this baseline; an existing compatible Hyprland is required.\n'
     fi
     printf '\n'
 }
