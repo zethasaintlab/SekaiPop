@@ -80,9 +80,12 @@ cmake_build hyprtoolkit
 
 # Hyprland's CMake falls back to this checked-in submodule when no suitable
 # system udis86 >= 1.7.2 is found. The source was fetched at the parent's gitlink SHA.
-mkdir -p "$SOURCES/Hyprland/subprojects"
-[[ ! -e "$SOURCES/Hyprland/subprojects/udis86" ]] || { printf 'Unexpected pre-existing udis86 submodule path.\n' >&2; exit 1; }
-cp -a "$SOURCES/udis86" "$SOURCES/Hyprland/subprojects/udis86"
+mkdir -p "$SOURCES/Hyprland/subprojects/udis86"
+[[ -z "$(find "$SOURCES/Hyprland/subprojects/udis86" -mindepth 1 -maxdepth 1 -print -quit)" ]] || {
+    printf 'Refusing to overwrite populated udis86 submodule path.\n' >&2
+    exit 1
+}
+git -C "$SOURCES/udis86" archive --format=tar HEAD | tar -x -C "$SOURCES/Hyprland/subprojects/udis86"
 
 # The portal's stale bundled hyprland-protocols submodule is deliberately not
 # populated. Its CMake must resolve the separately pinned 0.8.0 package above.
