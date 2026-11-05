@@ -12,7 +12,7 @@ fi
 
 query_capability() {
     local capability="$1" output
-    if ! output="$(dnf5 --quiet repoquery --available --whatprovides "pkgconfig($capability)" --queryformat '%{name} %{evr}' 2>&1)"; then
+    if ! output="$(dnf5 --quiet repoquery --available --whatprovides "pkgconfig($capability)" --queryformat '%{name} %{evr}\n' 2>&1)"; then
         printf 'ERROR\t%s\t%s\n' "$capability" "$output"
         return 1
     fi
@@ -27,7 +27,7 @@ query_capability() {
 
 query_package() {
     local package="$1" output
-    if ! output="$(dnf5 --quiet repoquery --available "$package" --queryformat '%{name} %{evr}' 2>&1)"; then
+    if ! output="$(dnf5 --quiet repoquery --available "$package" --queryformat '%{name} %{evr}\n' 2>&1)"; then
         printf 'ERROR\t%s\t%s\n' "$package" "$output"
         return 1
     fi
@@ -54,8 +54,11 @@ capabilities=(
     xkbcommon wayland-server wayland-protocols libinput uuid cairo pango
     pangocairo pixman-1 xcursor libdrm libeis-1.0 gbm gio-2.0 re2
     muparser lcms2 libcanberra gl egl glesv2 glslang
-    xcb xcb-xfixes xcb-composite xcb-icccm xcb-res xcb-errors
-    wayland-client pipewire libspa-0.2 iniparser
+    xcb xcb-render xcb-xfixes xcb-composite xcb-icccm xcb-res xcb-errors
+    wayland-client libpipewire-0.3 libspa-0.2
+    libseat libudev libdisplay-info hwdata
+    iniparser absl_flat_hash_map
+    libjpeg libwebp libmagic libpng librsvg-2.0 sdbus-c++
 )
 for capability in "${capabilities[@]}"; do
     query_capability "$capability" || failed=1
