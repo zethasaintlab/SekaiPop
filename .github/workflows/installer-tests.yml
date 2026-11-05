@@ -171,4 +171,5 @@ jobs:
       - name: Build compositor and portal with network disabled
         run: |
           docker run --rm --network none \
+            --env "SEKAIPOP_BUILD_GIT_COMMIT=$GITHUB_SHA" \
             "sekaipop-fedora-hyprland:${{ matrix.fedora }}"
