@@ -101,6 +101,8 @@ assert_present power-profiles-daemon 'An owned PowerProfiles D-Bus API is recogn
 SP_DISTRO_ID=debian
 PATH="$TMP/native-bin:$TMP/bin"
 export PATH
-assert_present power-profiles-daemon 'Native powerprofilesctl satisfies the non-Fedora power-profile capability'
+assert_absent power-profiles-daemon 'Native powerprofilesctl without the D-Bus API does not satisfy the non-Fedora capability'
+export MOCK_DBUS_OWNER=1 MOCK_DBUS_OBJECT=1
+assert_present power-profiles-daemon 'Native powerprofilesctl with the actual PowerProfiles D-Bus API satisfies the non-Fedora capability'
 
 printf '\nRuntime detection fixtures passed.\n'
