@@ -224,16 +224,16 @@ SP_QS_DEST="$SP_CONFIG_HOME/quickshell/sekaipop"
 SP_HYPR_DEST="$SP_CONFIG_HOME/hypr"
 SP_TIMESTAMP=20261102180400
 mkdir -p "$SP_BACKUP_ROOT/source/config/sekaipop" "$SP_BACKUP_ROOT/source/config/hypr" "$SP_QS_DEST" "$SP_HYPR_DEST"
-printf 'snapshot-shell\\n' > "$SP_BACKUP_ROOT/source/config/sekaipop/original.marker"
-printf 'snapshot-hypr\\n' > "$SP_BACKUP_ROOT/source/config/hypr/original.marker"
+printf 'snapshot-shell\n' > "$SP_BACKUP_ROOT/source/config/sekaipop/original.marker"
+printf 'snapshot-hypr\n' > "$SP_BACKUP_ROOT/source/config/hypr/original.marker"
 cat > "$SP_BACKUP_ROOT/source/manifest" <<'MANIFEST'
 quickshell_included=yes
 hyprland_included=yes
 quickshell_exists=yes
 hyprland_exists=yes
 MANIFEST
-printf 'current-shell\\n' > "$SP_QS_DEST/current.marker"
-printf 'current-hypr\\n' > "$SP_HYPR_DEST/current.marker"
+printf 'current-shell\n' > "$SP_QS_DEST/current.marker"
+printf 'current-hypr\n' > "$SP_HYPR_DEST/current.marker"
 if (
     cp() {
         local destination="${!#}"
