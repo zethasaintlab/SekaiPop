@@ -81,7 +81,7 @@ jobs:
             --env DISTRO_ID="$DISTRO_ID" \
             --volume "$GITHUB_WORKSPACE:/workspace" \
             --workdir /workspace \
-            "$CONTAINER_IMAGE" bash -s <<'CONTAINER_SCRIPT'
+            "$CONTAINER_IMAGE" bash -s <<'CONTAINER_SCRIPT' | tee "$RUNNER_TEMP/container-${DISTRO_ID}.log"
               set -Eeuo pipefail
               case "$DISTRO_ID" in
                 arch)
@@ -135,4 +135,6 @@ jobs:
               if [[ "$DISTRO_ID" == fedora ]]; then
                 bash tools/audit-fedora-hyprland-build-deps.sh
               fi
+              printf 'CI_CONTAINER_SCRIPT_EXECUTED=1\\n'
           CONTAINER_SCRIPT
+          grep -Fq 'CI_CONTAINER_SCRIPT_EXECUTED=1' "$RUNNER_TEMP/container-${DISTRO_ID}.log"
