@@ -54,6 +54,7 @@ Shell scripts also probe for optional desktop/application tools such as checkupd
 ## Package catalog decisions
 
 - util-linux is part of the core profile because the installer uses flock for transaction serialization and the shell uses setpriv/setsid.
+- diffutils is part of the core profile because deployment and backup verification compare filesystem trees with diff.
 - procps is part of the standard profile because clipboard cleanup invokes pkill.
 - Arch maps JetBrains Mono to ttf-jetbrains-mono, not a Nerd Font package. The font capability is deliberately named jetbrains-mono on all distros.
 - FFmpeg capability detection verifies the ffmpeg executable only; it does not assert that a given codec is available.
