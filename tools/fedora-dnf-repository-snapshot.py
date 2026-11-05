@@ -64,6 +64,12 @@ def snapshot(repo_info_path, inventory_path, hashes_path):
             fail("enabled repository has no valid id")
         if not isinstance(config_path, str) or not config_path.strip():
             fail(f"enabled repository {repo_id} has no repo_file_path")
+        revision = repo.get("revision")
+        timestamp = repo.get("timestamp")
+        if not isinstance(revision, (str, int)) or not str(revision).strip():
+            fail(f"enabled repository {repo_id} has no metadata revision")
+        if isinstance(timestamp, bool) or not isinstance(timestamp, int) or timestamp <= 0:
+            fail(f"enabled repository {repo_id} has no valid metadata timestamp")
         resolved = os.path.realpath(config_path)
         try:
             metadata = os.stat(resolved)
