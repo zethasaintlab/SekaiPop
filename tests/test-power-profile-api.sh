@@ -21,6 +21,14 @@ busctl() {
         *) return 2 ;;
     esac
 }
+systemctl() {
+    [[ "$1" == is-active ]] || return 1
+    case "$3" in
+        tlp.service) return 0 ;;
+        tlp-pd.service) return 1 ;;
+        *) return 1 ;;
+    esac
+}
 
 if sp_runtime_requirement_present power-profiles-daemon; then
     fail 'A client executable or inactive provider must not satisfy the runtime API requirement'
@@ -46,5 +54,20 @@ if sp_fedora_power_profile_api_available; then
     fail 'Fedora-specific wrapper must reject non-Fedora systems'
 fi
 pass 'Fedora-specific provider wrapper remains distro-scoped'
+
+SP_DISTRO_ID=debian
+OWNER_REPLY='b false'
+DISTRO_PACKAGE_MAP[power-profiles-daemon]='power-profiles-daemon'
+SP_PROFILE_REQS=(power-profiles-daemon)
+sp_resolve_package_spec() { printf '%s' "$1"; }
+pm_query_installed() { return 1; }
+sp_build_package_plan
+[[ "${#SP_INSTALL_PKGS[@]}" == 0 ]] || fail 'Do not install PPD beside active TLP without the tlp-pd adapter'
+conflict_found=0
+for item in "${SP_MISSING_OPTIONAL[@]}"; do
+    [[ "$item" == *'TLP is active without an active tlp-pd adapter'* ]] && conflict_found=1
+done
+(( conflict_found )) || fail 'The package plan must explain why the PPD provider was skipped'
+pass 'Non-Fedora package planning skips conflicting PPD when TLP is active without tlp-pd'
 
 printf '\nPowerProfiles API fixtures passed.\n'
