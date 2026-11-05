@@ -28,10 +28,11 @@ REPO_CONFIG_HASH_FILE=${SEKAIPOP_DNF_REPO_CONFIG_HASHES:-/opt/sekaipop/DNF-REPO-
     printf 'Source directory must be an existing non-symlink directory.\n' >&2
     exit 2
 }
-[[ -f "$OS_RELEASE_FILE" && ! -L "$OS_RELEASE_FILE" ]] || {
+[[ -f "$OS_RELEASE_FILE" ]] || {
     printf 'OS release file is missing or unsafe: %s\n' "$OS_RELEASE_FILE" >&2
     exit 2
 }
+OS_RELEASE_FILE="$(realpath -e -- "$OS_RELEASE_FILE")"
 [[ "$BASE_IMAGE_REF" =~ @sha256:[0-9a-f]{64}$ ]] || {
     printf 'SEKAIPOP_BASE_IMAGE_REF must be an immutable sha256 image reference.\n' >&2
     exit 2
@@ -41,7 +42,7 @@ REPO_CONFIG_HASH_FILE=${SEKAIPOP_DNF_REPO_CONFIG_HASHES:-/opt/sekaipop/DNF-REPO-
     exit 2
 }
 
-for required in rpm git gcc g++ cmake ninja meson pkg-config uname sha256sum sed sort cat; do
+for required in rpm git gcc g++ cmake ninja meson pkg-config uname sha256sum sed sort cat realpath; do
     command -v "$required" >/dev/null 2>&1 || {
         printf 'Missing provenance command: %s\n' "$required" >&2
         exit 2
