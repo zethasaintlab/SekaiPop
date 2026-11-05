@@ -17,7 +17,7 @@ Generated from the project source tree using tools/audit-dependencies.py. The CI
 | Quickshell and Quickshell.* | 315+ across modules | Quickshell package and its built modules |
 | qs.modules.* / qs.services | internal imports | SekaiPop deployment tree; not external packages |
 
-The Qt Declarative runtime is mapped as qt6-qtdeclarative on Fedora, qt6-declarative-dev plus the runtime QML module packages on Debian/Ubuntu, and qt6-declarative on Arch. Qt Multimedia is mapped to qt6-qtmultimedia, qt6-multimedia-dev/qml6-module-qtmultimedia, or qt6-multimedia-ffmpeg/qt6-multimedia as appropriate. The installer does not install Qt development headers on Fedora merely to satisfy runtime QML imports.
+The Qt Declarative runtime is mapped as qt6-qtdeclarative on Fedora, qt6-declarative on Arch, and the explicit runtime QML modules on Debian/Ubuntu (qt6-base-dev-tools is retained only for qtpaths6 version discovery; the full qt6-base-dev and qt6-declarative-dev header sets are not requested). Qt Multimedia is mapped to qt6-qtmultimedia on Fedora, qt6-multimedia-ffmpeg/qt6-multimedia on Arch, and qml6-module-qtmultimedia on Debian/Ubuntu.
 
 ## Explicit executable references in QML
 
