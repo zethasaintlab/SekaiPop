@@ -7,7 +7,7 @@ declare -Ag DISTRO_PACKAGE_MAP=(
     [dbus]='dbus' [polkit]='polkit' [graphics-egl]='mesa' [pipewire]='pipewire' [wireplumber]='wireplumber'
     [pipewire-pulse]='pipewire-pulse libpulse' [network-manager]='networkmanager' [bluetooth]='bluez bluez-utils' [upower]='upower'
     [libnotify]='libnotify' [wl-clipboard]='wl-clipboard' [jq]='jq' [curl]='curl' [git]='git'
-    [xdg-utils]='xdg-utils' [xdg-user-dirs]='xdg-user-dirs' [fontconfig]='fontconfig' [util-linux]='util-linux' [procps]='procps-ng' [python3]='python'
+    [xdg-utils]='xdg-utils' [xdg-user-dirs]='xdg-user-dirs' [fontconfig]='fontconfig' [util-linux]='util-linux' [diffutils]='diffutils' [procps]='procps-ng' [python3]='python'
     [python-numpy]='python-numpy'
     [portal]='xdg-desktop-portal' [portal-hyprland]='xdg-desktop-portal-hyprland' [portal-gtk]='xdg-desktop-portal-gtk'
     [xwayland]='xorg-xwayland' [noto-fonts]='noto-fonts' [noto-fonts-cjk]='noto-fonts-cjk' [noto-fonts-emoji]='noto-fonts-emoji'
