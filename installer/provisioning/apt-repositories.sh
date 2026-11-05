@@ -14,44 +14,51 @@ sp_apt_sources_has_suite_component() {
     shopt -u nullglob
     for file in "${files[@]}"; do
         [[ -f "$file" && ! -L "$file" ]] || continue
-        awk -v wanted_suite="$suite" -v wanted_component="$component" '
-            BEGIN { RS = ""; FS = "\n" }
-            {
-                suites = ""
-                components = ""
-                for (i = 1; i <= NF; i++) {
-                    line = $i
-                    sub(/^[[:space:]]+/, "", line)
-                    if (line ~ /^Suites:[[:space:]]*/) {
-                        sub(/^Suites:[[:space:]]*/, "", line)
-                        suites = line
-                    } else if (line ~ /^Components:[[:space:]]*/) {
-                        sub(/^Components:[[:space:]]*/, "", line)
-                        components = line
+        if [[ "$file" == *.sources ]]; then
+            awk -v wanted_suite="$suite" -v wanted_component="$component" '
+                BEGIN { RS = ""; FS = "\n" }
+                {
+                    suites = ""
+                    components = ""
+                    for (i = 1; i <= NF; i++) {
+                        line = $i
+                        sub(/^[[:space:]]+/, "", line)
+                        if (line ~ /^#/) continue
+                        if (line ~ /^Suites:[[:space:]]*/) {
+                            sub(/^Suites:[[:space:]]*/, "", line)
+                            suites = line
+                        } else if (line ~ /^Components:[[:space:]]*/) {
+                            sub(/^Components:[[:space:]]*/, "", line)
+                            components = line
+                        }
+                    }
+                    ns = split(suites, suite_tokens, /[[:space:]]+/)
+                    nc = split(components, component_tokens, /[[:space:]]+/)
+                    suite_found = 0
+                    component_found = 0
+                    for (i = 1; i <= ns; i++) if (suite_tokens[i] == wanted_suite) suite_found = 1
+                    for (i = 1; i <= nc; i++) if (component_tokens[i] == wanted_component) component_found = 1
+                    if (suite_found && component_found) found = 1
+                }
+                END { exit !found }
+            ' "$file" && return 0
+        else
+            awk -v wanted_suite="$suite" -v wanted_component="$component" '
+                /^[[:space:]]*#/ { next }
+                $1 == "deb" || $1 == "deb-src" {
+                    i = 2
+                    if ($i ~ /^\[/) i++
+                    source_suite = $(i + 1)
+                    if (source_suite == wanted_suite) {
+                        for (j = i + 2; j <= NF; j++) if ($j == wanted_component) found = 1
                     }
                 }
-                ns = split(suites, suite_tokens, /[[:space:]]+/)
-                nc = split(components, component_tokens, /[[:space:]]+/)
-                suite_found = 0
-                component_found = 0
-                for (i = 1; i <= ns; i++) if (suite_tokens[i] == wanted_suite) suite_found = 1
-                for (i = 1; i <= nc; i++) if (component_tokens[i] == wanted_component) component_found = 1
-                if (suite_found && component_found) found = 1
-            }
-            $1 == "deb" || $1 == "deb-src" {
-                i = 2
-                if ($i ~ /^\[/) i++
-                source_suite = $(i + 1)
-                if (source_suite == wanted_suite) {
-                    for (j = i + 2; j <= NF; j++) if ($j == wanted_component) found = 1
-                }
-            }
-            END { exit !found }
-        ' "$file" && return 0
+                END { exit !found }
+            ' "$file" && return 0
+        fi
     done
     return 1
 }
-
 
 sp_apt_managed_source_write() {
     local target="$1" content="$2" marker='# Managed by SekaiPop Universal Installer; official distribution archive only.'
