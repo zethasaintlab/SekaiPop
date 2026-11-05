@@ -64,7 +64,7 @@ mapfile -t events < "$PACMAN_EVENT_LOG"
 [[ "${events[3]}" == plan ]] || fail 'Mandatory package state is revalidated after the package transaction'
 pass 'Explicit authorization safely recovers stale or absent Arch sync databases before dependency resolution'
 
- : > "$PACMAN_EVENT_LOG"
+: > "$PACMAN_EVENT_LOG"
 plan_calls=0
 SP_ARCH_SYNC_UPGRADED=0
 sp_pacman_sync_db_fresh() { return 0; }
@@ -82,7 +82,7 @@ SP_SYSTEM_UPGRADE=1
 SP_ARCH_SYNC_UPGRADED=0
 sp_pacman_sync_db_fresh() { return 1; }
 pm_refresh_metadata() {
-    printf 'refresh-failure\\n' >> "$PACMAN_EVENT_LOG"
+    printf 'refresh-failure\n' >> "$PACMAN_EVENT_LOG"
     return 19
 }
 if sp_plan_and_install_dependencies; then
