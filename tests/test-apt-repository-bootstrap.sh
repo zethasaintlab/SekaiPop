@@ -65,6 +65,19 @@ pass 'Legacy APT list parsing is line-scoped and suite-specific'
 rm -f -- "$SP_APT_SOURCES_DIR/legacy.list"
 
 SP_DISTRO_ID=ubuntu SP_DISTRO_VERSION=26.10 SP_DISTRO_CODENAME=stonking
+cat > "$SP_APT_SOURCES_DIR/disabled-universe.sources" <<'SOURCE'
+Types: deb
+URIs: https://archive.ubuntu.com/ubuntu
+Suites: stonking stonking-updates
+Components: main universe
+Enabled: no
+
+Types: deb
+URIs: https://security.ubuntu.com/ubuntu
+Suites: stonking-security
+Components: main universe
+Enabled: no
+SOURCE
 sp_apt_bootstrap_official_sources
 ubuntu_source="$SP_APT_SOURCES_DIR/sekaipop-universe.sources"
 [[ -f "$ubuntu_source" ]] || fail 'Ubuntu Universe source was not created'
