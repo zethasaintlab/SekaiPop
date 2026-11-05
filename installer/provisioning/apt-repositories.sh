@@ -20,6 +20,7 @@ sp_apt_sources_has_suite_component() {
                 {
                     suites = ""
                     components = ""
+                    enabled = "yes"
                     for (i = 1; i <= NF; i++) {
                         line = $i
                         sub(/^[[:space:]]+/, "", line)
@@ -30,8 +31,12 @@ sp_apt_sources_has_suite_component() {
                         } else if (line ~ /^Components:[[:space:]]*/) {
                             sub(/^Components:[[:space:]]*/, "", line)
                             components = line
+                        } else if (line ~ /^Enabled:[[:space:]]*/) {
+                            sub(/^Enabled:[[:space:]]*/, "", line)
+                            enabled = tolower(line)
                         }
                     }
+                    if (enabled == "no") next
                     ns = split(suites, suite_tokens, /[[:space:]]+/)
                     nc = split(components, component_tokens, /[[:space:]]+/)
                     suite_found = 0
