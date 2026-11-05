@@ -40,4 +40,9 @@ if (sp_acquire_installer_lock) >/dev/null 2>&1; then
 fi
 pass 'Symlinked lock files are rejected'
 
+mkdir -p "$TMP/home/.cache" "$TMP/lock-target"
+ln -s "$TMP/lock-target" "$TMP/home/.cache/sekaipop"
+HOME="$TMP/home" XDG_RUNTIME_DIR= bash -c 'source "$1/installer/core/main.sh"; sp_acquire_installer_lock' _ "$ROOT" >/dev/null 2>&1 && fail 'A symlinked fallback lock directory must be rejected'
+pass 'Symlinked fallback lock directories are rejected'
+
 printf '\nInstaller lock fixtures passed.\n'
