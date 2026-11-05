@@ -100,6 +100,8 @@ sp_restore_latest() {
     if [[ -z "$hypr_included" ]]; then hypr_included=no; [[ -d "$backup_hypr" ]] && hypr_included=yes; fi
     if [[ -z "$qs_exists" ]]; then qs_exists=no; [[ -d "$backup_qs" ]] && qs_exists=yes; fi
     if [[ -z "$hypr_exists" ]]; then hypr_exists=no; [[ -d "$backup_hypr" ]] && hypr_exists=yes; fi
+    [[ "$qs_included" == yes || "$hypr_included" == yes ]] ||
+        sp_die "Snapshot contains no restorable Quickshell or Hyprland configuration: $snapshot"
     if [[ "$qs_included" == yes && "$qs_exists" == yes ]]; then
         [[ -d "$backup_qs" && ! -L "$backup_qs" ]] || sp_die "Quickshell snapshot content is missing or symlinked: $backup_qs"
     fi
