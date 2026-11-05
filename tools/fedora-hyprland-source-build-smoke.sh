@@ -18,24 +18,24 @@ mkdir -p -- "$WORK" "$PREFIX"
 # is not a dependency lock: image tags and repository contents remain mutable.
 PROVENANCE="$WORK/BUILD-PROVENANCE.txt"
 {
-    printf '%s\\n' '=== OS ==='
+    printf '%s\n' '=== OS ==='
     cat /etc/os-release
-    printf '\\n%s\\n' '=== Enabled repositories ==='
+    printf '\n%s\n' '=== Enabled repositories ==='
     dnf5 repolist --enabled
-    printf '\\n%s\\n' '=== Installed RPM NEVRAs ==='
-    rpm -qa --qf '%{NAME}-%{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}\\n' | LC_ALL=C sort
-    printf '\\n%s\\n' '=== Toolchain ==='
-    printf '%s\\n' '-- gcc --'
+    printf '\n%s\n' '=== Installed RPM NEVRAs ==='
+    rpm -qa --qf '%{NAME}-%{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}\n' | LC_ALL=C sort
+    printf '\n%s\n' '=== Toolchain ==='
+    printf '%s\n' '-- gcc --'
     gcc --version | head -n 1
-    printf '%s\\n' '-- g++ --'
+    printf '%s\n' '-- g++ --'
     g++ --version | head -n 1
-    printf '%s\\n' '-- cmake --'
+    printf '%s\n' '-- cmake --'
     cmake --version | head -n 1
-    printf '%s\\n' '-- ninja --'
+    printf '%s\n' '-- ninja --'
     ninja --version
-    printf '%s\\n' '-- meson --'
+    printf '%s\n' '-- meson --'
     meson --version
-    printf '%s\\n' '-- pkg-config --'
+    printf '%s\n' '-- pkg-config --'
     pkg-config --version
 } > "$PROVENANCE"
 
@@ -220,8 +220,8 @@ grep -Eq '^Exec=.*(Hyprland|start-hyprland)' "$PREFIX/share/wayland-sessions/hyp
     exit 1
 }
 
-printf '\nprintf '\\n=== FEDORA_HYPRLAND_BUILD_PROVENANCE_BEGIN ===\\n'
+printf '\nprintf '\n=== FEDORA_HYPRLAND_BUILD_PROVENANCE_BEGIN ===\n'
 cat "$PROVENANCE"
-printf '=== FEDORA_HYPRLAND_BUILD_PROVENANCE_END ===\\n'
+printf '=== FEDORA_HYPRLAND_BUILD_PROVENANCE_END ===\n'
 
 printf '\nFEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK\n'
