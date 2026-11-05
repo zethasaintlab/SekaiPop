@@ -72,3 +72,27 @@ The live Fedora Packages metadata now makes the provider gap precise:
 - Nix is available as a distribution-packaged option on both releases (2.35.3-2.fc44 and 2.35.3-2.fc45). This removes the need to install Nix through an upstream shell installer, but it does not solve the non-NixOS graphics, session, portal, or NVIDIA integration questions: [Fedora Packages — nix](https://packages.fedoraproject.org/pkgs/nix/nix/).
 
 The source-build candidate is therefore more feasible than a compiler-only assessment might suggest, but still not approved. The remaining hard blockers are the complete official package/version closure, Fedora 44's isolated Lua 5.5 requirement, hermetic acquisition/build of every pinned source and submodule, and real session/graphics/portal validation. Do not enable a source provider until every acceptance gate in the roadmap is evidenced.
+
+
+## Upstream Hyprland Nix flake audit (2026-11-05)
+
+The pinned Hyprland v0.57.1 source commit `acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9` contains a substantially more complete Nix provider than a generic `nixpkgs#hyprland` lookup suggests. Its checked-in `flake.lock` locks Nixpkgs to `0bb2eedc20e4739f29e8045034f2828ad7054f8f` with a NAR hash and pins the Hypr* dependency graph, portal, toolkit, systems input, and pre-commit hook input. The `packages` output exposes both `hyprland` and `xdg-desktop-portal-hyprland`.
+
+The pinned `nix/default.nix` derivation explicitly uses `gcc16Stdenv`, `lua5_5`, `sdbus-cpp_2`, XWayland dependencies, and the Hyprland GUI utilities. It builds with systemd support when the target platform provides systemd, sets `NO_UWSM` accordingly, and declares the Hyprland session as a provided session. This is a coherent upstream-maintained build closure and avoids Fedora 44's host Lua 5.4 mismatch by using the Nix store's Lua 5.5 dependency.
+
+However, the non-NixOS graphics requirement is explicit in the same pinned upstream source: [`start/src/helpers/Nix.cpp`](https://github.com/hyprwm/Hyprland/blob/acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9/start/src/helpers/Nix.cpp) checks whether Hyprland was built with Nix and, on a non-NixOS host without `/run/opengl-driver`, refuses to launch unless `nixGL` is available on PATH. The source even points to `github:guibou/nixGL --impure`. This is not an optional cosmetic wrapper: it is a launch prerequisite for the documented non-NixOS graphics path.
+
+### Updated Nix assessment
+
+- **Positive:** official Fedora RPMs can install Nix itself on both supported releases; the upstream Hyprland flake provides a locked Hyprland + portal build graph, GCC 16, and Lua 5.5; the upstream package contains a Wayland session desktop file.
+- **Negative:** a working non-NixOS launch requires a separately reviewed and pinned nixGL provider unless the host has a compatible Nix OpenGL driver environment. The upstream NixOS module cannot be applied directly to Fedora. The system Wayland-session entry must be exposed to the display manager, and the portal's D-Bus service/portal metadata must be made visible to the host's xdg-desktop-portal. NVIDIA and other GPU paths remain unvalidated.
+- **Security:** the upstream lockfile pins every flake input by immutable revision and NAR hash, but it also contains auxiliary inputs such as `nix-systems/default-linux` and `cachix/git-hooks.nix`. A provider must audit which inputs are actually evaluated/fetched for the production package outputs, retain the lockfile, reject lockfile mutation during install, and use only trusted Nix substituters with verified signatures. Do not add unpinned `--override-input` values.
+- **Decision:** Nix is now the strongest experimental Fedora candidate for a pinned compositor/portal build, but remains **opt-in only** until nixGL provenance/pinning, display-manager registration, portal activation, GPU coverage, upgrade, and rollback are validated. It is not enabled by default and does not yet satisfy the clean Fedora acceptance gate.
+
+Primary source evidence:
+- [Hyprland v0.57.1 flake.nix](https://github.com/hyprwm/Hyprland/blob/acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9/flake.nix)
+- [Hyprland v0.57.1 flake.lock](https://github.com/hyprwm/Hyprland/blob/acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9/flake.lock)
+- [Hyprland v0.57.1 Nix derivation](https://github.com/hyprwm/Hyprland/blob/acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9/nix/default.nix)
+- [Hyprland v0.57.1 Nix overlay](https://github.com/hyprwm/Hyprland/blob/acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9/nix/overlays.nix)
+- [Hyprland v0.57.1 Nix runtime guard](https://github.com/hyprwm/Hyprland/blob/acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9/start/src/helpers/Nix.cpp)
+- [Hyprland Nix-on-any-distro guide](https://wiki.hypr.land/nix/hyprland-on-any-distro-using-nix/)
