@@ -27,6 +27,10 @@ sp_create_backup() {
     [[ ! -L "$SP_QS_DEST" || "$include_qs" != 1 ]] || sp_die "Refusing to snapshot symlinked Quickshell destination: $SP_QS_DEST"
     [[ ! -L "$SP_HYPR_DEST" || "$include_hypr" != 1 ]] || sp_die "Refusing to snapshot symlinked Hyprland destination: $SP_HYPR_DEST"
     [[ ! -L "$SP_BACKUP_ROOT" ]] || sp_die "Refusing symlinked installer backup directory: $SP_BACKUP_ROOT"
+    [[ ! -L "$SP_QS_DEST" ]] || sp_die "Refusing to restore over symlinked Quickshell destination: $SP_QS_DEST"
+    [[ ! -L "$SP_HYPR_DEST" ]] || sp_die "Refusing to restore over symlinked Hyprland destination: $SP_HYPR_DEST"
+    [[ ! -e "$SP_QS_DEST" || -d "$SP_QS_DEST" ]] || sp_die "Quickshell restore destination is not a directory: $SP_QS_DEST"
+    [[ ! -e "$SP_HYPR_DEST" || -d "$SP_HYPR_DEST" ]] || sp_die "Hyprland restore destination is not a directory: $SP_HYPR_DEST"
     mkdir -p "$SP_BACKUP_ROOT"
     [[ ! -e "$SP_QS_DEST" ]] || current_qs_exists=current-yes
     [[ ! -e "$SP_HYPR_DEST" ]] || current_hypr_exists=current-yes
@@ -66,9 +70,39 @@ sp_create_backup() {
     } > "$backup_dir/manifest"
     SP_BACKUP_DIR="$backup_dir"; sp_info "Configuration snapshot saved: $backup_dir"
 }
+sp_restore_pre_restore_state() {
+    local restore_backup="$1" restore_qs="$2" restore_hypr="$3" failed=0 current
+    if (( restore_qs )); then
+        current="$restore_backup/config/sekaipop-current"
+        if [[ -d "$current" && ! -L "$current" ]]; then
+            sp_replace_tree "$current" "$SP_QS_DEST" || failed=1
+        elif [[ -e "$SP_QS_DEST" || -L "$SP_QS_DEST" ]]; then
+            if [[ -L "$SP_QS_DEST" ]] || ! rm -rf -- "$SP_QS_DEST"; then failed=1; fi
+        fi
+    fi
+    if (( restore_hypr )); then
+        current="$restore_backup/config/hypr-current"
+        if [[ -d "$current" && ! -L "$current" ]]; then
+            sp_replace_tree "$current" "$SP_HYPR_DEST" || failed=1
+        elif [[ -e "$SP_HYPR_DEST" || -L "$SP_HYPR_DEST" ]]; then
+            if [[ -L "$SP_HYPR_DEST" ]] || ! rm -rf -- "$SP_HYPR_DEST"; then failed=1; fi
+        fi
+    fi
+    (( failed == 0 ))
+}
+
+sp_restore_fail_and_recover() {
+    local reason="$1" restore_backup="$2" restore_qs="$3" restore_hypr="$4"
+    if sp_restore_pre_restore_state "$restore_backup" "$restore_qs" "$restore_hypr"; then
+        sp_die "$reason The pre-restore configuration state was restored automatically. Recovery snapshot retained at $restore_backup."
+    else
+        sp_die "$reason Automatic recovery of the pre-restore configuration was incomplete. Recovery snapshot retained at $restore_backup; manual recovery is required."
+    fi
+}
+
 sp_restore_latest() {
     local requested_snapshot="${1:-}" latest='' candidate snapshot backup_qs backup_hypr restore_backup
-    local qs_included qs_exists hypr_included hypr_exists manifest
+    local qs_included qs_exists hypr_included hypr_exists manifest qs_touched=0 hypr_touched=0
     if [[ ! -d "$SP_BACKUP_ROOT" ]]; then
         [[ -z "$requested_snapshot" ]] && sp_restore_legacy_hypr_backup && return 0
         sp_die "The transaction backup root is missing; cannot restore requested snapshot: $requested_snapshot"
@@ -127,12 +161,28 @@ sp_restore_latest() {
         "$([[ -e "$restore_backup/config/hypr-current" || -L "$restore_backup/config/hypr-current" ]] && echo yes || echo no)" > "$restore_backup/manifest" ||
         { rm -rf -- "$restore_backup"; sp_die 'Could not write the recovery snapshot manifest; nothing was restored.'; }
     if [[ "$qs_included" == yes ]]; then
-        if [[ "$qs_exists" == yes ]]; then [[ -d "$backup_qs" ]] || sp_die 'Quickshell snapshot manifest is inconsistent; refusing restore.'; sp_replace_tree "$backup_qs" "$SP_QS_DEST" || sp_die 'Quickshell restore failed.'
-        elif [[ -e "$SP_QS_DEST" || -L "$SP_QS_DEST" ]]; then [[ ! -L "$SP_QS_DEST" ]] || sp_die "Refusing to remove symlinked Quickshell destination: $SP_QS_DEST"; rm -rf -- "$SP_QS_DEST" || sp_die 'Could not restore the original absence of the Quickshell destination.'; fi
+        if [[ "$qs_exists" == yes ]]; then
+            [[ -d "$backup_qs" ]] || sp_die 'Quickshell snapshot manifest is inconsistent; refusing restore.'
+            qs_touched=1
+            sp_replace_tree "$backup_qs" "$SP_QS_DEST" ||
+                sp_restore_fail_and_recover 'Quickshell restore failed.' "$restore_backup" "$qs_touched" "$hypr_touched"
+        elif [[ -e "$SP_QS_DEST" ]]; then
+            qs_touched=1
+            rm -rf -- "$SP_QS_DEST" ||
+                sp_restore_fail_and_recover 'Could not restore the original absence of the Quickshell destination.' "$restore_backup" "$qs_touched" "$hypr_touched"
+        fi
     fi
     if [[ "$hypr_included" == yes ]]; then
-        if [[ "$hypr_exists" == yes ]]; then [[ -d "$backup_hypr" ]] || sp_die 'Hyprland snapshot manifest is inconsistent; refusing restore.'; sp_replace_tree "$backup_hypr" "$SP_HYPR_DEST" || sp_die 'Hyprland restore failed.'
-        elif [[ -e "$SP_HYPR_DEST" || -L "$SP_HYPR_DEST" ]]; then [[ ! -L "$SP_HYPR_DEST" ]] || sp_die "Refusing to remove symlinked Hyprland destination: $SP_HYPR_DEST"; rm -rf -- "$SP_HYPR_DEST" || sp_die 'Could not restore the original absence of the Hyprland destination.'; fi
+        if [[ "$hypr_exists" == yes ]]; then
+            [[ -d "$backup_hypr" ]] || sp_die 'Hyprland snapshot manifest is inconsistent; refusing restore.'
+            hypr_touched=1
+            sp_replace_tree "$backup_hypr" "$SP_HYPR_DEST" ||
+                sp_restore_fail_and_recover 'Hyprland restore failed.' "$restore_backup" "$qs_touched" "$hypr_touched"
+        elif [[ -e "$SP_HYPR_DEST" ]]; then
+            hypr_touched=1
+            rm -rf -- "$SP_HYPR_DEST" ||
+                sp_restore_fail_and_recover 'Could not restore the original absence of the Hyprland destination.' "$restore_backup" "$qs_touched" "$hypr_touched"
+        fi
     fi
     sp_ok "Restore completed. The previous current configs are retained at $restore_backup."
 }
