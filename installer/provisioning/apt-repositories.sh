@@ -5,6 +5,7 @@
 SP_APT_SOURCES_DIR="${SP_APT_SOURCES_DIR:-/etc/apt/sources.list.d}"
 SP_APT_MAIN_SOURCES="${SP_APT_MAIN_SOURCES:-/etc/apt/sources.list}"
 declare -ag SP_APT_BOOTSTRAP_CREATED=()
+declare -ag SP_APT_BOOTSTRAP_CREATED_SHA=()
 
 sp_apt_sources_contain() {
     local needle="$1" file
@@ -32,15 +33,23 @@ sp_apt_sources_contain() {
 
 sp_apt_managed_source_write() {
     local target="$1" content="$2" marker='# Managed by SekaiPop Universal Installer; official distribution archive only.'
-    local tmp stage
+    local tmp stage expected_sha actual_sha
     [[ "$target" == "$SP_APT_SOURCES_DIR/"* ]] || sp_die "Refusing APT source path outside the configured sources directory: $target"
     [[ ! -L "$target" ]] || sp_die "Refusing to replace symlinked APT source file: $target"
-    if [[ -e "$target" ]]; then
-        grep -Fq -- "$marker" "$target" && return 0
-        sp_die "APT source target already exists and is not installer-managed: $target"
-    fi
     tmp="$(mktemp)"
     printf '%s\n%s\n' "$marker" "$content" > "$tmp"
+    if [[ -e "$target" ]]; then
+        if ! grep -Fq -- "$marker" "$target"; then
+            rm -f -- "$tmp"
+            sp_die "APT source target already exists and is not installer-managed: $target"
+        fi
+        if cmp -s -- "$tmp" "$target"; then
+            rm -f -- "$tmp"
+            return 0
+        fi
+        rm -f -- "$tmp"
+        sp_die "Installer-managed APT source was modified; refusing to overwrite it: $target"
+    fi
     stage="$target.sekaipop-stage-$$"
     if [[ -e "$stage" || -L "$stage" ]]; then rm -f -- "$tmp"; sp_die "APT source staging path already exists: $stage"; fi
     if ! sp_sudo install -m 0644 -- "$tmp" "$stage"; then
@@ -52,7 +61,9 @@ sp_apt_managed_source_write() {
         sp_sudo rm -f -- "$stage" || true
         sp_die "Could not atomically activate official APT source file: $target"
     fi
+    expected_sha="$(sha256sum -- "$target" | awk '{print $1}')"
     SP_APT_BOOTSTRAP_CREATED+=("$target")
+    SP_APT_BOOTSTRAP_CREATED_SHA+=("$expected_sha")
     sp_ok "Enabled official APT source: $target"
 }
 
@@ -72,8 +83,9 @@ sp_apt_bootstrap_plan() {
 }
 
 sp_apt_bootstrap_official_sources() {
-    local codename
+    local codename components
     SP_APT_BOOTSTRAP_CREATED=()
+    SP_APT_BOOTSTRAP_CREATED_SHA=()
     [[ "${SP_BACKEND:-}" == apt ]] || return 0
     case "${SP_DISTRO_ID:-}" in
         debian)
@@ -98,17 +110,19 @@ Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg'
             if ! sp_apt_sources_contain 'universe'; then
                 sp_confirm "Enable the official Ubuntu Universe component for $codename?" ||
                     sp_die 'Ubuntu Universe activation declined; no APT source was changed.'
+                components=universe
+                sp_apt_sources_contain main || components='main universe'
                 sp_apt_managed_source_write "$SP_APT_SOURCES_DIR/sekaipop-universe.sources" \
                     "Types: deb
 URIs: https://archive.ubuntu.com/ubuntu
 Suites: $codename $codename-updates
-Components: universe
+Components: $components
 Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 
 Types: deb
 URIs: https://security.ubuntu.com/ubuntu
 Suites: $codename-security
-Components: universe
+Components: $components
 Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg"
             else
                 sp_info 'Ubuntu Universe is already configured.'
@@ -118,12 +132,18 @@ Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg"
 }
 
 sp_apt_bootstrap_rollback() {
-    local file
-    for file in "${SP_APT_BOOTSTRAP_CREATED[@]}"; do
-        [[ -f "$file" && ! -L "$file" ]] || continue
-        if grep -Fq '# Managed by SekaiPop Universal Installer; official distribution archive only.' "$file"; then
+    local index file expected_sha actual_sha
+    for index in "${!SP_APT_BOOTSTRAP_CREATED[@]}"; do
+        file="${SP_APT_BOOTSTRAP_CREATED[index]}"
+        expected_sha="${SP_APT_BOOTSTRAP_CREATED_SHA[index]:-}"
+        [[ -f "$file" && ! -L "$file" && -n "$expected_sha" ]] || continue
+        actual_sha="$(sha256sum -- "$file" | awk '{print $1}')"
+        if [[ "$actual_sha" == "$expected_sha" ]]; then
             sp_sudo rm -f -- "$file" || sp_warn "Could not roll back newly created APT source: $file"
+        else
+            sp_warn "Preserving APT source modified during installation; manual review required: $file"
         fi
     done
     SP_APT_BOOTSTRAP_CREATED=()
+    SP_APT_BOOTSTRAP_CREATED_SHA=()
 }
