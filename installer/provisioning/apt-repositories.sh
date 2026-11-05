@@ -20,7 +20,7 @@ sp_apt_sources_contain() {
             }
             $1 == "deb" || $1 == "deb-src" {
                 i = 2
-                if ($i ~ /^\\[/) i++
+                if ($i ~ /^\[/) i++
                 i += 2
                 for (; i <= NF; i++) if ($i == needle) found = 1
             }
