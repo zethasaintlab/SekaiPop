@@ -136,11 +136,11 @@ printf '\nELF runtime dependency validation:\n'
 for binary in "$PREFIX/bin/Hyprland" "$PREFIX/libexec/xdg-desktop-portal-hyprland"; do
     dynamic_tags="$(readelf -d "$binary")"
     grep -Fq "$PREFIX/lib64" <<< "$dynamic_tags" || {
-        printf 'Missing private-prefix RUNPATH/RPATH in %s\\n' "$binary" >&2
+        printf 'Missing private-prefix RUNPATH/RPATH in %s\n' "$binary" >&2
         exit 1
     }
     if grep -Eq '/opt/sekaipop/(work|sources)' <<< "$dynamic_tags"; then
-        printf 'Build/source tree path leaked into installed ELF RUNPATH/RPATH: %s\\n%s\\n' "$binary" "$dynamic_tags" >&2
+        printf 'Build/source tree path leaked into installed ELF RUNPATH/RPATH: %s\n%s\n' "$binary" "$dynamic_tags" >&2
         exit 1
     fi
 done
