@@ -28,6 +28,10 @@ jobs:
           shellcheck --severity=error "${scripts[@]}" install.sh install-deps.sh check-deps.sh install-multi.sh
       - name: Run installer smoke tests
         run: bash tests/run-tests.sh
+      - name: Run launcher JavaScript regression tests
+        run: |
+          node sekaipop/tests/launcher-test/app_source_rescan_test.js
+          node sekaipop/tests/launcher-test/rank_unit.js
       - name: Run integration fixtures
         run: bash tests/test-integrations.sh
       - name: Run systemd service fixtures
