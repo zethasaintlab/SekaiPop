@@ -240,3 +240,6 @@ Because it includes GPL-3.0 code, **this repository is distributed under GPL-3.0
 Character themes and names are fan references to *Project SEKAI COLORFUL STAGE! feat. Hatsune Miku*. This is an unofficial fan project, not affiliated with SEGA, Colorful Palette or Crypton Future Media. Wallpapers shown in the screenshots belong to their original artists.
 
 <img src="assets/divider.svg" alt="" width="100%">
+
+
+Maintainers: see [DEPENDENCY-AUDIT.md](DEPENDENCY-AUDIT.md) for the static QML import and executable-reference inventory, and [NATIVE-VM-VALIDATION.md](NATIVE-VM-VALIDATION.md) for release certification steps.
