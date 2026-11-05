@@ -5,6 +5,7 @@ SOURCES="${SEKAIPOP_HYPR_SOURCES:-/opt/sekaipop/sources}"
 WORK="${SEKAIPOP_HYPR_WORK:-/opt/sekaipop/work}"
 PREFIX="${SEKAIPOP_HYPR_PREFIX:-/opt/sekaipop/prefix}"
 JOBS="${BUILD_JOBS:-2}"
+PRIVATE_PREFIX_VALIDATOR="${SEKAIPOP_PRIVATE_PREFIX_VALIDATOR:-/usr/local/bin/sekaipop-private-prefix-validation}"
 
 [[ -d "$SOURCES" && ! -L "$SOURCES" ]] || { printf 'Missing or unsafe source directory: %s\n' "$SOURCES" >&2; exit 2; }
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { printf 'BUILD_JOBS must be a positive integer.\n' >&2; exit 2; }
@@ -84,6 +85,11 @@ cmake_build() {
     fi
     cmake --build "$build_dir" --parallel "$JOBS"
     cmake --install "$build_dir"
+    local required_artifact=""
+    if [[ "$name" == Hyprland ]]; then
+        required_artifact="$PREFIX/lib64/systemd/user/hyprland-session.target"
+    fi
+    "$PRIVATE_PREFIX_VALIDATOR" "$PREFIX" "$build_dir/install_manifest.txt" "$required_artifact"
 }
 
 # Protocol XML and the scanner are installed before any dependent library.

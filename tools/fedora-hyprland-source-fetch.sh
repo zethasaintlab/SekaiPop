@@ -5,6 +5,9 @@ DEST="${1:-/opt/sekaipop/sources}"
 mkdir -p -- "$DEST"
 [[ -d "$DEST" && ! -L "$DEST" ]] || { printf 'Unsafe source destination: %s\n' "$DEST" >&2; exit 2; }
 
+[[ ! -e "$LUA_ARCHIVE" && ! -L "$LUA_ARCHIVE" ]] || { printf "Refusing existing Lua archive: %s\\n" "$LUA_ARCHIVE" >&2; exit 2; }
+[[ ! -e "$LUA_PART" && ! -L "$LUA_PART" ]] || { printf "Refusing existing Lua partial archive: %s\\n" "$LUA_PART" >&2; exit 2; }
+
 fetch_tagged_repo() {
     local name="$1" owner="$2" repository="$3" tag="$4" expected="$5" destination="$DEST/$1" actual
     [[ ! -e "$destination" ]] || { printf 'Refusing existing source path: %s\n' "$destination" >&2; return 1; }
@@ -54,7 +57,6 @@ LUA_URLS=(
     https://www.lua.org/ftp/lua-5.5.1.tar.gz
     https://www2.tecgraf.puc-rio.br/lua/local/ftp/lua-5.5.1.tar.gz
 )
-rm -f -- "$LUA_PART" "$LUA_ARCHIVE"
 LUA_SOURCE_OK=0
 for lua_url in "${LUA_URLS[@]}"; do
     printf 'Fetching pinned Lua 5.5.1 from %s\n' "$lua_url"

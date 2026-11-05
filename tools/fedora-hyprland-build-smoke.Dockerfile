@@ -65,7 +65,8 @@ RUN dnf5 install -y \
 
 COPY tools/fedora-hyprland-source-fetch.sh /usr/local/bin/fedora-hyprland-source-fetch
 COPY tools/fedora-hyprland-source-build-smoke.sh /usr/local/bin/fedora-hyprland-source-build-smoke
-RUN chmod 0755 /usr/local/bin/fedora-hyprland-source-fetch /usr/local/bin/fedora-hyprland-source-build-smoke \
+COPY tools/private-prefix-validation.sh /usr/local/bin/sekaipop-private-prefix-validation
+RUN chmod 0755 /usr/local/bin/fedora-hyprland-source-fetch /usr/local/bin/fedora-hyprland-source-build-smoke /usr/local/bin/sekaipop-private-prefix-validation \
     && /usr/local/bin/fedora-hyprland-source-fetch /opt/sekaipop/sources
 
 ENTRYPOINT ["/usr/local/bin/fedora-hyprland-source-build-smoke"]

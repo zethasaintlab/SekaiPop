@@ -313,3 +313,53 @@ For every tested baseline, record:
 - Exact failing command, exit status, and diagnostic log for failures.
 
 A distribution baseline is certified only after clean installation, runtime/graphical validation, and restore-cycle acceptance have all passed on that baseline. CI package-plan success alone does not certify a distribution.
+
+ 
+## 11. Fedora pinned Hyprland source-build smoke (container only)
+
+The CI source-build job is a **container build and install-prefix smoke test**, not a native host provider and not a host installation. It acquires immutable upstream source pins and Fedora build dependencies during the image build, then builds and installs with container networking disabled. It does not modify the host package database, systemd directories, desktop-session registry, or boot configuration.
+
+Run from a clean repository checkout with Docker or a compatible Docker CLI:
+
+```bash
+set -Eeuo pipefail
+SMOKE_DIR="$PWD/.sekaipop-hyprland-smoke"
+mkdir -p "$SMOKE_DIR/44" "$SMOKE_DIR/45"
+
+for release in 44 45; do
+  docker build --progress=plain \
+    --build-arg FEDORA_VERSION="$release" \
+    --file tools/fedora-hyprland-build-smoke.Dockerfile \
+    --tag "sekaipop-fedora-hyprland:$release" .
+
+  docker run --rm --network none \
+    --volume "$SMOKE_DIR/$release:/artifacts" \
+    --env SEKAIPOP_HYPR_PREFIX="/artifacts/prefix" \
+    "sekaipop-fedora-hyprland:$release"
+done
+```
+
+The image build needs network access to retrieve pinned upstream source and official Fedora build dependencies. The runtime build phase runs with `--network none`. Output is isolated beneath `.sekaipop-hyprland-smoke/`. Remove it after inspection:
+
+```bash
+rm -rf -- .sekaipop-hyprland-smoke
+```
+
+The smoke must end with `FEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK`. It verifies pinned pkg-config versions, executable artifacts, ELF dependency resolution, private-prefix RPATH/RUNPATH, session desktop entry, portal descriptor, D-Bus service, portal user service, and the Hyprland systemd user target:
+
+- `prefix/bin/Hyprland`
+- `prefix/bin/start-hyprland`
+- `prefix/bin/hyprctl`
+- `prefix/bin/hyprwire-scanner`
+- `prefix/libexec/xdg-desktop-portal-hyprland`
+- `prefix/lib64/systemd/user/hyprland-session.target`
+- `prefix/share/wayland-sessions/hyprland.desktop`
+- `prefix/share/xdg-desktop-portal/portals/hyprland.portal`
+- `prefix/share/dbus-1/services/org.freedesktop.impl.portal.desktop.hyprland.service`
+- `prefix/lib/systemd/user/xdg-desktop-portal-hyprland.service`
+
+Every CMake install manifest is validated artifact-by-artifact. Both lexical and symlink-resolved paths must remain inside the private prefix. Missing files, path traversal, and symlinks escaping the prefix fail the smoke. The Hyprland manifest must explicitly contain the required systemd session target. An artifact installed into `/usr`, `/lib64`, or another system path is a failure, even if the build succeeds.
+
+A failed Docker build, non-zero container exit, missing success marker, missing required artifact, unresolved ELF dependency, or prefix escape is a failed smoke test. Preserve the full build log when reporting a failure.
+
+**Important scope boundary:** this smoke does not integrate the compiled compositor into the SekaiPop installer lifecycle. The current Fedora installer still requires a compatible trusted Hyprland installation already present on the target host. It does not install this container-built prefix onto the host, register its session target, configure runtime library paths, or switch the display-manager session. Native installation must continue to follow the existing-Hyprland precondition in Sections 1 and 3. Do not interpret the container smoke as proof of a complete automatic Fedora compositor installation.
