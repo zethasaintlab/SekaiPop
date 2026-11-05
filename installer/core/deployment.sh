@@ -14,6 +14,10 @@ sp_deploy_quickshell() {
     for item in settings.json user_config.json; do
         if [[ -e "$SP_QS_DEST/$item" || -L "$SP_QS_DEST/$item" ]]; then rm -f -- "$stage/$item"; sp_preserve_path "$SP_QS_DEST/$item" "$stage/$item"; fi
     done
+    if ! (sp_prepare_shaders "$stage/shaders"); then
+        rm -rf -- "$stage"
+        sp_die 'Shader preparation failed in the staged Quickshell tree; the current installation was not replaced.'
+    fi
     if sp_have git && git -C "$source" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         { printf 'commit=%s\n' "$(git -C "$source" rev-parse HEAD 2>/dev/null || echo unknown)"; printf 'repo=%s\n' "$(git -C "$source" config --get remote.origin.url 2>/dev/null || echo unknown)"; printf 'ref=%s\n' "$(git -C "$source" rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"; } > "$stage/.source"
     fi
@@ -30,24 +34,55 @@ sp_qs_instance_state() {
     grep -qi 'No running instances' <<< "$output" && return 1
     return 0
 }
+sp_wait_qs_instance_state() {
+    local wanted="$1" attempt=0 attempts="${SP_QS_STARTUP_ATTEMPTS:-100}" interval="${SP_QS_STARTUP_INTERVAL:-0.1}" state
+    [[ "$attempts" =~ ^[0-9]+$ ]] && (( attempts > 0 && attempts <= 300 )) || attempts=100
+    [[ "$interval" =~ ^[0-9]+([.][0-9]+)?$ ]] || interval=0.1
+    while (( attempt < attempts )); do
+        if sp_qs_instance_state; then state=running; else
+            case "$?" in 1) state=stopped ;; *) state=unknown ;; esac
+        fi
+        [[ "$state" == "$wanted" ]] && return 0
+        sleep "$interval"
+        attempt=$((attempt + 1))
+    done
+    return 1
+}
 sp_activate_sekaipop() {
-    local attempt=0 state=2
+    local state
+    SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING=0
+    SP_QS_INSTANCE_STARTED_BY_INSTALL=0
     [[ "$SP_HYPR" != skip ]] || return 0
     [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || { sp_info 'No active Hyprland session; SekaiPop can start at the next login.'; return 0; }
-    sp_have qs || { sp_warn 'qs is unavailable; activation skipped.'; return 0; }
+    sp_have qs || { sp_warn 'qs is unavailable; cannot verify SekaiPop activation.'; return 1; }
     if sp_qs_instance_state; then state=0; else state=$?; fi
     case "$state" in
         0)
             sp_confirm 'Restart the running SekaiPop instance addressed by its config path?' || { sp_info 'Existing SekaiPop instance left running.'; return 0; }
             qs kill -p "$SP_QS_DEST" >/dev/null 2>&1 || { sp_warn 'Quickshell did not accept the path-scoped kill request.'; return 1; }
-            while (( attempt < 50 )); do if sp_qs_instance_state; then state=0; else state=$?; fi; [[ "$state" == 1 ]] && break; sleep 0.1; attempt=$((attempt + 1)); done
-            [[ "$state" == 1 ]] || { sp_warn 'Could not confirm that the SekaiPop instance stopped; refusing to start a duplicate.'; return 1; }
+            SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING=1
+            sp_wait_qs_instance_state stopped || { sp_warn 'Could not confirm that the SekaiPop instance stopped; refusing to start a duplicate.'; return 1; }
             ;;
-        1) sp_confirm 'Start SekaiPop in the current Hyprland session?' || return 0 ;;
-        *) sp_warn 'Quickshell instance state could not be queried reliably; refusing to start a possible duplicate.'; return 1 ;;
+        1)
+            sp_confirm 'Start SekaiPop in the current Hyprland session?' || { sp_info 'SekaiPop was not started in the current session.'; return 0; }
+            ;;
+        *)
+            sp_warn 'Quickshell instance state could not be queried reliably; refusing to start a possible duplicate.'
+            return 1
+            ;;
     esac
-    qs -p "$SP_QS_DEST" -n -d >/dev/null 2>&1 || { sp_warn 'Could not activate the SekaiPop config with qs -p <path> -n -d.'; return 1; }
-    sp_ok 'SekaiPop started using Quickshell path-scoped instance management.'
+    # Record the attempted path-scoped launch before invoking the daemon. If startup
+    # fails or times out, automatic rollback can remove this instance and restore the old one.
+    SP_QS_INSTANCE_STARTED_BY_INSTALL=1
+    if ! qs -p "$SP_QS_DEST" -n -d >/dev/null 2>&1; then
+        sp_warn 'Quickshell rejected the path-scoped SekaiPop launch request.'
+        return 1
+    fi
+    if ! sp_wait_qs_instance_state running; then
+        sp_warn 'The Quickshell command returned, but the SekaiPop path did not become visible as a running instance within the startup window.'
+        return 1
+    fi
+    sp_ok 'SekaiPop is running through its verified path-scoped Quickshell instance.'
 }
 sp_find_rice_source() {
     if [[ -n "$SP_RICE" ]]; then [[ -d "$SP_RICE" ]] || sp_die "--rice directory does not exist: $SP_RICE"; SP_RICE="$(cd "$SP_RICE" && pwd -P)"
@@ -59,10 +94,11 @@ sp_find_rice_source() {
     if [[ "$SP_HYPR" == full ]]; then [[ -d "$SP_HYPR_SOURCE" && -f "$SP_HYPR_SOURCE/hyprland.lua" ]] || sp_die "Full Hyprland source is absent: $SP_HYPR_SOURCE/hyprland.lua. Use the complete SekaiPop checkout."; fi
 }
 sp_write_state_manifest() {
-    local manifest="$SP_STATE_DIR/installer-manifest.env"
+    local manifest="$SP_STATE_DIR/installer-manifest.env" temporary
     (( SP_DRY_RUN )) && return 0
-    mkdir -p "$SP_STATE_DIR"
-    {
+    mkdir -p "$SP_STATE_DIR" || return 1
+    temporary="$(mktemp "$SP_STATE_DIR/.installer-manifest.XXXXXX")" || return 1
+    if ! {
         printf 'installer_version=%s\n' '2.1.0'
         printf 'installed_at=%s\n' "$(date --iso-8601=seconds 2>/dev/null || date)"
         printf 'distro_id=%s\n' "$SP_DISTRO_ID"
@@ -72,6 +108,14 @@ sp_write_state_manifest() {
         printf 'hypr_mode=%s\n' "$SP_HYPR"
         printf 'packages=%q\n' "${SP_INSTALL_PKGS[*]:-}"
         printf 'backup=%q\n' "${SP_BACKUP_DIR:-}"
-    } > "$manifest"
+    } > "$temporary"; then
+        rm -f -- "$temporary"
+        return 1
+    fi
+    chmod 0600 "$temporary" || { rm -f -- "$temporary"; return 1; }
+    if ! mv -f -- "$temporary" "$manifest"; then
+        rm -f -- "$temporary"
+        return 1
+    fi
     sp_info "Installer state manifest: $manifest"
 }
