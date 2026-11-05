@@ -58,7 +58,7 @@ capabilities=(
     wayland-client wayland-scanner libpipewire-0.3 libspa-0.2
     libseat libudev libdisplay-info hwdata
     iniparser absl_flat_hash_map pugixml libzip tomlplusplus
-    libjpeg libwebp libmagic libpng librsvg-2.0 sdbus-c++ udis86
+    libjpeg libwebp libmagic libpng librsvg-2.0 sdbus-c++ udis86 libffi
 )
 for capability in "${capabilities[@]}"; do
     query_capability "$capability" || failed=1
