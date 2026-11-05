@@ -57,10 +57,13 @@ The installer does not alter GPU drivers, kernel modules, Secure Boot, global po
 
 ## Deployment transaction and recovery
 
-Configuration deployment, Quickshell activation, and systemd service reconciliation are transactional. Before replacing configuration, the installer creates a snapshot. If required deployment validation, service reconciliation, Quickshell activation, or state-manifest writing fails, it attempts to restore the prior configuration and only the service changes made by the current transaction. A Quickshell instance is managed by its configuration path; unrelated instances are not terminated.
+Mutating installer and restore runs are serialized with a per-user flock. Configuration deployment, Quickshell activation, and systemd service reconciliation are transactional. Before replacing configuration, the installer creates a snapshot. If required deployment validation, service reconciliation, Quickshell activation, or state-manifest writing fails, it attempts to restore the prior configuration and only the service changes made by the current transaction. A Quickshell instance is managed by its configuration path; unrelated instances are not terminated.
 
 Native package-manager transactions are not rolled back after a later deployment failure. Packages already installed remain installed intentionally; automatic package removal/downgrade across distributions would be unsafe. The recovery snapshot is retained for manual inspection or ./install.sh --restore.
 
 ## Test and certification status
 
 Automated shell fixtures and ShellCheck validate installer logic and regression behavior. Package-plan/container CI checks package candidate resolution only; it does not install the desktop or certify a graphical session. No distribution is claimed as clean-install/restore VM-certified until native or VM install/restore, Hyprland Lua, Quickshell QML imports, Qt plugins, shader compilation, portal behavior, and KDE coexistence have been validated.
+
+
+See [NATIVE-VM-VALIDATION.md](NATIVE-VM-VALIDATION.md) for the clean-install, runtime, shader, restore, and result-recording protocol.
