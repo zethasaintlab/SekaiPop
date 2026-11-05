@@ -29,12 +29,12 @@ BASE_IMAGE_REF=${SEKAIPOP_BASE_IMAGE_REF:-}
     printf 'OS release file is missing or unsafe: %s\n' "$OS_RELEASE_FILE" >&2
     exit 2
 }
-[[ "$BASE_IMAGE_REF" == *@sha256:* ]] || {
+[[ "$BASE_IMAGE_REF" =~ @sha256:[0-9a-f]{64}$ ]] || {
     printf 'SEKAIPOP_BASE_IMAGE_REF must be an immutable sha256 image reference.\n' >&2
     exit 2
 }
 
-for required in rpm dnf5 git gcc g++ cmake ninja meson pkg-config uname sha256sum; do
+for required in rpm dnf5 git gcc g++ cmake ninja meson pkg-config uname sha256sum sed sort; do
     command -v "$required" >/dev/null 2>&1 || {
         printf 'Missing provenance command: %s\n' "$required" >&2
         exit 2
