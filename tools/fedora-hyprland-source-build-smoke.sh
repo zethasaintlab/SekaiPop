@@ -198,6 +198,7 @@ grep -Eq '^Exec=.*(Hyprland|start-hyprland)' "$PREFIX/share/wayland-sessions/hyp
     exit 1
 }
 
-printf '\nBuild provenance:\n'
+printf '\nFEDORA_HYPRLAND_BUILD_PROVENANCE_BEGIN\n'
 cat "$PROVENANCE_OUTPUT"
+printf 'FEDORA_HYPRLAND_BUILD_PROVENANCE_END\n'
 printf '\nFEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK\n'
