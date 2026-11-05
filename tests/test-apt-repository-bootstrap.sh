@@ -50,7 +50,7 @@ pass 'Debian backports bootstrap is idempotent'
 
 rm -f -- "$debian_source"
 printf '%s\n' '# trixie-backports is mentioned only in this comment' > "$SP_APT_MAIN_SOURCES"
-if sp_apt_sources_contain trixie-backports; then fail 'Comment was incorrectly treated as an enabled APT suite'; fi
+if sp_apt_sources_has_suite_component trixie-backports main; then fail 'Comment was incorrectly treated as an enabled APT suite'; fi
 pass 'APT source detection ignores commented examples'
 
 SP_DISTRO_ID=ubuntu SP_DISTRO_VERSION=26.10 SP_DISTRO_CODENAME=stonking
@@ -72,7 +72,12 @@ pass 'Ubuntu source rollback succeeds'
 cat > "$SP_APT_SOURCES_DIR/existing-main.sources" <<'SOURCE'
 Types: deb
 URIs: https://archive.ubuntu.com/ubuntu
-Suites: stonking
+Suites: stonking stonking-updates
+Components: main
+
+Types: deb
+URIs: https://security.ubuntu.com/ubuntu
+Suites: stonking-security
 Components: main
 SOURCE
 sp_apt_bootstrap_official_sources
