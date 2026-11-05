@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fedora 44 native mappings. No COPR is enabled; Hyprland must already be installed
+# Fedora 44 baseline mappings, shared with Fedora 45 where candidates are verified. No COPR is enabled; Hyprland must already be installed
 # from a repository the user independently selected and trusts.
 declare -Ag DISTRO_PACKAGE_MAP=(
     [quickshell]='quickshell' [hyprland]=''
