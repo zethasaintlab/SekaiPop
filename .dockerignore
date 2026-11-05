@@ -1,0 +1,4 @@
+**
+!tools/
+!tools/fedora-hyprland-source-fetch.sh
+!tools/fedora-hyprland-source-build-smoke.sh
