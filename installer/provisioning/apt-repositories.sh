@@ -7,29 +7,51 @@ SP_APT_MAIN_SOURCES="${SP_APT_MAIN_SOURCES:-/etc/apt/sources.list}"
 declare -ag SP_APT_BOOTSTRAP_CREATED=()
 declare -ag SP_APT_BOOTSTRAP_CREATED_SHA=()
 
-sp_apt_sources_contain() {
-    local needle="$1" file
+sp_apt_sources_has_suite_component() {
+    local suite="$1" component="$2" file
     shopt -s nullglob
     local -a files=("$SP_APT_SOURCES_DIR"/*.list "$SP_APT_SOURCES_DIR"/*.sources "$SP_APT_MAIN_SOURCES")
     shopt -u nullglob
     for file in "${files[@]}"; do
         [[ -f "$file" && ! -L "$file" ]] || continue
-        awk -v needle="$needle" '
-            /^[[:space:]]*#/ { next }
-            $1 == "Components:" || $1 == "Suites:" {
-                for (i = 2; i <= NF; i++) if ($i == needle) found = 1
+        awk -v wanted_suite="$suite" -v wanted_component="$component" '
+            BEGIN { RS = ""; FS = "\n" }
+            {
+                suites = ""
+                components = ""
+                for (i = 1; i <= NF; i++) {
+                    line = $i
+                    sub(/^[[:space:]]+/, "", line)
+                    if (line ~ /^Suites:[[:space:]]*/) {
+                        sub(/^Suites:[[:space:]]*/, "", line)
+                        suites = line
+                    } else if (line ~ /^Components:[[:space:]]*/) {
+                        sub(/^Components:[[:space:]]*/, "", line)
+                        components = line
+                    }
+                }
+                ns = split(suites, suite_tokens, /[[:space:]]+/)
+                nc = split(components, component_tokens, /[[:space:]]+/)
+                suite_found = 0
+                component_found = 0
+                for (i = 1; i <= ns; i++) if (suite_tokens[i] == wanted_suite) suite_found = 1
+                for (i = 1; i <= nc; i++) if (component_tokens[i] == wanted_component) component_found = 1
+                if (suite_found && component_found) found = 1
             }
             $1 == "deb" || $1 == "deb-src" {
                 i = 2
                 if ($i ~ /^\[/) i++
-                i += 2
-                for (; i <= NF; i++) if ($i == needle) found = 1
+                source_suite = $(i + 1)
+                if (source_suite == wanted_suite) {
+                    for (j = i + 2; j <= NF; j++) if ($j == wanted_component) found = 1
+                }
             }
             END { exit !found }
         ' "$file" && return 0
     done
     return 1
 }
+
 
 sp_apt_managed_source_write() {
     local target="$1" content="$2" marker='# Managed by SekaiPop Universal Installer; official distribution archive only.'
@@ -68,29 +90,33 @@ sp_apt_managed_source_write() {
 }
 
 sp_apt_bootstrap_plan() {
+    local codename="${SP_DISTRO_CODENAME:-stonking}"
     case "${SP_DISTRO_ID:-}" in
         debian)
-            if [[ "${SP_DISTRO_VERSION:-}" == 13 ]] && ! sp_apt_sources_contain 'trixie-backports'; then
+            if [[ "${SP_DISTRO_VERSION:-}" == 13 ]] && ! sp_apt_sources_has_suite_component trixie-backports main; then
                 sp_info 'Repository bootstrap required: official Debian trixie-backports (main).'
             fi
             ;;
         ubuntu)
-            if [[ "${SP_DISTRO_VERSION:-}" == 26.10 ]] && ! sp_apt_sources_contain 'universe'; then
-                sp_info "Repository bootstrap required: official Ubuntu Universe for ${SP_DISTRO_CODENAME:-stonking}."
+            if [[ "${SP_DISTRO_VERSION:-}" == 26.10 ]] &&
+                { ! sp_apt_sources_has_suite_component "$codename" universe ||
+                  ! sp_apt_sources_has_suite_component "$codename-updates" universe ||
+                  ! sp_apt_sources_has_suite_component "$codename-security" universe; }; then
+                sp_info "Repository bootstrap required: official Ubuntu Universe for $codename, updates, and security."
             fi
             ;;
     esac
 }
 
 sp_apt_bootstrap_official_sources() {
-    local codename components
+    local codename components missing_archive_suites missing_security source_content
     SP_APT_BOOTSTRAP_CREATED=()
     SP_APT_BOOTSTRAP_CREATED_SHA=()
     [[ "${SP_BACKEND:-}" == apt ]] || return 0
     case "${SP_DISTRO_ID:-}" in
         debian)
             [[ "${SP_DISTRO_VERSION:-}" == 13 && "${SP_DISTRO_CODENAME:-}" == trixie ]] || return 0
-            if ! sp_apt_sources_contain 'trixie-backports'; then
+            if ! sp_apt_sources_has_suite_component trixie-backports main; then
                 sp_confirm 'Enable the official Debian 13 trixie-backports repository? This adds only the signed Debian archive source.' ||
                     sp_die 'Debian backports activation declined; no APT source was changed.'
                 sp_apt_managed_source_write "$SP_APT_SOURCES_DIR/sekaipop-trixie-backports.sources" \
@@ -100,32 +126,48 @@ Suites: trixie-backports
 Components: main
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg'
             else
-                sp_info 'Official Debian trixie-backports is already configured.'
+                sp_info 'Official Debian trixie-backports main component is already configured.'
             fi
             ;;
         ubuntu)
             [[ "${SP_DISTRO_VERSION:-}" == 26.10 ]] || return 0
             codename="${SP_DISTRO_CODENAME:-}"
             [[ "$codename" =~ ^[a-z][a-z0-9-]*$ ]] || sp_die 'Ubuntu release codename is missing or invalid; refusing to construct an APT source.'
-            if ! sp_apt_sources_contain 'universe'; then
-                sp_confirm "Enable the official Ubuntu Universe component for $codename?" ||
+            missing_archive_suites=''
+            missing_security=0
+            if ! sp_apt_sources_has_suite_component "$codename" universe; then missing_archive_suites="$codename"; fi
+            if ! sp_apt_sources_has_suite_component "$codename-updates" universe; then
+                missing_archive_suites="${missing_archive_suites:+$missing_archive_suites }$codename-updates"
+            fi
+            if ! sp_apt_sources_has_suite_component "$codename-security" universe; then missing_security=1; fi
+            if [[ -n "$missing_archive_suites" || "$missing_security" == 1 ]]; then
+                sp_confirm "Enable missing official Ubuntu Universe suites for $codename?" ||
                     sp_die 'Ubuntu Universe activation declined; no APT source was changed.'
                 components=universe
-                sp_apt_sources_contain main || components='main universe'
-                sp_apt_managed_source_write "$SP_APT_SOURCES_DIR/sekaipop-universe.sources" \
-                    "Types: deb
+                if ! sp_apt_sources_has_suite_component "$codename" main ||
+                    ! sp_apt_sources_has_suite_component "$codename-updates" main ||
+                    ! sp_apt_sources_has_suite_component "$codename-security" main; then
+                    components='main universe'
+                fi
+                source_content=''
+                if [[ -n "$missing_archive_suites" ]]; then
+                    source_content="Types: deb
 URIs: https://archive.ubuntu.com/ubuntu
-Suites: $codename $codename-updates
+Suites: $missing_archive_suites
 Components: $components
-Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
-
-Types: deb
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg"
+                fi
+                if (( missing_security )); then
+                    [[ -z "$source_content" ]] || source_content+=$'\n\n'
+                    source_content+="Types: deb
 URIs: https://security.ubuntu.com/ubuntu
 Suites: $codename-security
 Components: $components
 Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg"
+                fi
+                sp_apt_managed_source_write "$SP_APT_SOURCES_DIR/sekaipop-universe.sources" "$source_content"
             else
-                sp_info 'Ubuntu Universe is already configured.'
+                sp_info 'Ubuntu Universe is already configured for release, updates, and security suites.'
             fi
             ;;
     esac
