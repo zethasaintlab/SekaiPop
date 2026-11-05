@@ -41,9 +41,8 @@ sp_load_distro_profile() {
     return 0
 }
 
-sp_fedora_power_profile_api_available() {
+sp_power_profile_api_available() {
     local owner interfaces
-    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
     sp_have busctl || return 1
 
     owner="$(busctl --system call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus NameHasOwner s org.freedesktop.UPower.PowerProfiles 2>/dev/null)" || return 1
@@ -51,6 +50,11 @@ sp_fedora_power_profile_api_available() {
 
     interfaces="$(busctl --system --no-pager introspect org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles 2>/dev/null)" || return 1
     [[ "$interfaces" == *'org.freedesktop.UPower.PowerProfiles'* ]]
+}
+
+sp_fedora_power_profile_api_available() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_power_profile_api_available
 }
 
 sp_fedora_tuned_ppd_installed() {
@@ -110,11 +114,7 @@ sp_runtime_requirement_present() {
         nodejs) sp_have node ;;
         pnpm) sp_have pnpm ;;
         power-profiles-daemon)
-            if [[ "${SP_DISTRO_ID:-}" == fedora ]]; then
-                sp_fedora_power_profile_api_available
-            else
-                sp_have powerprofilesctl
-            fi
+            sp_power_profile_api_available
             ;;
         material-symbols) sp_have fc-match && fc-match -f '%{family}\n' 'Material Symbols Rounded' 2>/dev/null | grep -qi 'Material Symbols' ;;
         google-sans-flex) sp_have fc-match && fc-match -f '%{family}\n' 'Google Sans Flex' 2>/dev/null | grep -qi 'Google Sans Flex' ;;
