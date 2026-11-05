@@ -15,7 +15,7 @@ jobs:
         run: |
           while IFS= read -r -d '' script; do
             bash -n "$script"
-          done < <(find installer tests -type f -name '*.sh' -print0)
+          done < <(find installer tests tools -type f -name '*.sh' -print0)
           bash -n install.sh install-deps.sh check-deps.sh install-multi.sh
       - name: Ensure ShellCheck is available
         run: |
@@ -25,7 +25,7 @@ jobs:
       - name: ShellCheck installer and regression tests
         shell: bash
         run: |
-          mapfile -d '' scripts < <(find installer tests -type f -name '*.sh' -print0)
+          mapfile -d '' scripts < <(find installer tests tools -type f -name '*.sh' -print0)
           shellcheck --severity=error "${scripts[@]}" install.sh install-deps.sh check-deps.sh install-multi.sh
       - name: Run installer smoke tests
         run: bash tests/run-tests.sh
@@ -129,4 +129,7 @@ jobs:
               # package-plan discovery and the installer itself run unprivileged.
               useradd --create-home --shell /bin/bash sekaipop-ci
               su -s /bin/bash -c "cd /workspace && ./install.sh --plan --profile standard --no-update --no-log" sekaipop-ci
+              if [[ "$DISTRO_ID" == fedora ]]; then
+                bash tools/audit-fedora-hyprland-build-deps.sh
+              fi
           CONTAINER_SCRIPT
