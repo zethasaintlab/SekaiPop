@@ -11,6 +11,8 @@ Audit snapshot: 2026-11-05. This document records verified upstream constraints 
 
 ## Fedora Hyprland feasibility
 
+The alternative-provider investigation is recorded in [FEDORA-HYPRLAND-PROVIDER-DECISION.md](FEDORA-HYPRLAND-PROVIDER-DECISION.md). Nix is documented as an opt-in candidate, not enabled by default: non-NixOS graphics-driver integration, session registration, portal behavior, and NVIDIA remain unverified.
+
 The Fedora profile still has no approved native Hyprland provider. The current upstream installation guide documents manual source builds and explicitly warns against symlinking incompatible shared-library versions. It also states that Hyprland uses C++26 and requires GCC >= 16 or Clang >= 19. Fedora 44/45 have a sufficiently recent compiler toolchain, but that alone does not make the full Hyprland stack available.
 
 The upstream installation guide was updated on 2026-11-03. Its current documented source-build order is:
