@@ -142,7 +142,13 @@ sp_plan_and_install_dependencies() {
                 sp_warn 'Arch sync databases are missing or older than 7 days. A full system synchronization and upgrade is required before dependency resolution.'
                 sp_confirm 'Run pacman -Syu --needed now? This will upgrade the entire Arch system.' ||
                     sp_die 'Arch synchronization cancelled. No package database refresh or package transaction was attempted.'
-                pm_refresh_metadata
+                if pm_refresh_metadata; then
+                    :
+                else
+                    local refresh_status=$?
+                    sp_error "Arch full-system synchronization failed (exit $refresh_status); dependency planning was aborted."
+                    return "$refresh_status"
+                fi
             else
                 sp_die 'Arch sync databases are missing or older than 7 days. Refusing an unsafe partial synchronization; rerun with --system-upgrade to authorize pacman -Syu --needed.'
             fi
@@ -160,8 +166,13 @@ sp_plan_and_install_dependencies() {
     (("${#SP_MISSING_OPTIONAL[@]}")) || sp_warn 'Some optional feature packages are unavailable. Core installation can continue; those features will be listed in the final report.'
     (("${#SP_INSTALL_PKGS[@]} == 0")) && { sp_ok 'All selected package requirements are already satisfied.'; return 0; }
     sp_confirm "Install ${#SP_INSTALL_PKGS[@]} native package(s) on $SP_DISTRO_NAME?" || sp_die 'Package installation cancelled.'
-    pm_install "${SP_INSTALL_PKGS[@]}"
-    sp_ok 'Native package transaction completed.'
+    if pm_install "${SP_INSTALL_PKGS[@]}"; then
+        sp_ok 'Native package transaction completed.'
+    else
+        local install_status=$?
+        sp_error "Native package transaction failed (exit $install_status); dependency provisioning was not completed."
+        return "$install_status"
+    fi
 }
 sp_rollback_failed_dependency_only() {
     local reason="$1" service_rollback_failed=0
