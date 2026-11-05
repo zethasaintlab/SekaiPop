@@ -161,5 +161,9 @@ jobs:
             --tag "sekaipop-fedora-hyprland:${{ matrix.fedora }}" .
       - name: Build compositor and portal with network disabled
         run: |
+          log="$RUNNER_TEMP/fedora-hyprland-${{ matrix.fedora }}.log"
           docker run --rm --network none \
-            "sekaipop-fedora-hyprland:${{ matrix.fedora }}"
+            "sekaipop-fedora-hyprland:${{ matrix.fedora }}" | tee "$log"
+          grep -Fq 'FEDORA_HYPRLAND_BUILD_PROVENANCE_BEGIN' "$log"
+          grep -Fq 'FEDORA_HYPRLAND_BUILD_PROVENANCE_END' "$log"
+          grep -Fq 'FEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK' "$log"
