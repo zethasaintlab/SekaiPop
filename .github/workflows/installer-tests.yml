@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Validate shell syntax
         shell: bash
         run: |
@@ -17,10 +17,11 @@ jobs:
             bash -n "$script"
           done < <(find installer tests -type f -name '*.sh' -print0)
           bash -n install.sh install-deps.sh check-deps.sh install-multi.sh
-      - name: Install ShellCheck
+      - name: Ensure ShellCheck is available
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y shellcheck
+          if ! command -v shellcheck >/dev/null 2>&1; then
+            sudo apt-get install --no-install-recommends -y shellcheck
+          fi
       - name: ShellCheck installer and regression tests
         shell: bash
         run: |
@@ -28,9 +29,104 @@ jobs:
           shellcheck --severity=error "${scripts[@]}" install.sh install-deps.sh check-deps.sh install-multi.sh
       - name: Run installer smoke tests
         run: bash tests/run-tests.sh
+      - name: Run launcher JavaScript regression tests
+        run: |
+          node sekaipop/tests/launcher-test/app_source_rescan_test.js
+          node sekaipop/tests/launcher-test/rank_unit.js
       - name: Run integration fixtures
         run: bash tests/test-integrations.sh
       - name: Run systemd service fixtures
         run: bash tests/test-systemd.sh
       - name: Run runtime detection fixtures
         run: bash tests/test-runtime-detection.sh
+      - name: Generate static dependency inventory
+        run: |
+          python3 tools/audit-dependencies.py
+          python3 tools/audit-dependencies.py --format tsv
+
+  package-plan:
+    name: ${{ matrix.distro }} package resolution (container)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: Arch Linux
+            image: archlinux:base
+            id: arch
+          - distro: Fedora 44
+            image: fedora:44
+            id: fedora
+          - distro: Fedora 45
+            image: fedora:45
+            id: fedora
+          - distro: Debian 13
+            image: debian:trixie
+            id: debian
+          - distro: Ubuntu 26.10
+            image: ubuntu:26.10
+            id: ubuntu
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Resolve packages using the native package manager
+        env:
+          DISTRO_ID: ${{ matrix.id }}
+          CONTAINER_IMAGE: ${{ matrix.image }}
+        run: |
+          set -Eeuo pipefail
+          docker pull "$CONTAINER_IMAGE"
+          docker run --rm \
+            --env DISTRO_ID="$DISTRO_ID" \
+            --volume "$GITHUB_WORKSPACE:/workspace" \
+            --workdir /workspace \
+            "$CONTAINER_IMAGE" bash -s <<'CONTAINER_SCRIPT'
+              set -Eeuo pipefail
+              case "$DISTRO_ID" in
+                arch)
+                  pacman-key --init
+                  pacman-key --populate archlinux
+                  pacman -Syyu --noconfirm
+                  ;;
+                fedora)
+                  # Fedora 44 intentionally requires a compatible user-provided Hyprland.
+                  # Stub only the executable/version probe for package-plan validation.
+                  cat > /usr/local/bin/Hyprland <<'HYPRLAND'
+          #!/usr/bin/env bash
+          printf "Hyprland 0.56.2\\n"
+          HYPRLAND
+                  chmod +x /usr/local/bin/Hyprland
+                  dnf5 makecache --refresh
+                  ;;
+                debian)
+                  printf "%s\\n" "deb http://deb.debian.org/debian trixie-backports main" \
+                    > /etc/apt/sources.list.d/sekaipop-backports.list
+                  apt-get update
+                  ;;
+                ubuntu)
+                  shopt -s nullglob
+                  ubuntu_sources=(/etc/apt/sources.list.d/*.sources)
+                  if (("${#ubuntu_sources[@]}")); then
+                    for source_file in "${ubuntu_sources[@]}"; do
+                      sed -i -E "s/^Components:.*/Components: main universe restricted multiverse/" "$source_file"
+                    done
+                  else
+                    . /etc/os-release
+                    printf "deb http://archive.ubuntu.com/ubuntu %s main universe restricted multiverse\\n" "$VERSION_CODENAME" \
+                      > /etc/apt/sources.list.d/sekaipop-universe.list
+                    printf "deb http://security.ubuntu.com/ubuntu %s-security main universe restricted multiverse\\n" "$VERSION_CODENAME" \
+                      >> /etc/apt/sources.list.d/sekaipop-universe.list
+                  fi
+                  apt-get update
+                  ;;
+                *)
+                  printf "Unsupported CI matrix id: %s\\n" "$DISTRO_ID" >&2
+                  exit 2
+                  ;;
+              esac
+              # Match production's normal-user execution model. Metadata is refreshed as root;
+              # package-plan discovery and the installer itself run unprivileged.
+              useradd --create-home --shell /bin/bash sekaipop-ci
+              su -s /bin/bash -c "cd /workspace && ./install.sh --plan --profile standard --no-update --no-log" sekaipop-ci
+          CONTAINER_SCRIPT

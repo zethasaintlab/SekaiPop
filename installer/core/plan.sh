@@ -17,7 +17,7 @@ sp_qt_shadertools_required() {
         done
     fi
 
-    [[ -n "$qt_version" ]] || return 1
+    [[ -n "$qt_version" ]] || return 2
     ! sp_version_ge "$qt_version" 6.12.0
 }
 
@@ -29,17 +29,20 @@ sp_load_distro_profile() {
         (( SP_NO_DESKTOP )) || SP_PROFILE_REQS+=("${SP_REQ_DESKTOP[@]}")
     fi
     if [[ "$SP_PROFILE" == full ]]; then SP_PROFILE_REQS+=("${SP_REQ_FULL[@]}"); fi
+    SP_QT_SHADER_REQUIREMENT_UNKNOWN=0
     if sp_qt_shadertools_required; then
         SP_PROFILE_REQS+=(qt6-shadertools)
+    else
+        local qt_requirement_status=$?
+        if (( qt_requirement_status == 2 )); then
+            SP_QT_SHADER_REQUIREMENT_UNKNOWN=1
+        fi
     fi
     return 0
 }
 
-sp_fedora_tuned_ppd_available() {
+sp_power_profile_api_available() {
     local owner interfaces
-    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
-    sp_have rpm && rpm -q tuned-ppd >/dev/null 2>&1 || return 1
-    sp_have systemctl && systemctl is-active --quiet tuned-ppd.service || return 1
     sp_have busctl || return 1
 
     owner="$(busctl --system call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus NameHasOwner s org.freedesktop.UPower.PowerProfiles 2>/dev/null)" || return 1
@@ -49,11 +52,52 @@ sp_fedora_tuned_ppd_available() {
     [[ "$interfaces" == *'org.freedesktop.UPower.PowerProfiles'* ]]
 }
 
+sp_fedora_power_profile_api_available() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_power_profile_api_available
+}
+
+sp_fedora_tuned_ppd_installed() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_have rpm && rpm -q tuned-ppd >/dev/null 2>&1
+}
+
+sp_fedora_tlp_pd_installed() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_have rpm && rpm -q tlp-pd >/dev/null 2>&1
+}
+
+sp_fedora_tlp_installed() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_have rpm && rpm -q tlp >/dev/null 2>&1
+}
+
+sp_fedora_power_profile_provider_installed() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_have rpm || return 1
+    rpm -q tuned-ppd >/dev/null 2>&1 ||
+        rpm -q tlp-pd >/dev/null 2>&1 ||
+        rpm -q power-profiles-daemon >/dev/null 2>&1
+}
+
+sp_fedora_power_profile_provider_count() {
+    [[ "${SP_DISTRO_ID:-}" == fedora ]] || return 1
+    sp_have rpm || return 1
+    local count=0
+    rpm -q tuned-ppd >/dev/null 2>&1 && ((count += 1))
+    rpm -q tlp-pd >/dev/null 2>&1 && ((count += 1))
+    rpm -q power-profiles-daemon >/dev/null 2>&1 && ((count += 1))
+    printf '%s\n' "$count"
+}
+
 sp_runtime_requirement_present() {
     local req="$1" version
     case "$req" in
         quickshell) sp_have qs ;;
         ffmpeg) sp_have ffmpeg ;;
+        util-linux) sp_have flock && sp_have setpriv && sp_have setsid ;;
+        diffutils) sp_have diff ;;
+        procps) sp_have pkill ;;
         hyprland)
             version="$(sp_hyprland_version 2>/dev/null || true)"
             [[ -n "$version" ]] && sp_version_ge "$version" 0.55.0
@@ -73,8 +117,7 @@ sp_runtime_requirement_present() {
         nodejs) sp_have node ;;
         pnpm) sp_have pnpm ;;
         power-profiles-daemon)
-            if sp_have powerprofilesctl; then return 0; fi
-            sp_fedora_tuned_ppd_available
+            sp_power_profile_api_available
             ;;
         material-symbols) sp_have fc-match && fc-match -f '%{family}\n' 'Material Symbols Rounded' 2>/dev/null | grep -qi 'Material Symbols' ;;
         google-sans-flex) sp_have fc-match && fc-match -f '%{family}\n' 'Google Sans Flex' 2>/dev/null | grep -qi 'Google Sans Flex' ;;
@@ -93,7 +136,7 @@ sp_build_package_plan() {
     local -A seen_packages=() seen_requirements=()
     SP_INSTALL_PKGS=() SP_INSTALL_CORE=() SP_INSTALL_OPTIONAL=()
     SP_MISSING_CORE=() SP_MISSING_OPTIONAL=() SP_ALREADY_INSTALLED=()
-    SP_RUNTIME_SATISFIED=()
+    SP_RUNTIME_SATISFIED=() SP_PROVIDER_INSTALLED=()
 
     for req in "${SP_PROFILE_REQS[@]}"; do
         [[ -n "$req" ]] || continue
@@ -107,8 +150,28 @@ sp_build_package_plan() {
         # A compatible capability already present on the host wins over package-name
         # mapping. This avoids installing a second provider merely because its package
         # name differs from this profile's preferred native package.
+        if [[ "$req" == power-profiles-daemon && "$SP_DISTRO_ID" == fedora ]] &&
+            sp_fedora_tlp_installed &&
+            ! sp_fedora_tlp_pd_installed &&
+            ! sp_fedora_tuned_ppd_installed &&
+            ! { sp_have rpm && rpm -q power-profiles-daemon >/dev/null 2>&1; }; then
+            SP_MISSING_OPTIONAL+=("$req (TLP is installed without tlp-pd; provider installation was skipped to avoid a TLP/PPD conflict)")
+            continue
+        fi
+        if [[ "$req" == power-profiles-daemon && "${SP_DISTRO_ID:-}" != fedora ]] &&
+            command -v systemctl >/dev/null 2>&1 &&
+            systemctl is-active --quiet tlp.service &&
+            ! systemctl is-active --quiet tlp-pd.service; then
+            SP_MISSING_OPTIONAL+=("$req (TLP is active without an active tlp-pd adapter; provider installation was skipped to avoid a TLP/PPD conflict)")
+            continue
+        fi
         if sp_runtime_requirement_present "$req"; then
             SP_RUNTIME_SATISFIED+=("$req")
+            continue
+        fi
+        if [[ "$req" == power-profiles-daemon && "${SP_DISTRO_ID:-}" == fedora ]] &&
+            sp_fedora_power_profile_provider_installed; then
+            SP_PROVIDER_INSTALLED+=("$req (an existing Fedora provider package is installed; service activation will be offered)")
             continue
         fi
         package_text="${DISTRO_PACKAGE_MAP[$req]-}"
@@ -150,6 +213,9 @@ sp_build_package_plan() {
             fi
         done
     done
+    if (( ${SP_QT_SHADER_REQUIREMENT_UNKNOWN:-0} )); then
+        SP_MISSING_CORE+=("qt6-shadertools: effective Qt version is unknown; refresh package metadata or rerun without --no-update before installation")
+    fi
 }
 
 sp_print_package_plan() {
@@ -168,6 +234,10 @@ sp_print_package_plan() {
     printf '  %s\n' "${SP_ALREADY_INSTALLED[@]:-none}"
     printf '\nRuntime-provided (%d):\n' "${#SP_RUNTIME_SATISFIED[@]}"
     printf '  %s\n' "${SP_RUNTIME_SATISFIED[@]:-none}"
+    if (("${#SP_PROVIDER_INSTALLED[@]}")); then
+        printf '\nExisting provider packages (%d; activation may be offered):\n' "${#SP_PROVIDER_INSTALLED[@]}"
+        printf '  %s\n' "${SP_PROVIDER_INSTALLED[@]}"
+    fi
     printf '\nTo install (%d):\n' "${#SP_INSTALL_PKGS[@]}"
     printf '  %s\n' "${SP_INSTALL_PKGS[@]:-none}"
     if (("${#SP_MISSING_CORE[@]}")); then

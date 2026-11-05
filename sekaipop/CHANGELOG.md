@@ -1,6 +1,12 @@
 # Changelog
 
 ## Unreleased
+- Launcher: app entries are rebuilt once per completed Quickshell DesktopEntries scan, not once per changed model row; unchanged entries retain identity. This avoids repeated sorting and launcher grid churn during application rescans (issue #128; docs/APP-LIST-RESCANS.md).
+- Lock screen: refresh wall-clock timers after system resume and support the 24-hour clock preference.
+- Quick Panel: settings labels use a hover marquee, and temperature units are selected explicitly.
+- Lyrics widget: keep timing controls interactive while global widget locking is enabled; drag behavior remains separately gated.
+- Hyprland settings: map the panel's legacy tap-to-click key to the Lua input.touchpad.tap_to_click option and clear stale overrides under both spellings.
+- Region selector: improve corner-handle hit detection with a small tolerance.
 - Dock: Smart hide works from the start. Started with a window already in the dock's way (a maximized one), the dock could stay over it, and it stopped following windows until Smart hide was turned off and on (or the dock pinned and unpinned). At startup the dock was built twice on a monitor, and the one going away switched off the window watching for the other (issue #116; docs/DOCK-SMART-HIDE.md).
 - Quick Panel: **Peek first** (Settings > General > Quick Panel, off by default). With it on, the hot edge at the bottom centre of the screen raises only the tip of the phone, its clock and date; click the tip to bring the whole phone up, or move the mouse away and it drops again. A pointer that strays to the bottom of the screen no longer throws the phone up. The keybind and the bell still open it at once. `ipc call options set panel.hotPeek true` (docs/HOT-EDGE-PEEK.md).
 - Lockscreen: the keyboard layout you are typing in (EN, RU, ...) is shown as a small tag on the corner of the password plate, in both lockscreen styles, so a password does not fail because the wrong layout was active. Click it for a list of your layouts above it, and pick one. It shows only when more than one layout is configured (Settings > Hyprland > Keyboard), like the bar's layout pill; both read one `KeyboardLayoutService` now, so they always agree (issue #110).

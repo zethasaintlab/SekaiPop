@@ -6,16 +6,16 @@
 declare -ag SP_REQ_CORE=(
     quickshell hyprland qt6-base qt6-declarative qt6-multimedia qt6-svg
     dbus polkit graphics-egl pipewire wireplumber pipewire-pulse network-manager bluetooth upower
-    libnotify wl-clipboard jq curl git xdg-utils fontconfig
+    libnotify wl-clipboard jq curl git xdg-utils fontconfig util-linux diffutils
 )
 declare -ag SP_REQ_STANDARD=(
     qt6-imageformats qt6-wayland xdg-user-dirs python3 python-numpy
-    cava grim slurp cliphist wtype hyprpicker imagemagick tesseract swappy wf-recorder ffmpeg
+    cava grim slurp cliphist procps wtype hyprpicker imagemagick tesseract swappy wf-recorder ffmpeg
     brightnessctl ddcutil kitty playerctl easyeffects matugen hyprsunset power-profiles-daemon
 )
 declare -ag SP_REQ_DESKTOP=(
-    portal portal-hyprland portal-gtk xwayland noto-fonts noto-fonts-cjk noto-fonts-emoji nerd-font
-    material-symbols google-sans-flex gvfs keyring libsecret pipewire-alsa blueman
+    portal portal-hyprland portal-gtk xwayland noto-fonts noto-fonts-cjk noto-fonts-emoji
+    material-symbols google-sans-flex jetbrains-mono gvfs keyring libsecret pipewire-alsa blueman
 )
 declare -ag SP_REQ_FULL=(python-aubio songrec mpvpaper nwg-displays hypridle nodejs pnpm)
 
@@ -52,6 +52,9 @@ declare -Ag SP_REQ_DESCRIPTION=(
     [xdg-utils]='xdg-open and desktop integration utilities'
     [xdg-user-dirs]='xdg-user-dir support'
     [fontconfig]='fc-list/fc-cache font discovery and cache'
+    [util-linux]='flock, setpriv and setsid utilities'
+    [diffutils]='diff used for backup and deployment snapshot comparison'
+    [procps]='pkill process-control utility used by clipboard cleanup'
     [python3]='Python 3 runtime for optional audio-analysis integration'
     [python-numpy]='NumPy module for the audio analyzer; the shell has a fallback'
     [ffmpeg]='FFmpeg executable for video thumbnails and audio capture'
@@ -59,6 +62,7 @@ declare -Ag SP_REQ_DESCRIPTION=(
     [hyprsunset]='Hyprland night-light / gamma utility'
     [material-symbols]='Material Symbols Rounded font used by SekaiPop icons'
     [google-sans-flex]='Google Sans Flex font used by the SekaiPop interface'
+    [jetbrains-mono]='JetBrains Mono developer font; this is not a Nerd Fonts patched build'
 )
 
 sp_describe_requirement() {

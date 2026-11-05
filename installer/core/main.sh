@@ -102,8 +102,15 @@ sp_validate_preflight() {
 }
 sp_plan_and_install_dependencies() {
     sp_load_package_manager
-    sp_load_distro_profile
     if (( SP_DRY_RUN )); then
+        sp_load_distro_profile
+        if [[ "$SP_BACKEND" == arch ]] && ! sp_pacman_sync_db_fresh; then
+            if (( SP_SYSTEM_UPGRADE )); then
+                sp_warn 'The Arch sync database is missing or stale. This read-only plan cannot run the required pacman -Syu synchronization; candidate resolution may be incomplete.'
+            else
+                sp_warn 'The Arch sync database is missing or stale. A real install requires explicit --system-upgrade authorization before safe package resolution.'
+            fi
+        fi
         sp_build_package_plan
         sp_print_package_plan
         (( ${#SP_MISSING_CORE[@]} == 0 )) || { sp_error 'Plan contains unsatisfied mandatory requirements; no installation would be attempted.'; return 1; }
@@ -113,14 +120,24 @@ sp_plan_and_install_dependencies() {
     if [[ "$SP_BACKEND" == dnf5 || "$SP_BACKEND" == apt ]]; then
         if (( ! SP_NO_UPDATE )); then sp_confirm "Refresh configured native repository metadata for $SP_DISTRO_NAME?" || sp_die 'Metadata refresh declined. Use --no-update to continue with the current package cache.'; pm_refresh_metadata
         else sp_info 'Repository metadata refresh skipped (--no-update).'; fi
-    elif [[ "$SP_BACKEND" == arch && $SP_SYSTEM_UPGRADE -eq 0 ]]; then
-        sp_pacman_sync_db_fresh || sp_die 'Arch sync databases are missing or older than 7 days. Refusing an unsafe partial synchronization; rerun with --system-upgrade to authorize pacman -Syu --needed.'
+    elif [[ "$SP_BACKEND" == arch ]]; then
+        if ! sp_pacman_sync_db_fresh; then
+            if (( SP_SYSTEM_UPGRADE )); then
+                sp_warn 'Arch sync databases are missing or older than 7 days. A full system synchronization and upgrade is required before dependency resolution.'
+                sp_confirm 'Run pacman -Syu --needed now? This will upgrade the entire Arch system.' ||
+                    sp_die 'Arch synchronization cancelled. No package database refresh or package transaction was attempted.'
+                pm_refresh_metadata
+            else
+                sp_die 'Arch sync databases are missing or older than 7 days. Refusing an unsafe partial synchronization; rerun with --system-upgrade to authorize pacman -Syu --needed.'
+            fi
+        fi
     fi
+    sp_load_distro_profile
     sp_build_package_plan
     sp_print_package_plan
     if (("${#SP_MISSING_CORE[@]}")); then
         sp_error 'Native configured repositories do not provide every mandatory requirement.'
-        if [[ "$SP_DISTRO_ID" == fedora ]]; then sp_error 'Fedora 44 official repositories do not provide the required Hyprland >= 0.55 baseline in this verified package set. Install a compatible compositor from a source you independently trust, then rerun; this installer will not enable a COPR. The Hyprland portal remains an optional desktop feature unless a trusted provider is already configured.'
+        if [[ "$SP_DISTRO_ID" == fedora ]]; then sp_error 'The verified Fedora official package profile does not provide the required Hyprland >= 0.55 baseline. Install a compatible compositor from a source you independently trust, then rerun; this installer will not enable a COPR. The Hyprland portal remains an optional desktop feature unless a trusted provider is already configured.'
         elif [[ "$SP_DISTRO_ID" == debian ]]; then sp_error 'Verify that official Debian 13 trixie-backports is already configured and that Quickshell/Hyprland candidates are visible; this installer will not edit APT sources.'; fi
         return 1
     fi
@@ -130,31 +147,123 @@ sp_plan_and_install_dependencies() {
     pm_install "${SP_INSTALL_PKGS[@]}"
     sp_ok 'Native package transaction completed.'
 }
+sp_rollback_failed_dependency_only() {
+    local reason="$1" service_rollback_failed=0
+    if [[ -n "${SP_BACKUP_DIR:-}" ]]; then
+        sp_rollback_failed_deployment "$reason"
+    fi
+    sp_service_transaction_rollback || service_rollback_failed=1
+    if (( service_rollback_failed )); then
+        sp_die "$reason No desktop configuration was modified, but one or more system/user service states could not be reverted. Inspect the affected units manually."
+    fi
+    sp_die "$reason No Quickshell/Hyprland configuration was modified; service changes were reverted."
+}
+
+sp_rollback_failed_deployment() {
+    local reason="$1" original_yes="${SP_YES:-0}" restart_failed=0 service_rollback_failed=0
+    sp_error "$reason"
+    if (( ${SP_QS_INSTANCE_STARTED_BY_INSTALL:-0} )) && sp_have qs; then
+        qs kill -p "$SP_QS_DEST" >/dev/null 2>&1 || true
+        sp_wait_qs_instance_state stopped || sp_warn 'Could not confirm shutdown of the newly launched SekaiPop instance during rollback.'
+    fi
+    sp_service_transaction_rollback || service_rollback_failed=1
+    SP_YES=1
+    if [[ -n "${SP_BACKUP_DIR:-}" ]] && sp_restore_latest "$SP_BACKUP_DIR"; then
+        if (( ${SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING:-0} )); then
+            if ! qs -p "$SP_QS_DEST" -n -d >/dev/null 2>&1 || ! sp_wait_qs_instance_state running; then
+                restart_failed=1
+                sp_warn 'Configuration rollback succeeded, but the previously running SekaiPop instance could not be restarted automatically.'
+            else
+                sp_ok 'The previously running SekaiPop instance was restarted from the restored configuration.'
+            fi
+        fi
+        SP_QS_INSTANCE_STARTED_BY_INSTALL=0
+        SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING=0
+        SP_YES="$original_yes"
+        if (( restart_failed )); then
+            sp_die "$reason Configuration was restored, but the previous Quickshell instance needs to be started manually. Recovery snapshot: $SP_BACKUP_ROOT."
+        fi
+        if (( service_rollback_failed )); then
+            sp_die "$reason Configuration was restored, but one or more system/user service states could not be reverted. Inspect the installer log and run systemctl status on the affected units."
+        fi
+        sp_die "$reason The previous Quickshell/Hyprland configuration was restored automatically; the recovery snapshot is retained under $SP_BACKUP_ROOT."
+    fi
+    SP_YES="$original_yes"
+    if (( service_rollback_failed )); then
+        sp_die "$reason Automatic configuration rollback failed and one or more service states could not be reverted. Keep the installer backup and inspect systemd unit states before retrying."
+    fi
+    sp_die "$reason Automatic rollback failed. The installer backup remains available; run ./install.sh --restore after inspecting the log."
+}
+
 sp_deploy_application() {
     sp_find_rice_source
     sp_create_backup 1 "$([[ "$SP_HYPR" == skip ]] && echo 0 || echo 1)"
-    sp_deploy_quickshell "$SP_RICE"
-    [[ "$SP_HYPR" == skip ]] || sp_integrate_hyprland "$SP_HYPR_SOURCE"
-    sp_prepare_shaders "$SP_QS_DEST/shaders"
-    sp_setup_services
-    sp_activate_sekaipop || true
-    sp_write_state_manifest
+    if ! (sp_deploy_quickshell "$SP_RICE"); then
+        sp_rollback_failed_deployment 'Quickshell deployment failed.'
+    fi
+    if [[ "$SP_HYPR" != skip ]] && ! (sp_integrate_hyprland "$SP_HYPR_SOURCE"); then
+        sp_rollback_failed_deployment 'Hyprland integration failed.'
+    fi
+    if ! (sp_check_all); then
+        sp_rollback_failed_deployment 'Post-deployment runtime validation failed; Quickshell activation was skipped.'
+    fi
+    sp_service_transaction_begin
+    if ! sp_setup_services; then
+        sp_rollback_failed_deployment 'A systemd service action failed and its partial state could not be reverted.'
+    fi
+    if ! sp_activate_sekaipop; then
+        sp_rollback_failed_deployment 'Quickshell activation failed after deployment validation.'
+    fi
+    if ! (sp_write_state_manifest); then
+        sp_rollback_failed_deployment 'Could not write the installer state manifest.'
+    fi
+    sp_service_transaction_commit
+    SP_QS_INSTANCE_STARTED_BY_INSTALL=0
+    SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING=0
     sp_ok 'SekaiPop deployment phase completed.'
 }
 sp_dependency_only_setup() {
     [[ "$SP_HYPR" != full ]] || sp_find_rice_source
     sp_create_backup 0 "$([[ "$SP_HYPR" == skip ]] && echo 0 || echo 1)"
-    [[ "$SP_HYPR" == skip ]] || sp_integrate_hyprland "${SP_HYPR_SOURCE:-$SP_ROOT/hypr}"
-    sp_setup_services
-    sp_write_state_manifest
+    sp_service_transaction_begin
+    if [[ "$SP_HYPR" != skip ]] && ! (sp_integrate_hyprland "${SP_HYPR_SOURCE:-$SP_ROOT/hypr}"); then
+        sp_rollback_failed_dependency_only 'Hyprland dependency-only integration failed.'
+    fi
+    if ! sp_setup_services; then
+        sp_rollback_failed_dependency_only 'A dependency-only systemd service action failed and its partial state could not be reverted.'
+    fi
+    if ! (sp_write_state_manifest); then
+        sp_rollback_failed_dependency_only 'Could not write the installer state manifest in dependency-only mode.'
+    fi
+    sp_service_transaction_commit
 }
+sp_acquire_installer_lock() {
+    local lock_dir lock_file
+    command -v flock >/dev/null 2>&1 || sp_die 'flock is required to prevent concurrent installer transactions.'
+    if [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && ! -L "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" ]]; then
+        lock_dir="$XDG_RUNTIME_DIR"
+    else
+        lock_dir="$HOME/.cache/sekaipop"
+        [[ ! -L "$lock_dir" ]] || sp_die "Refusing symlinked installer lock directory: $lock_dir"
+        mkdir -p -- "$lock_dir" || sp_die "Cannot create installer lock directory: $lock_dir"
+        [[ -d "$lock_dir" && -O "$lock_dir" ]] || sp_die "Installer lock directory must be owned by the current user: $lock_dir"
+        chmod 0700 "$lock_dir" || sp_die "Cannot secure installer lock directory: $lock_dir"
+    fi
+    lock_file="$lock_dir/installer.lock"
+    [[ ! -L "$lock_file" ]] || sp_die "Refusing symlinked installer lock file: $lock_file"
+    ( umask 077; : >> "$lock_file" ) || sp_die "Cannot create installer lock file: $lock_file"
+    exec {SP_INSTALLER_LOCK_FD}> "$lock_file" || sp_die "Cannot open installer lock file: $lock_file"
+    flock -n "$SP_INSTALLER_LOCK_FD" || sp_die 'Another SekaiPop installer transaction is already running. Wait for it to finish before retrying.'
+}
+
 sekaipop_main() {
     sp_parse_args "$@"
-    if (( SP_RESTORE )); then sp_require_normal_user; sp_restore_latest; return $?; fi
+    if (( SP_RESTORE )); then sp_require_normal_user; sp_acquire_installer_lock; sp_restore_latest; return $?; fi
     sp_detect_distribution
     if (( SP_SYSTEM_UPGRADE )) && [[ "$SP_BACKEND" != arch ]]; then sp_die '--system-upgrade is only available on Arch Linux, EndeavourOS, and CachyOS.' 2; fi
     if (( SP_CHECK )); then sp_load_package_manager; sp_check_all; return $?; fi
     (( SP_DRY_RUN )) || sp_validate_preflight
+    (( SP_DRY_RUN || SP_CHECK )) || sp_acquire_installer_lock
     sp_make_log
     sp_info "Detected $SP_DISTRO_NAME | ID=$SP_DISTRO_ID | backend=$SP_BACKEND | release policy=$SP_RELEASE_POLICY"
     (( SP_NO_DEPS )) || sp_plan_and_install_dependencies
@@ -170,5 +279,4 @@ sekaipop_main() {
     fi
     (( SP_NO_DEPS )) && sp_info 'Package transactions skipped (--no-deps); post-install verification will still run.'
     sp_deploy_application
-    sp_check_all
 }
