@@ -141,10 +141,28 @@ grep -Fq '0.57.1' <<< "$version_output" || { printf 'Unexpected Hyprland version
 "$PREFIX/bin/start-hyprland" --help >/dev/null
 
 [[ -s "$PREFIX/share/wayland-sessions/hyprland.desktop" ]] || { printf 'Wayland session desktop file was not installed.\n' >&2; exit 1; }
-grep -Fq "$PREFIX/bin/start-hyprland" "$PREFIX/share/wayland-sessions/hyprland.desktop"
-[[ -s "$PREFIX/share/xdg-desktop-portal/portals/hyprland.portal" ]]
-[[ -s "$PREFIX/share/dbus-1/services/org.freedesktop.impl.portal.desktop.hyprland.service" ]]
-[[ -s "$PREFIX/lib/systemd/user/xdg-desktop-portal-hyprland.service" ]]
-[[ -s "$PREFIX/lib64/systemd/user/hyprland-session.target" ]]
+grep -Eq '^Type=Application
+
+printf '\nFEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK\n'
+ "$PREFIX/share/wayland-sessions/hyprland.desktop" || {
+    printf 'Wayland session desktop entry has no valid Application type:\\n' >&2
+    cat "$PREFIX/share/wayland-sessions/hyprland.desktop" >&2
+    exit 1
+}
+grep -Eq '^Exec=.*(Hyprland|start-hyprland)' "$PREFIX/share/wayland-sessions/hyprland.desktop" || {
+    printf 'Wayland session desktop entry has no Hyprland launcher:\\n' >&2
+    cat "$PREFIX/share/wayland-sessions/hyprland.desktop" >&2
+    exit 1
+}
+[[ -s "$PREFIX/share/xdg-desktop-portal/portals/hyprland.portal" ]] || { printf 'Portal descriptor missing.\\n' >&2; exit 1; }
+[[ -s "$PREFIX/share/dbus-1/services/org.freedesktop.impl.portal.desktop.hyprland.service" ]] || { printf 'Portal D-Bus service missing.\\n' >&2; exit 1; }
+[[ -s "$PREFIX/lib/systemd/user/xdg-desktop-portal-hyprland.service" ]] || { printf 'Portal systemd user service missing.\\n' >&2; exit 1; }
+[[ -s "$PREFIX/lib64/systemd/user/hyprland-session.target" ]] || {
+    printf 'Hyprland systemd user target missing from private prefix.\\n' >&2
+    if [[ -s /lib64/systemd/user/hyprland-session.target ]]; then
+        printf 'CMake installed the target outside the private prefix at /lib64/systemd/user.\\n' >&2
+    fi
+    exit 1
+}
 
 printf '\nFEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK\n'
