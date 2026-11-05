@@ -165,7 +165,6 @@ jobs:
           }
           printf 'FEDORA_BASE_IMAGE_REF=%s\n' "$BASE_IMAGE_REF"
           docker build --pull --progress=plain \
-            --build-arg FEDORA_VERSION="${{ matrix.fedora }}" \
             --build-arg FEDORA_BASE_IMAGE="$BASE_IMAGE_REF" \
             --file tools/fedora-hyprland-build-smoke.Dockerfile \
             --tag "sekaipop-fedora-hyprland:${{ matrix.fedora }}" .
