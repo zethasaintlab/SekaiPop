@@ -59,7 +59,7 @@ done
 chmod +x "$TMP/bin/rpm" "$TMP/bin/dnf5" "$TMP/bin/git" "$TMP/bin/tool-version"
 export PATH="$TMP/bin:$PATH"
 export SEKAIPOP_OS_RELEASE_FILE="$TMP/os-release"
-export SEKAIPOP_BASE_IMAGE_REF="docker.io/library/fedora@sha256:0123456789abcdef"
+export SEKAIPOP_BASE_IMAGE_REF="docker.io/library/fedora@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 OUT="$TMP/output/BUILD-PROVENANCE"
 "$WRITER" "$OUT" "$TMP/sources" | grep -Fq 'FEDORA_BUILD_PROVENANCE_OK' || {
@@ -68,7 +68,7 @@ OUT="$TMP/output/BUILD-PROVENANCE"
 }
 grep -Fq 'fedora_version=44' "$OUT"
 grep -Fq 'architecture=x86_64' "$OUT"
-grep -Fq 'base_image_ref=docker.io/library/fedora@sha256:0123456789abcdef' "$OUT"
+grep -Fq 'base_image_ref=docker.io/library/fedora@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' "$OUT"
 grep -Fq 'source_commits' "$OUT"
 grep -Fq $'Hyprland\t0123456789abcdef0123456789abcdef01234567' "$OUT"
 grep -Fq 'source_archive.lua-5.5.1.sha256=' "$OUT"
