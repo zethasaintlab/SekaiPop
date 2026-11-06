@@ -44,14 +44,17 @@ podman build --platform linux/amd64 --pull=never \
 HYPRLAND_VERSION=0.57.1
 HYPRLAND_COMMIT=acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9
 RELEASE_ID="$HYPRLAND_VERSION-${HYPRLAND_COMMIT:0:12}"
-CACHE_ROOT="${XDG_CACHE_HOME:-$HOME/.cache}/sekaipop/fedora-provider"
-STAGE_PARENT="$CACHE_ROOT/staging"
-mkdir -p -- "$STAGE_PARENT"
-[[ -d "$STAGE_PARENT" && ! -L "$STAGE_PARENT" && -O "$STAGE_PARENT" ]] || {
-    printf 'Unsafe or non-user-owned staging directory: %s\n' "$STAGE_PARENT" >&2
+STAGE_PARENT="${TMPDIR:-/var/tmp}/sekaipop-fedora-provider-$UID"
+[[ ! -L "$STAGE_PARENT" ]] || {
+    printf 'Refusing symlinked provider staging directory: %s\n' "$STAGE_PARENT" >&2
     exit 1
 }
-chmod 0700 "$CACHE_ROOT" "$STAGE_PARENT"
+mkdir -p -- "$STAGE_PARENT"
+[[ -d "$STAGE_PARENT" && -O "$STAGE_PARENT" ]] || {
+    printf 'Provider staging directory must be owned by the current user: %s\n' "$STAGE_PARENT" >&2
+    exit 1
+}
+chmod 0700 "$STAGE_PARENT"
 STAGE_ROOT="$(mktemp -d "$STAGE_PARENT/build.XXXXXX")"
 chmod 0700 "$STAGE_ROOT"
 CONTAINER_RELEASE_ROOT=/opt/sekaipop/providers/hyprland/releases
