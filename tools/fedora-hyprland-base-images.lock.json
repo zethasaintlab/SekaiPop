@@ -1,0 +1,27 @@
+{
+  "schema": "sekaipop-fedora-hyprland-base-image-lock-v1",
+  "source": {
+    "hyprland_version": "0.57.1",
+    "hyprland_commit": "acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9",
+    "portal_version": "1.5.0",
+    "portal_commit": "d1467fea8d1895cb7835829c2fbb271a0d37760a"
+  },
+  "provenance_run": {
+    "id": 42139442441,
+    "commit": "29b8fb6fcfcdeaf4333fab644aae3d667a8724b9"
+  },
+  "targets": {
+    "44": {
+      "image": "docker.io/library/fedora@sha256:15da97ed9aa94dd3d92c3925eb89520f6c80e07ea7ee24cba848d1f8b6912b3e",
+      "resolved_tag": "docker.io/library/fedora:44",
+      "artifact_id": 13466984017,
+      "artifact_sha256": "3df3c1aae55471a25c387edc935874eee6e94ad72a8b7b3b294158683b93ef38"
+    },
+    "45": {
+      "image": "docker.io/library/fedora@sha256:a7d72ba2745b100a3351087472e5ee7b2450af7cf331e7673007e3817612839c",
+      "resolved_tag": "docker.io/library/fedora:45",
+      "artifact_id": 13468009825,
+      "artifact_sha256": "bc4520b0a15d3dcadc9634fe27fc55e293b7e63c4e57be5080ccd9f7a8647f1f"
+    }
+  }
+}
