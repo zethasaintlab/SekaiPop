@@ -12,8 +12,8 @@ sp_hyprland_version() {
     else
         return 1
     fi
-    version="$(grep -oE '[0-9]+\\.[0-9]+(\\.[0-9]+)?' <<< "$output" | head -n1)"
-    [[ -n "$version" ]] && printf '%s\\n' "$version"
+    version="$(grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' <<< "$output" | head -n1)"
+    [[ -n "$version" ]] && printf '%s\n' "$version"
 }
 sp_validate_lua() {
     local file="$1"
