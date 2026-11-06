@@ -14,14 +14,14 @@ def main() -> None:
     release = Path("/opt/sekaipop/providers/hyprland/releases/0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18")
     launcher = release / "bin" / "sekaipop-hyprland-session"
     expected_session = (
-        "[Desktop Entry]\\n"
-        "Name=SekaiPop (Hyprland)\\n"
-        "Comment=SekaiPop managed Hyprland desktop session\\n"
-        f"Exec={launcher}\\n"
-        f"TryExec={launcher}\\n"
-        "Type=Application\\n"
-        "DesktopNames=Hyprland\\n"
-        "Keywords=tiling;wayland;compositor;sekaipop;\\n"
+        "[Desktop Entry]\n"
+        "Name=SekaiPop (Hyprland)\n"
+        "Comment=SekaiPop managed Hyprland desktop session\n"
+        f"Exec={launcher}\n"
+        f"TryExec={launcher}\n"
+        "Type=Application\n"
+        "DesktopNames=Hyprland\n"
+        "Keywords=tiling;wayland;compositor;sekaipop;\n"
     )
     assert MODULE.expected_session_entry(release) == expected_session
 
