@@ -68,7 +68,7 @@ The installer now creates a user-owned journal under `$XDG_STATE_HOME/sekaipop/i
 - The journal uses a versioned, append-only TSV record format; event details and metadata are base64-encoded rather than evaluated as shell.
 - Each append is serialized with `flock`, followed by `sync -f`; journals and lock files are private, user-owned, singly-linked regular files.
 - The transaction records the owning installer PID, its Linux process start time, and the boot ID to distinguish a live transaction from a stale PID reused by another process.
-- Unexpected shell exit records `needs_recovery`. Before a new install, stale active transactions are marked `needs_recovery` and the installer fails closed rather than deleting or guessing at partial state.
+- An unexpected shell exit leaves the journal `active`. Before a new install, the process-identity check marks stale active transactions `needs_recovery` and fails closed rather than deleting or guessing at partial state. This also detects SIGKILL and power-loss cases without replacing a caller's existing shell exit trap.
 - The main installer records native dependency planning, Quickshell deployment, Hyprland configuration integration, runtime validation, systemd integration, activation, and rollback events. Successful deployment and dependency-only flows record a commit.
 - This is a durable journal and interruption gate, not yet a provider state machine or automatic cross-component recovery engine. The Fedora provider is still not invoked by `install.sh`; a recovery-required transaction currently requires inspection before retry.
 
