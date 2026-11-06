@@ -61,6 +61,19 @@ sudo python3 tools/fedora-hyprland-host-deploy.py remove
 
 Replace the displayed staging path with the exact path printed by the build command. These are engineering diagnostics, not the intended end-user installation workflow.
 
+## Installer transaction journal foundation
+
+The installer now creates a user-owned journal under `$XDG_STATE_HOME/sekaipop/installer-transactions` (default: `~/.local/state/sekaipop/installer-transactions`) for real, non-dry-run installations.
+
+- The journal uses a versioned, append-only TSV record format; event details and metadata are base64-encoded rather than evaluated as shell.
+- Each append is serialized with `flock`, followed by `sync -f`; journals and lock files are private, user-owned, singly-linked regular files.
+- The transaction records the owning installer PID, its Linux process start time, and the boot ID to distinguish a live transaction from a stale PID reused by another process.
+- Unexpected shell exit records `needs_recovery`. Before a new install, stale active transactions are marked `needs_recovery` and the installer fails closed rather than deleting or guessing at partial state.
+- The main installer records native dependency planning, Quickshell deployment, Hyprland configuration integration, runtime validation, systemd integration, activation, and rollback events. Successful deployment and dependency-only flows record a commit.
+- This is a durable journal and interruption gate, not yet a provider state machine or automatic cross-component recovery engine. The Fedora provider is still not invoked by `install.sh`; a recovery-required transaction currently requires inspection before retry.
+
+Package-manager operations are not claimed to be reversible. A package transaction that partially applies before failure must be reported accurately; the journal records the attempted/completed phase, while later provider integration must add package ownership and recovery semantics without uninstalling pre-existing packages.
+
 ## Explicit limitations
 
 The current implementation does **not** yet:
