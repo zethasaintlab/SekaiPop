@@ -186,10 +186,13 @@ sp_rollback_failed_dependency_only() {
     if [[ -n "${SP_BACKUP_DIR:-}" ]]; then
         sp_rollback_failed_deployment "$reason"
     fi
+    sp_transaction_event rollback.started "$reason"
     sp_service_transaction_rollback || service_rollback_failed=1
     if (( service_rollback_failed )); then
+        sp_transaction_finish needs_recovery "$reason Service rollback was incomplete."
         sp_die "$reason No desktop configuration was modified, but one or more system/user service states could not be reverted. Inspect the affected units manually."
     fi
+    sp_transaction_finish failed "$reason Service changes were reverted."
     sp_die "$reason No Quickshell/Hyprland configuration was modified; service changes were reverted."
 }
 
