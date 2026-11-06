@@ -240,7 +240,7 @@ def register_session(release: str) -> None:
                 fail(f"refusing to overwrite an existing session entry: {SESSION_ENTRY}")
             metadata = SESSION_ENTRY.lstat()
             if metadata.st_uid == 0 and stat.S_IMODE(metadata.st_mode) == 0o644 and SESSION_ENTRY.read_text(encoding="utf-8") == expected:
-                print(f"FEDORA_HYPRLAND_SESSION_ALREADY_REGISTERED\\t{SESSION_ENTRY}")
+                print(f"FEDORA_HYPRLAND_SESSION_ALREADY_REGISTERED\t{SESSION_ENTRY}")
                 return
             fail(f"conflicting session entry preserved: {SESSION_ENTRY}")
 
@@ -259,7 +259,7 @@ def register_session(release: str) -> None:
             if temporary is not None and temporary.exists():
                 temporary.unlink()
             raise
-        print(f"FEDORA_HYPRLAND_SESSION_REGISTERED\\t{SESSION_ENTRY}")
+        print(f"FEDORA_HYPRLAND_SESSION_REGISTERED\t{SESSION_ENTRY}")
     finally:
         if temporary is not None and temporary.exists():
             temporary.unlink()
@@ -273,7 +273,7 @@ def unregister_session(release: str) -> None:
         release_path = validate_published_release(release)
         expected = expected_session_entry(release_path)
         if not SESSION_ENTRY.exists() and not SESSION_ENTRY.is_symlink():
-            print(f"FEDORA_HYPRLAND_SESSION_ALREADY_UNREGISTERED\\t{SESSION_ENTRY}")
+            print(f"FEDORA_HYPRLAND_SESSION_ALREADY_UNREGISTERED\t{SESSION_ENTRY}")
             return
         if SESSION_ENTRY.is_symlink() or not SESSION_ENTRY.is_file():
             fail(f"refusing to remove a non-regular session entry: {SESSION_ENTRY}")
@@ -284,7 +284,7 @@ def unregister_session(release: str) -> None:
             fail("session entry content changed; preserving it")
         SESSION_ENTRY.unlink()
         fsync_directory(SESSION_DIR)
-        print(f"FEDORA_HYPRLAND_SESSION_UNREGISTERED\\t{SESSION_ENTRY}")
+        print(f"FEDORA_HYPRLAND_SESSION_UNREGISTERED\t{SESSION_ENTRY}")
     finally:
         os.close(lock_fd)
 
