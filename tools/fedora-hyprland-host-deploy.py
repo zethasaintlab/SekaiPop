@@ -213,27 +213,27 @@ def validate_published_release(release: str) -> Path:
 
 def register_session(release: str) -> None:
     ensure_secure_directory(SESSION_DIR)
-    release_path = validate_published_release(release)
-    source_entry = release_path / "share" / "wayland-sessions" / "sekaipop-hyprland.desktop"
-    launcher = release_path / "bin" / "sekaipop-hyprland-session"
-    expected = expected_session_entry(release_path)
-    for path in (source_entry, launcher):
-        try:
-            metadata = path.lstat()
-        except OSError as error:
-            fail(f"required session artifact is missing: {path}: {error}")
-        if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0:
-            fail(f"required session artifact is not a root-owned regular file: {path}")
-    if stat.S_IMODE(source_entry.stat().st_mode) != 0o644:
-        fail("staged session desktop entry must have mode 0644")
-    if not os.access(launcher, os.X_OK):
-        fail("staged session launcher is not executable")
-    if source_entry.read_text(encoding="utf-8") != expected:
-        fail("staged session desktop entry does not match the managed release")
-
     lock_fd = provider_lock()
     temporary = None
     try:
+        release_path = validate_published_release(release)
+        source_entry = release_path / "share" / "wayland-sessions" / "sekaipop-hyprland.desktop"
+        launcher = release_path / "bin" / "sekaipop-hyprland-session"
+        expected = expected_session_entry(release_path)
+        for path in (source_entry, launcher):
+            try:
+                metadata = path.lstat()
+            except OSError as error:
+                fail(f"required session artifact is missing: {path}: {error}")
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0:
+                fail(f"required session artifact is not a root-owned regular file: {path}")
+        if stat.S_IMODE(source_entry.stat().st_mode) != 0o644:
+            fail("staged session desktop entry must have mode 0644")
+        if not os.access(launcher, os.X_OK):
+            fail("staged session launcher is not executable")
+        if source_entry.read_text(encoding="utf-8") != expected:
+            fail("staged session desktop entry does not match the managed release")
+
         if SESSION_ENTRY.exists() or SESSION_ENTRY.is_symlink():
             if SESSION_ENTRY.is_symlink() or not SESSION_ENTRY.is_file():
                 fail(f"refusing to overwrite an existing session entry: {SESSION_ENTRY}")
@@ -267,10 +267,10 @@ def register_session(release: str) -> None:
 
 def unregister_session(release: str) -> None:
     ensure_secure_directory(SESSION_DIR)
-    release_path = validate_published_release(release)
-    expected = expected_session_entry(release_path)
     lock_fd = provider_lock()
     try:
+        release_path = validate_published_release(release)
+        expected = expected_session_entry(release_path)
         if not SESSION_ENTRY.exists() and not SESSION_ENTRY.is_symlink():
             print(f"FEDORA_HYPRLAND_SESSION_ALREADY_UNREGISTERED\\t{SESSION_ENTRY}")
             return
