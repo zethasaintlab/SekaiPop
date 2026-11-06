@@ -17,6 +17,8 @@ from pathlib import Path
 
 VERSION = "0.57.1"
 COMMIT = "acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9"
+PORTAL_VERSION = "1.5.0"
+PORTAL_COMMIT = "d1467fea8d1895cb7835829c2fbb271a0d37760a"
 RELEASE_ID = f"{VERSION}-{COMMIT[:12]}"
 RELEASES = Path("/opt/sekaipop/providers/hyprland/releases")
 PROVIDER_ROOT = Path("/opt/sekaipop/providers/hyprland")
@@ -77,6 +79,8 @@ def run_manifest(prefix: Path, release: str, runtime_prefix: Path) -> None:
         "--fedora-release", release,
         "--hyprland-version", VERSION,
         "--hyprland-commit", COMMIT,
+        "--portal-version", PORTAL_VERSION,
+        "--portal-commit", PORTAL_COMMIT,
         "--runtime-prefix", str(runtime_prefix),
         "--verify",
     ]
