@@ -5,7 +5,7 @@ ROOT="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
 TMP="$(mktemp -d /tmp/sekaipop-fedora-provider.XXXXXX)"
 trap 'rm -rf -- "$TMP"' EXIT
 export PATH="$TMP/bin:$PATH"
-mkdir -p "$TMP/bin" "$TMP/staging"
+mkdir -p "$TMP/bin" "$TMP/staging" "$TMP/store"
 
 source "$ROOT/installer/providers/fedora/host-provider.sh"
 
@@ -41,13 +41,20 @@ if sp_fedora_host_provider_rootless_podman; then echo '[FAIL] rootful Podman acc
 export SEKAIPOP_TEST_ROOTLESS=true
 sp_fedora_host_provider_rootless_podman || { echo '[FAIL] rootless Podman detection'; exit 1; }
 
-export SEKAIPOP_TEST_GRAPHROOT="$TMP/staging"
-export SEKAIPOP_TEST_FREE_KIB=100000
+export SEKAIPOP_TEST_GRAPHROOT="$TMP/store"
+export SEKAIPOP_TEST_STAGE_FREE_KIB=100000
+export SEKAIPOP_TEST_STORE_FREE_KIB=30000000
 if sp_fedora_host_provider_preflight "$TMP/staging" >/dev/null 2>&1; then
     echo '[FAIL] insufficient staging space accepted'
     exit 1
 fi
-export SEKAIPOP_TEST_FREE_KIB=30000000
+export SEKAIPOP_TEST_STAGE_FREE_KIB=30000000
+export SEKAIPOP_TEST_STORE_FREE_KIB=100000
+if sp_fedora_host_provider_preflight "$TMP/staging" >/dev/null 2>&1; then
+    echo '[FAIL] insufficient Podman storage space accepted'
+    exit 1
+fi
+export SEKAIPOP_TEST_STORE_FREE_KIB=30000000
 if (( EUID == 0 )); then
     echo '[SKIP] end-to-end preflight requires a normal user'
 else
