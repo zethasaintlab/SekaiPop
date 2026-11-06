@@ -320,7 +320,6 @@ sekaipop_main() {
     sp_info "Detected $SP_DISTRO_NAME | ID=$SP_DISTRO_ID | backend=$SP_BACKEND | release policy=$SP_RELEASE_POLICY"
     if (( ! SP_DRY_RUN )); then
         sp_transaction_journal_begin
-        trap 'sp_transaction_exit_trap $?' EXIT
         sp_transaction_event system.detected "$SP_DISTRO_ID $SP_DISTRO_VERSION $SP_ARCH"
     fi
     if (( ! SP_NO_DEPS )); then
