@@ -9,6 +9,15 @@ source "$ROOT/installer/core/common.sh"
 source "$ROOT/installer/provisioning/apt-repositories.sh"
 fail() { printf '[FAIL] %s\n' "$*" >&2; exit 1; }
 pass() { printf '[PASS] %s\n' "$*"; }
+DETECT="$ROOT/installer/core/detect.sh"
+grep -Fq 'official trixie-backports main must already be configured' "$DETECT" ||
+    fail 'Debian release policy must state that backports are administrator-configured'
+grep -Fq 'official Universe must already be enabled for release, updates, and security' "$DETECT" ||
+    fail 'Ubuntu release policy must state that Universe is administrator-configured'
+if grep -Fq 'bootstrapped automatically' "$DETECT"; then
+    fail 'Release policy must not claim that the read-only APT validator bootstraps sources'
+fi
+pass 'Debian and Ubuntu release policy accurately describes read-only APT prerequisites'
 expect_rejected() {
     local distro="$1" version="$2" codename="$3"
     if (SP_BACKEND=apt SP_DISTRO_ID="$distro" SP_DISTRO_VERSION="$version" SP_DISTRO_CODENAME="$codename" sp_apt_validate_required_sources) >/dev/null 2>&1; then
