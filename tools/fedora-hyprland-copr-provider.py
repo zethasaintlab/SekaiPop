@@ -305,8 +305,13 @@ def find_existing_repo(release: str) -> Path | None:
 
 def save_state(state: dict) -> None:
     ensure_secure_directory(STATE_DIR, 0o700)
+    if STATE_FILE.exists() or STATE_FILE.is_symlink():
+        metadata = STATE_FILE.lstat()
+        if STATE_FILE.is_symlink() or not stat.S_ISREG(metadata.st_mode):
+            fail("provider ownership state is not a regular file; preserving it")
+        if metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) != 0o600:
+            fail("provider ownership state has unsafe ownership or permissions")
     atomic_replace(STATE_FILE, (json.dumps(state, sort_keys=True, indent=2) + "\n").encode(), 0o600)
-
 
 def load_state() -> dict:
     try:
