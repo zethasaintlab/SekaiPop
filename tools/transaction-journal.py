@@ -108,6 +108,66 @@ def locked(path: Path):
     return fd
 
 
+def process_start_time(pid: int) -> str | None:
+    try:
+        content = Path(f"/proc/{pid}/stat").read_text(encoding="ascii")
+        fields = content[content.rfind(")") + 2:].split()
+        return fields[19]
+    except (OSError, IndexError, ValueError):
+        return None
+
+
+def current_boot_id() -> str:
+    try:
+        return Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
+    except OSError:
+        return "unknown"
+
+
+def check_recovery(directory: Path) -> None:
+    if not directory.is_absolute():
+        fail("transaction directory must be absolute")
+    if not directory.exists():
+        return
+    info = directory.lstat()
+    if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_uid != os.geteuid():
+        fail(f"unsafe transaction directory: {directory}")
+    blocked = []
+    for path in sorted(directory.glob("*.json")):
+        validate_file(path, must_exist=True)
+        data = load(path)
+        if data["status"] == "needs_recovery":
+            blocked.append(path.name)
+            continue
+        if data["status"] != "active":
+            continue
+        pid = data.get("pid")
+        same_boot = data.get("boot_id") == current_boot_id()
+        recorded_start = data.get("pid_start_time")
+        live_start = process_start_time(pid) if isinstance(pid, int) and pid > 0 else None
+        if same_boot and recorded_start and live_start == recorded_start:
+            fail(f"transaction still appears active (pid {pid}): {path}")
+        fd = locked(path)
+        try:
+            data = load(path)
+            if data["status"] == "active":
+                now = utc_now()
+                data["status"] = "needs_recovery"
+                data["updated_at"] = now
+                data["events"].append({
+                    "name": "transaction_interrupted",
+                    "at": now,
+                    "detail": "The owning installer process is no longer alive on the recorded boot.",
+                })
+                atomic_write(path, data)
+            if data["status"] == "needs_recovery":
+                blocked.append(path.name)
+        finally:
+            os.close(fd)
+    if blocked:
+        fail("unfinished transaction(s) require inspection before a new install: " + ", ".join(blocked))
+
+
 def init(path: Path, transaction_id: str, metadata: dict[str, Any]) -> None:
     secure_parent(path)
     fd = locked(path)
@@ -122,7 +182,9 @@ def init(path: Path, transaction_id: str, metadata: dict[str, Any]) -> None:
             "status": "active",
             "created_at": now,
             "updated_at": now,
-            "pid": os.getpid(),
+            "pid": os.getppid(),
+            "pid_start_time": process_start_time(os.getppid()),
+            "boot_id": current_boot_id(),
             "metadata": metadata,
             "events": [{"name": "transaction_started", "at": now, "detail": ""}],
         }
@@ -175,6 +237,8 @@ def main() -> int:
     finish.add_argument("detail", nargs="?", default="")
     show = sub.add_parser("show")
     show.add_argument("path", type=Path)
+    recovery = sub.add_parser("recover-check")
+    recovery.add_argument("directory", type=Path)
     args = parser.parse_args()
     try:
         if args.command == "init":
@@ -186,6 +250,8 @@ def main() -> int:
             update(args.path, "event", args.name, args.detail)
         elif args.command == "finish":
             update(args.path, "finish", args.status, args.detail)
+        elif args.command == "recover-check":
+            check_recovery(args.directory)
         else:
             print(json.dumps(load(args.path), ensure_ascii=False, sort_keys=True, indent=2))
         return 0
