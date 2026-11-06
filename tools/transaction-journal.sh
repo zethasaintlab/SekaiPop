@@ -134,7 +134,8 @@ recover_check() {
         recorded_start="$(field_value "$journal" pid_start_time || true)"
         recorded_boot="$(field_value "$journal" boot_id || true)"
         current_boot="$(boot_id)"
-        current_start="$(process_start_time "$pid" 2>/dev/null || true)"
+        current_start=""
+        if [[ "$pid" =~ ^[0-9]+$ ]]; then current_start="$(process_start_time "$pid" 2>/dev/null || true)"; fi
         if [[ -n "$pid" && "$recorded_boot" == "$current_boot" && -n "$recorded_start" && "$current_start" == "$recorded_start" ]]; then
             printf 'An installer transaction is still active (PID %s): %s\n' "$pid" "$journal" >&2
             blocked=1
