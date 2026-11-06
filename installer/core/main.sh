@@ -170,6 +170,7 @@ sp_plan_and_install_dependencies() {
         sp_error 'Package installation cancelled.'
         return 1
     fi
+    sp_transaction_event native_package_transaction.started "backend=$SP_BACKEND packages=${SP_INSTALL_PKGS[*]}"
     if pm_install "${SP_INSTALL_PKGS[@]}"; then
         :
     else
@@ -187,6 +188,7 @@ sp_plan_and_install_dependencies() {
         (( ${#SP_INSTALL_CORE[@]} )) && printf '  Not installed: %s\n' "${SP_INSTALL_CORE[@]}" >&2
         return 1
     fi
+    sp_transaction_event native_package_transaction.completed "backend=$SP_BACKEND"
     sp_ok 'Native package transaction completed; mandatory requirements were revalidated.'
 }
 sp_rollback_failed_dependency_only() {
