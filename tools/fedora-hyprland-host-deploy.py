@@ -127,6 +127,8 @@ def validate_stage(stage: Path, release: str, sudo_uid: int) -> Path:
         fail("provider transaction directory must be private and owned by the invoking user")
     if not stat.S_ISDIR(stage_meta.st_mode) or stage_meta.st_uid != sudo_uid:
         fail("provider release staging directory must be owned by the invoking user")
+    if stat.S_IMODE(stage_meta.st_mode) & 0o6022:
+        fail("provider release staging directory has unsafe special or writable permission bits")
     if stage.name != RELEASE_ID or stage.is_symlink():
         fail("staged release identifier does not match the pinned Hyprland source")
     resolved = stage.resolve(strict=True)
