@@ -180,14 +180,14 @@ def rename_noreplace(source: Path, destination: Path) -> None:
 def expected_session_entry(release_path: Path) -> str:
     launcher = release_path / "bin" / "sekaipop-hyprland-session"
     return (
-        "[Desktop Entry]\\n"
-        "Name=SekaiPop (Hyprland)\\n"
-        "Comment=SekaiPop managed Hyprland desktop session\\n"
-        f"Exec={launcher}\\n"
-        f"TryExec={launcher}\\n"
-        "Type=Application\\n"
-        "DesktopNames=Hyprland\\n"
-        "Keywords=tiling;wayland;compositor;sekaipop;\\n"
+        "[Desktop Entry]\n"
+        "Name=SekaiPop (Hyprland)\n"
+        "Comment=SekaiPop managed Hyprland desktop session\n"
+        f"Exec={launcher}\n"
+        f"TryExec={launcher}\n"
+        "Type=Application\n"
+        "DesktopNames=Hyprland\n"
+        "Keywords=tiling;wayland;compositor;sekaipop;\n"
     )
 
 
@@ -246,7 +246,7 @@ def register_session(release: str) -> None:
         descriptor, temporary_name = tempfile.mkstemp(prefix=".sekaipop-hyprland.", dir=SESSION_DIR)
         temporary = Path(temporary_name)
         try:
-            with os.fdopen(descriptor, "w", encoding="utf-8", newline="\\n") as stream:
+            with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
                 stream.write(expected)
                 stream.flush()
                 os.fsync(stream.fileno())
