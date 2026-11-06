@@ -2,6 +2,8 @@
 import importlib.util
 import os
 import tempfile
+from types import SimpleNamespace
+from unittest.mock import patch
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "tools" / "fedora-hyprland-host-deploy.py"
@@ -11,7 +13,19 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
+def test_invoking_user_unit_directory_resolves_home_without_optional_argument() -> None:
+    with patch.object(MODULE.pwd, "getpwuid", return_value=SimpleNamespace(pw_dir="/home/tester")):
+        assert MODULE.invoking_user_unit_directory(1234, None) == Path("/home/tester/.config/systemd/user")
+    try:
+        MODULE.invoking_user_unit_directory(1234, "relative/systemd/user")
+    except SystemExit as error:
+        assert "absolute path" in str(error)
+    else:
+        raise AssertionError("relative user unit directory was accepted")
+
+
 def main() -> None:
+    test_invoking_user_unit_directory_resolves_home_without_optional_argument()
     release = Path("/opt/sekaipop/providers/hyprland/releases/0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18")
     launcher = release / "bin" / "sekaipop-hyprland-session"
     expected_session = (
