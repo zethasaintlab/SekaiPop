@@ -93,6 +93,7 @@ class DnfRepositorySnapshotTests(unittest.TestCase):
         key = self.root / "RPM-GPG-KEY-fedora-44-x86_64"
         key.write_text("fedora signing key fixture\\n", encoding="utf-8")
         SNAPSHOT.OFFICIAL_REPO_CONFIG_ROOTS = (str(self.root) + os.sep,)
+        SNAPSHOT.OFFICIAL_GPG_KEY_ROOTS = (str(self.root) + os.sep,)
         repositories = []
         for repo_id, metalink_repo in (
             ("fedora", "fedora-44"),
