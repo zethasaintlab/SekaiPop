@@ -21,7 +21,11 @@ PODMAN
 cat > "$TMP/bin/df" <<'DF'
 #!/usr/bin/env bash
 printf 'Filesystem 1024-blocks Used Available Capacity Mounted on\n'
-printf '/dev/test 40000000 1000000 %s 3%% /tmp\n' "${SEKAIPOP_TEST_FREE_KIB:-30000000}"
+case "$3" in
+    *store*) available="${SEKAIPOP_TEST_STORE_FREE_KIB:-30000000}" ;;
+    *) available="${SEKAIPOP_TEST_STAGE_FREE_KIB:-30000000}" ;;
+esac
+printf '/dev/test 40000000 1000000 %s 3%% /tmp\n' "$available"
 DF
 chmod +x "$TMP/bin/podman" "$TMP/bin/df"
 
