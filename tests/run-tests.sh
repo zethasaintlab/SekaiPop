@@ -7,7 +7,7 @@ pass() { printf '[PASS] %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf '[FAIL] %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 contains() { grep -Fq -- "$2" "$1"; }
 not_contains() { ! grep -RFq -- "$2" "$1"; }
-for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-quickshell-activation.sh "$ROOT"/tests/test-fedora-power-provider.sh "$ROOT"/tests/test-deployment-transaction.sh "$ROOT"/tests/test-pacman-safety.sh "$ROOT"/tests/test-installer-lock.sh "$ROOT"/tests/test-shader-plan.sh "$ROOT"/tests/test-power-profile-api.sh "$ROOT"/tests/test-hyprland-touchpad-key.sh "$ROOT"/tests/test-dependency-failure-gate.sh "$ROOT"/tests/test-private-prefix-validation.sh "$ROOT"/tests/test-fedora-hyprland-source-fetch-safety.sh "$ROOT"/tests/test-fedora-hyprland-build-provenance.sh; do
+for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-quickshell-activation.sh "$ROOT"/tests/test-fedora-power-provider.sh "$ROOT"/tests/test-deployment-transaction.sh "$ROOT"/tests/test-pacman-safety.sh "$ROOT"/tests/test-installer-lock.sh "$ROOT"/tests/test-shader-plan.sh "$ROOT"/tests/test-power-profile-api.sh "$ROOT"/tests/test-hyprland-touchpad-key.sh "$ROOT"/tests/test-dependency-failure-gate.sh "$ROOT"/tests/test-private-prefix-validation.sh "$ROOT"/tests/test-fedora-hyprland-source-fetch-safety.sh "$ROOT"/tests/test-fedora-hyprland-build-provenance.sh "$ROOT"/tests/test-fedora-host-provider.sh; do
     if bash -n "$script"; then pass "Bash syntax: $(basename "$script")"; else fail "Bash syntax: $(basename "$script")"; fi
 done
 if env SEKAIPOP_INSTALLER_ROOT="$ROOT" "$ROOT/install.sh" --help >/dev/null; then pass 'Help works without distro detection'; else fail 'Help works without distro detection'; fi
@@ -93,5 +93,6 @@ if bash "$ROOT/tests/test-private-prefix-validation.sh"; then pass 'CMake instal
 if bash "$ROOT/tests/test-fedora-hyprland-source-fetch-safety.sh"; then pass 'Fedora source fetch preserves pre-existing archive files'; else fail 'Fedora source fetch preserves pre-existing archive files'; fi
 if bash "$ROOT/tests/test-fedora-hyprland-build-provenance.sh"; then pass 'Fedora source-build provenance is immutable and complete'; else fail 'Fedora source-build provenance is immutable and complete'; fi
 if python3 "$ROOT/tests/test-fedora-dnf-repository-snapshot.py"; then pass 'DNF5 repository provenance resolves real config files and symlinks'; else fail 'DNF5 repository provenance resolves real config files and symlinks'; fi
+if bash "$ROOT/tests/test-fedora-host-provider.sh"; then pass 'Fedora host-provider preflight rejects unsupported and unsafe environments'; else fail 'Fedora host-provider preflight rejects unsupported and unsafe environments'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
