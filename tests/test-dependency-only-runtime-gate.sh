@@ -46,6 +46,5 @@ if [[ -e "$marker" ]]; then
 fi
 
 [[ -n "${SP_TRANSACTION_JOURNAL:-}" ]] || { printf '[FAIL] dependency-only path did not create a transaction journal\n' >&2; exit 1; }
-grep -Fqx 
-status\tfailed' "$SP_TRANSACTION_JOURNAL" || { printf '[FAIL] runtime validation failure was not journaled as failed\n' >&2; exit 1; }
+[[ "$(tail -n1 "$SP_TRANSACTION_JOURNAL" | cut -f2)" == failed ]] || { printf '[FAIL] runtime validation failure was not journaled as failed\n' >&2; exit 1; }
 printf '[PASS] dependency-only mode gates desktop integration on mandatory runtime verification\n'
