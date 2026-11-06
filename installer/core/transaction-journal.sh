@@ -14,7 +14,7 @@ sp_transaction_journal_begin() {
         sp_die 'Installer transaction journal directory must be a real directory owned by the current user.'
     chmod 0700 "$SP_TRANSACTION_JOURNAL_DIR" || sp_die 'Could not secure installer transaction journal directory.'
     SP_TRANSACTION_JOURNAL="$SP_TRANSACTION_JOURNAL_DIR/$SP_TIMESTAMP.json"
-    metadata="$(python3 -c 'import json,os; print(json.dumps({"distro":os.environ.get("SP_DISTRO_ID","unknown"),"release":os.environ.get("SP_DISTRO_VERSION","unknown"),"backend":os.environ.get("SP_BACKEND","unknown"),"profile":os.environ.get("SP_PROFILE","unknown"),"hypr_mode":os.environ.get("SP_HYPR","unknown")}))')" ||
+    metadata="$(python3 -c 'import json,sys; print(json.dumps(dict(zip(("distro","release","backend","profile","hypr_mode"),sys.argv[1:]))))' "$SP_DISTRO_ID" "$SP_DISTRO_VERSION" "$SP_BACKEND" "$SP_PROFILE" "$SP_HYPR")" ||
         sp_die 'Could not encode installer transaction metadata.'
     python3 "$SP_ROOT/tools/transaction-journal.py" init "$SP_TRANSACTION_JOURNAL" "$SP_TIMESTAMP" --metadata "$metadata" ||
         sp_die 'Could not initialize a durable installer transaction journal.'
