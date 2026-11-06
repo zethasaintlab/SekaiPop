@@ -79,9 +79,15 @@ def validate_official_fedora_repositories(enabled, release):
         for key_uri in keys:
             if not isinstance(key_uri, str) or not key_uri.startswith("file://"):
                 fail(f"repository {repo_id} uses a non-local or untrusted signing key")
-            key_path = os.path.realpath(key_uri[7:])
-            if os.path.basename(key_path) != key_name:
-                fail(f"repository {repo_id} uses an unexpected Fedora signing key: {key_path}")
+            configured_key_path = os.path.abspath(key_uri[7:])
+            if os.path.basename(configured_key_path) != key_name:
+                fail(f"repository {repo_id} uses an unexpected Fedora signing key: {configured_key_path}")
+            key_path = os.path.realpath(configured_key_path)
+            if not (
+                key_path.startswith("/etc/pki/rpm-gpg/")
+                or key_path.startswith("/usr/share/pki/rpm-gpg/")
+            ):
+                fail(f"repository {repo_id} signing key resolves outside Fedora key directories: {key_path}")
             try:
                 metadata = os.stat(key_path)
             except OSError as error:
