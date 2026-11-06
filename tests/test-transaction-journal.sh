@@ -35,19 +35,20 @@ run event "$JOURNAL" provider.preflight 'Fedora 45 supported'
 run event "$JOURNAL" podman.validated 'rootless=true'
 grep -Fq $'event\t' "$JOURNAL" || fail 'Transaction events were not recorded'
 if run event "$JOURNAL" 'invalid event' ''; then fail 'Invalid event name was accepted'; fi
-if run init "$JOURNAL" tx-one "$$" fedora 45 dnf5 standard merge; then fail 'Existing journal was overwritten'; fi
-run finish "$JOURNAL" committed 'all required phases validated'
-[[ "$(awk -F '\t' '$1 == "status" { value=$2 } END { print value }' "$JOURNAL")" == committed ]] || fail 'Committed status was not persisted'
-if run event "$JOURNAL" late.event ''; then fail 'Committed journal accepted another event'; fi
-pass 'Journal lifecycle, state transitions and event validation'
+if run init "$JOURNAL" tx-one "$" fedora 45 dnf5 standard merge; then fail 'Existing journal was overwritten'; fi
 # Event details have a strict bound; package transactions must log a count, not the full package list.
-MAX_DETAIL="$(head -c 2048 /dev/zero | tr '\\0' x)"
+printf -v MAX_DETAIL '%*s' 2048 ''
+MAX_DETAIL=${MAX_DETAIL// /x}
 run event "$JOURNAL" bounded.detail "$MAX_DETAIL"
 if run event "$JOURNAL" oversized.detail "${MAX_DETAIL}x"; then fail 'Oversized event detail was accepted'; fi
 if ! grep -Fq 'package_count=${#SP_INSTALL_PKGS[@]}' "$ROOT/installer/core/main.sh"; then fail 'Package transaction journal event does not use a bounded package count'; fi
 if grep -Fq 'packages=${SP_INSTALL_PKGS[*]}' "$ROOT/installer/core/main.sh"; then fail 'Package transaction journal event serializes an unbounded package list'; fi
 pass 'Journal event bounds and package transaction metadata remain safe'
 
+run finish "$JOURNAL" committed 'all required phases validated'
+[[ "$(awk -F '\t' '$1 == "status" { value=$2 } END { print value }' "$JOURNAL")" == committed ]] || fail 'Committed status was not persisted'
+if run event "$JOURNAL" late.event ''; then fail 'Committed journal accepted another event'; fi
+pass 'Journal lifecycle, state transitions and event validation'
 CONCURRENT="$DIR/tx-concurrent.journal"
 run init "$CONCURRENT" tx-concurrent "$$" fedora 45 dnf5 standard merge
 for index in {1..12}; do run event "$CONCURRENT" "worker-$index" "concurrent event $index" & done
