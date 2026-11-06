@@ -29,6 +29,8 @@ def main() -> None:
         assert commit in builder
         assert commit in fetcher
     assert "BASE_TAG=" not in builder
+    assert "source \"$ROOT/installer/providers/fedora/host-provider.sh\"" in builder
+    assert "sp_fedora_host_provider_preflight /var/tmp" in builder
     assert "podman pull --tls-verify=true --platform linux/amd64 \"$BASE_IMAGE_REF\"" in builder
     assert "podman start --attach" in builder
     assert "--network none" in builder
