@@ -1,8 +1,25 @@
 # Fedora Hyprland host-provider design
 
 Date: 2026-11-05  
-Status: **proposal only — not implemented, enabled, or approved for normal installation**  
+Status: **experimental implementation in draft PR #20; not enabled by the normal installer**  
 Scope: Fedora 44/45, x86_64, mutable systemd systems.
+
+> Historical design record. Sections below describe the original target architecture; where the current implementation differs, the implementation notes and explicit limitations take precedence. A source-build smoke test is not native graphical acceptance.
+
+## 0. Implementation checkpoint — 2026-11-06
+
+The current branch contains development-only building blocks for a rootless Podman build, immutable source/base-image identity, a staged artifact manifest, atomic release publication, a unique Wayland session entry, and scoped per-user systemd integration. The build and publication helpers are separate. The normal installer still does not invoke these helpers and still requires an existing compatible Hyprland runtime.
+
+Verified on the preceding CI head 11f7d1f3d6fee90847972090d40e2aadcb048123: Fedora 44 and Fedora 45 isolated source builds and all four distribution package-resolution jobs passed. The shell regression job failed in the COPR provider test fixtures; the fingerprint test used a nonexistent key path, and the NEVRA expectation omitted epoch 0:. Both fixture defects were corrected on the current branch. A separate missing pwd import in the host deployment helper was also corrected and given regression coverage. The new exact-head CI run is pending; these corrections are not yet CI-verified.
+
+Current hard gaps:
+- Podman is not provisioned automatically.
+- The host provider is not connected to install.sh, dependency planning, initial authorization, or the transaction journal.
+- Quickshell, QML modules, full runtime dependencies, and graphical startup are not orchestrated by the provider.
+- No Fedora 44/45 native VM or graphical acceptance has been completed.
+- Provider upgrade, activation, and end-to-end interrupted-install recovery remain incomplete.
+
+The implementation remains opt-in engineering work. Do not use the development-only commands below as an end-user workflow or promote Fedora host provisioning as supported until the gaps and native acceptance gates are closed.
 
 ## 1. Verified baseline and limits
 
