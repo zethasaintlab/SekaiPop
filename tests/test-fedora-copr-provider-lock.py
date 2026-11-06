@@ -15,7 +15,7 @@ class FedoraCoprProviderLockTests(unittest.TestCase):
     def test_provider_trust_policy_is_explicit(self):
         provider = self.data["provider"]
         self.assertEqual(provider["id"], "lionheartp/Hyprland")
-        self.assertEqual(provider["repo_id"], "copr:copr.fedorainfracloud.org:lionheartp:Hyprland")
+        self.assertEqual(provider["repo_id"], "sekaipop-copr-lionheartp-hyprland")
         self.assertFalse(provider["official_fedora_repository"])
         self.assertTrue(provider["upstream_recommended"])
         self.assertTrue(provider["package_gpgcheck"])
