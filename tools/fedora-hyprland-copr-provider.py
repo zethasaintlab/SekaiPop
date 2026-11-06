@@ -227,7 +227,7 @@ def key_fingerprint(path: Path) -> str:
         fail(f"cannot inspect signing key file: {error}")
     if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 65536:
         fail("signing key must be a regular file no larger than 64 KiB")
-    output = run(["gpg", "--batch", "--with-colons", "--show-keys", str(path)])
+    output = run(["gpg", "--batch", "--no-options", "--with-colons", "--show-keys", str(path)])
     fingerprints = [
         line.split(":")[9].upper()
         for line in output.splitlines()
@@ -372,8 +372,8 @@ def install_repo(key_path: Path, release: str, sudo_uid: int) -> None:
 
 def installed_package_query(name: str, release: str, *, portal: bool = False) -> str:
     result = release_data(release)["portal" if portal else "hyprland"]
-    output = run(["rpm", "-q", "--qf", "%{VERSION}-%{RELEASE}.%{ARCH}", name])
-    expected = result["version"] + "-" + result["release"] + ".x86_64"
+    output = run(["rpm", "-q", "--qf", "%{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}", name])
+    expected = str(result.get("epoch", 0)) + ":" + result["version"] + "-" + result["release"] + ".x86_64"
     if output != expected:
         fail(f"{name} NEVRA mismatch: expected {expected}, received {output}")
     signature = run(["rpm", "-q", "--qf", "%{SIGPGP:pgpsig}", name])
