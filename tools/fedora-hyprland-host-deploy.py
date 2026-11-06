@@ -166,14 +166,14 @@ def rename_noreplace(source: Path, destination: Path) -> None:
     libc = ctypes.CDLL(None, use_errno=True)
     function = getattr(libc, "renameat2", None)
     if function is None:
-        fail("atomic no-replace directory publication (renameat2) is unavailable")
+        fail("atomic no-replace publication (renameat2) is unavailable")
     function.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
     function.restype = ctypes.c_int
     result = function(-100, os.fsencode(source), -100, os.fsencode(destination), 1)
     if result != 0:
         error = ctypes.get_errno()
         if error == errno.EEXIST:
-            fail(f"refusing to overwrite existing release: {destination}")
+            fail(f"refusing to overwrite existing path: {destination}")
         fail(f"atomic release publication failed: {os.strerror(error)}")
 
 
