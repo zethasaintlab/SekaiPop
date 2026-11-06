@@ -298,6 +298,9 @@ def find_existing_repo(release: str) -> Path | None:
     for path in sorted(REPO_DIR.glob("*.repo")):
         if path.is_symlink() or not path.is_file():
             continue
+        metadata = path.lstat()
+        if metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) & 0o022:
+            fail(f"existing DNF repository file has unsafe ownership or permissions: {path}")
         if validate_existing_repo(path, release):
             return path
     return None
@@ -399,8 +402,13 @@ def validate_repo_state(release: str) -> None:
         fail("managed COPR repository configuration is missing or no longer satisfies the pinned policy")
     if state.get("key_fingerprint") != load_lock()["provider"]["key_fingerprint"]:
         fail("managed COPR state has an unexpected signing-key fingerprint")
-    if not KEY_FILE.is_file() or KEY_FILE.is_symlink() or key_fingerprint(KEY_FILE) != state["key_fingerprint"]:
+    if not KEY_FILE.is_file() or KEY_FILE.is_symlink():
         fail("managed COPR signing-key file is missing or has changed")
+    key_metadata = KEY_FILE.lstat()
+    if key_metadata.st_uid != 0 or stat.S_IMODE(key_metadata.st_mode) != 0o644:
+        fail("managed COPR signing-key file has unsafe ownership or permissions")
+    if key_fingerprint(KEY_FILE) != state["key_fingerprint"]:
+        fail("managed COPR signing-key file has changed")
 
 
 def validate_installed_provider(release: str) -> None:
@@ -473,6 +481,9 @@ def remove_repo(release: str) -> None:
     if state.get("repo_file_created_by_sekaipop"):
         if path.is_symlink() or not path.is_file():
             fail(f"managed COPR repository file changed; preserving {path}")
+        metadata = path.lstat()
+        if metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) != 0o644:
+            fail(f"managed COPR repository file has unsafe ownership or permissions; preserving {path}")
         if expected_repo_content() != path.read_text(encoding="utf-8"):
             fail(f"managed COPR repository file content changed; preserving {path}")
         path.unlink()
