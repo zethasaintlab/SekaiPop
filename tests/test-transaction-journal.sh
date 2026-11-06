@@ -35,7 +35,7 @@ run event "$JOURNAL" provider.preflight 'Fedora 45 supported'
 run event "$JOURNAL" podman.validated 'rootless=true'
 grep -Fq $'event\t' "$JOURNAL" || fail 'Transaction events were not recorded'
 if run event "$JOURNAL" 'invalid event' ''; then fail 'Invalid event name was accepted'; fi
-if run init "$JOURNAL" tx-one "$" fedora 45 dnf5 standard merge; then fail 'Existing journal was overwritten'; fi
+if run init "$JOURNAL" tx-one "$$" fedora 45 dnf5 standard merge; then fail 'Existing journal was overwritten'; fi
 # Event details have a strict bound; package transactions must log a count, not the full package list.
 printf -v MAX_DETAIL '%*s' 2048 ''
 MAX_DETAIL=${MAX_DETAIL// /x}
