@@ -96,5 +96,6 @@ if python3 "$ROOT/tests/test-fedora-dnf-repository-snapshot.py"; then pass 'DNF5
 if bash "$ROOT/tests/test-fedora-host-provider.sh"; then pass 'Fedora host-provider preflight rejects unsupported and unsafe environments'; else fail 'Fedora host-provider preflight rejects unsupported and unsafe environments'; fi
 if python3 "$ROOT/tests/test-fedora-host-manifest.py"; then pass 'Fedora host artifact manifest verifies ownership and path containment'; else fail 'Fedora host artifact manifest verifies ownership and path containment'; fi
 if python3 "$ROOT/tests/test-fedora-host-deploy.py"; then pass 'Fedora host publication uses atomic no-replace directory rename'; else fail 'Fedora host publication uses atomic no-replace directory rename'; fi
+if python3 "$ROOT/tests/test-fedora-host-build-lock.py"; then pass 'Fedora host build lock pins images and source identities'; else fail 'Fedora host build lock pins images and source identities'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
