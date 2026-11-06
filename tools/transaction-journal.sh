@@ -17,14 +17,17 @@ process_start_time() {
 secure_directory() {
     local directory="$1" current component
     [[ "$directory" == /* ]] || fail 'transaction directory must be absolute'
-    mkdir -p -- "$directory" || fail "cannot create transaction directory: $directory"
     current=/
     local -a components=()
     IFS=/ read -r -a components <<< "${directory#/}"
     for component in "${components[@]}"; do
         [[ -n "$component" ]] || continue
         current="${current%/}/$component"
-        [[ ! -L "$current" && -d "$current" ]] || fail "symlink or non-directory path component: $current"
+        [[ ! -L "$current" ]] || fail "symlink path component: $current"
+        if [[ ! -e "$current" ]]; then
+            mkdir -m 0700 -- "$current" || fail "cannot create transaction directory component: $current"
+        fi
+        [[ -d "$current" && ! -L "$current" ]] || fail "non-directory path component: $current"
     done
     [[ "$(stat -c %u -- "$directory")" == "$(id -u)" ]] || fail "transaction directory is not owned by the current user: $directory"
     chmod 0700 -- "$directory" || fail "cannot secure transaction directory: $directory"
@@ -35,7 +38,7 @@ secure_journal() {
     secure_directory "$(dirname -- "$journal")"
     [[ ! -L "$journal" ]] || fail "refusing symlinked journal: $journal"
     if [[ -e "$journal" ]]; then
-        [[ -f "$journal" && "$(stat -c %u -- "$journal")" == "$(id -u)" ]] || fail "journal is not a regular user-owned file: $journal"
+        [[ -f "$journal" && "$(stat -c %u -- "$journal")" == "$(id -u)" && "$(stat -c %h -- "$journal")" == 1 ]] || fail "journal is not a regular, singly-linked user-owned file: $journal"
         local mode
         mode="$(stat -c %a -- "$journal")"
         (( (8#$mode & 077) == 0 )) || fail "journal permissions are too broad: $journal"
@@ -44,7 +47,9 @@ secure_journal() {
 with_lock() {
     local journal="$1" lock_file="${1}.lock"
     [[ ! -L "$lock_file" ]] || fail "refusing symlinked transaction lock: $lock_file"
-    exec {LOCK_FD}> "$lock_file" || fail "cannot open transaction lock: $lock_file"
+    exec {LOCK_FD}>> "$lock_file" || fail "cannot open transaction lock: $lock_file"
+    [[ -f "$lock_file" && "$(stat -c %u -- "$lock_file")" == "$(id -u)" && "$(stat -c %h -- "$lock_file")" == 1 ]] ||
+        fail "transaction lock is not a regular, singly-linked user-owned file: $lock_file"
     chmod 0600 -- "$lock_file" || fail "cannot secure transaction lock: $lock_file"
     flock -x "$LOCK_FD" || fail "cannot acquire transaction lock: $lock_file"
 }
