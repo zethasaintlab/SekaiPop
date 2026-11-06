@@ -49,10 +49,6 @@ def inventory(root: Path, runtime_prefix: Path) -> list[dict]:
             except OSError as error:
                 fail(f"cannot stat {relative}: {error}")
             mode = stat.S_IMODE(metadata.st_mode)
-            if mode & 0o6000:
-                fail(f"setuid/setgid mode is forbidden: {relative}")
-            if mode & 0o002:
-                fail(f"world-writable provider artifact is forbidden: {relative}")
             if stat.S_ISLNK(metadata.st_mode):
                 target = os.readlink(path)
                 try:
@@ -69,9 +65,17 @@ def inventory(root: Path, runtime_prefix: Path) -> list[dict]:
                     fail(f"symlink escapes provider prefix: {relative} -> {target}")
                 entries.append({"path": relative, "type": "symlink", "mode": mode, "target": target})
             elif stat.S_ISDIR(metadata.st_mode):
+                if mode & 0o6000:
+                    fail(f"setuid/setgid mode is forbidden: {relative}")
+                if mode & 0o002:
+                    fail(f"world-writable provider artifact is forbidden: {relative}")
                 entries.append({"path": relative, "type": "directory", "mode": mode})
                 pending.append(path)
             elif stat.S_ISREG(metadata.st_mode):
+                if mode & 0o6000:
+                    fail(f"setuid/setgid mode is forbidden: {relative}")
+                if mode & 0o002:
+                    fail(f"world-writable provider artifact is forbidden: {relative}")
                 if metadata.st_nlink != 1:
                     fail(f"hard-linked regular files are not accepted: {relative}")
                 entries.append({
