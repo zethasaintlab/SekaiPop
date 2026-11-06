@@ -43,6 +43,9 @@ def atomic_create(path, content):
             pass
 
 
+OFFICIAL_REPO_CONFIG_ROOTS = ("/etc/yum.repos.d/", "/usr/share/dnf5/repos.d/")
+
+
 def validate_official_fedora_repositories(enabled, release):
     allowed_ids = {"fedora", "updates", "fedora-cisco-openh264"}
     required_ids = {"fedora", "updates"}
@@ -68,10 +71,7 @@ def validate_official_fedora_repositories(enabled, release):
             fail(f"repository {repo_id} contains an unexpected baseurl or mirrorlist")
         config_path = repo.get("repo_file_path", "")
         resolved_config = os.path.realpath(config_path)
-        if not (
-            resolved_config.startswith("/etc/yum.repos.d/")
-            or resolved_config.startswith("/usr/share/dnf5/repos.d/")
-        ):
+        if not any(resolved_config.startswith(root) for root in OFFICIAL_REPO_CONFIG_ROOTS):
             fail(f"repository {repo_id} configuration is outside Fedora repository directories")
         keys = repo.get("gpg_key")
         if not isinstance(keys, list) or not keys:
