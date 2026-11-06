@@ -28,6 +28,8 @@ rootless="$(podman info --format '{{.Host.Security.Rootless}}')"
 
 HYPRLAND_VERSION=0.57.1
 HYPRLAND_COMMIT=acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9
+PORTAL_VERSION=1.5.0
+PORTAL_COMMIT=d1467fea8d1895cb7835829c2fbb271a0d37760a
 BASE_IMAGE_REF="$(python3 -c 'import json,sys; data=json.load(open(sys.argv[1], encoding="utf-8")); print(data["targets"][sys.argv[2]]["image"])' "$ROOT/tools/fedora-hyprland-base-images.lock.json" "$FEDORA_RELEASE")"
 [[ "$BASE_IMAGE_REF" =~ ^docker\.io/library/fedora@sha256:[0-9a-f]{64}$ ]] || {
     printf 'Pinned Fedora base-image lock is missing or invalid.\n' >&2
@@ -94,6 +96,8 @@ python3 "$ROOT/tools/fedora-hyprland-host-manifest.py" \
     --fedora-release "$FEDORA_RELEASE" \
     --hyprland-version "$HYPRLAND_VERSION" \
     --hyprland-commit "$HYPRLAND_COMMIT" \
+    --portal-version "$PORTAL_VERSION" \
+    --portal-commit "$PORTAL_COMMIT" \
     --runtime-prefix "$CONTAINER_PREFIX"
 
 printf 'FEDORA_HYPRLAND_HOST_BUILD_READY\t%s\t%s\n' "$RELEASE_ID" "$STAGE_ROOT/$RELEASE_ID"
