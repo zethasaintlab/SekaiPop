@@ -8,6 +8,7 @@ import fcntl
 import json
 import os
 import platform
+import pwd
 import shutil
 import stat
 import subprocess
