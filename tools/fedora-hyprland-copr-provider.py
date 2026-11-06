@@ -89,6 +89,7 @@ def load_lock() -> dict:
         or provider.get("key_fingerprint") != "97E23476C89635135407C7D5E9BA41342C4B2995"
         or provider.get("package_gpgcheck") is not True
         or provider.get("repository_gpgcheck") is not False
+        or provider.get("upstream_recommended") is not False
     ):
         fail("provider lock violates the reviewed COPR trust policy")
     return data
