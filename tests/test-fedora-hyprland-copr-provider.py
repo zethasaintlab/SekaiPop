@@ -32,7 +32,7 @@ class FedoraCoprProviderTests(unittest.TestCase):
 
     def test_key_fingerprint_parser_returns_full_primary_fingerprint(self):
         fingerprint = MODULE.load_lock()["provider"]["key_fingerprint"]
-        output = f"pub:::::::::\\nfpr:::::::::{fingerprint}:\\nuid:::::::::lionheartp_Hyprland:\\n"
+        output = f"pub:::::::::\nfpr:::::::::{fingerprint}:\nuid:::::::::lionheartp_Hyprland:\n"
         result = SimpleNamespace(returncode=0, stdout=output, stderr="")
         with tempfile.TemporaryDirectory(prefix="sekaipop-copr-key-") as temporary:
             key_file = Path(temporary) / "key.gpg"
@@ -41,7 +41,7 @@ class FedoraCoprProviderTests(unittest.TestCase):
                 self.assertEqual(MODULE.key_fingerprint(key_file), fingerprint)
 
     def test_key_fingerprint_parser_rejects_missing_fingerprint(self):
-        result = SimpleNamespace(returncode=0, stdout="pub:::::::::\\nuid:::::::::no fingerprint:\\n", stderr="")
+        result = SimpleNamespace(returncode=0, stdout="pub:::::::::\nuid:::::::::no fingerprint:\n", stderr="")
         with tempfile.TemporaryDirectory(prefix="sekaipop-copr-key-") as temporary:
             key_file = Path(temporary) / "key.gpg"
             key_file.write_bytes(b"mock OpenPGP public key")
@@ -66,11 +66,11 @@ class FedoraCoprProviderTests(unittest.TestCase):
     def test_atomic_write_never_overwrites_existing_file(self):
         with tempfile.TemporaryDirectory(prefix="sekaipop-copr-atomic-") as temporary:
             path = Path(temporary) / "repo.conf"
-            MODULE.atomic_write_noreplace(path, b"trusted=1\\n", 0o644)
-            self.assertEqual(path.read_bytes(), b"trusted=1\\n")
+            MODULE.atomic_write_noreplace(path, b"trusted=1\n", 0o644)
+            self.assertEqual(path.read_bytes(), b"trusted=1\n")
             with self.assertRaises(SystemExit):
-                MODULE.atomic_write_noreplace(path, b"trusted=0\\n", 0o644)
-            self.assertEqual(path.read_bytes(), b"trusted=1\\n")
+                MODULE.atomic_write_noreplace(path, b"trusted=0\n", 0o644)
+            self.assertEqual(path.read_bytes(), b"trusted=1\n")
 
     def test_installed_package_requires_exact_nevra_and_pinned_signature(self):
         expected_key_id = MODULE.load_lock()["provider"]["key_fingerprint"][-16:].lower()
