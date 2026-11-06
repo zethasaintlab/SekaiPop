@@ -8,13 +8,14 @@ This document records the exact scope of the current host-provider implementatio
 
 The provider uses the pinned SekaiPop-managed Hyprland v0.57.1 + xdg-desktop-portal-hyprland v1.5.0 source closure. It does not enable COPR or another third-party repository. Build dependencies come from the matching official Fedora 44 or Fedora 45 container image and its enabled official DNF repositories.
 
-The build pipeline resolves the official Fedora container image to a SHA256 digest before building. It uses the existing immutable source-fetch script and provenance writer. Compilation and installation run in a rootless Podman container with networking disabled.
+The build pipeline uses reviewed Fedora 44/45 base-image digests recovered from successful PR #18 provenance artifacts and committed in `tools/fedora-hyprland-base-images.lock.json`. It validates the enabled repository set, official Fedora metalinks, local Fedora signing-key identity, and `pkg_gpgcheck=true` before the build. Repository configuration and signing-key SHA256 values are recorded. The existing immutable source-fetch script and provenance writer capture source commits, toolchain identity, repository metadata, and the installed RPM NEVRA inventory. Compilation and installation run in a rootless Podman container with networking disabled.
 
 ## Current implementation
 
 - `installer/providers/fedora/host-provider.sh`: read-only platform, rootless Podman, staging-filesystem and Podman-store preflight checks.
 - `tools/fedora-hyprland-host-build.sh`: builds the Fedora-specific builder image, exports a versioned private-prefix tree into a user-owned staging directory, retains build logs, and generates an ownership manifest.
 - `tools/fedora-hyprland-host-manifest.py`: records every directory, regular file and symlink; hashes regular files; rejects special files, hard links, setuid/setgid modes, world-writable artifacts, dangling links and links escaping the final runtime prefix. The manifest can be revalidated before publication.
+- `tools/fedora-hyprland-base-images.lock.json`: immutable official Fedora base-image digest lock, tied to the verified PR #18 provenance artifacts.
 - `tools/fedora-hyprland-host-deploy.py`: privileged publication/removal helper. It validates the invoking user and staging location, checks the pinned source/build provenance and complete artifact manifest, copies into a same-filesystem temporary directory beneath `/opt/sekaipop/providers/hyprland/releases`, revalidates the copied tree, and uses an atomic no-replace directory rename. Removal is permitted only when the installed tree still matches its ownership manifest.
 - Regression fixtures cover platform/preflight gates, manifest tampering and path containment, and atomic no-replace publication.
 
