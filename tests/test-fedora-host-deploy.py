@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import importlib.util
+import os
 import tempfile
 from pathlib import Path
 
@@ -47,7 +48,35 @@ def main() -> None:
         assert (destination / "artifact").read_text(encoding="utf-8") == "verified\n"
         assert second_source.exists()
 
-    print("[PASS] Fedora host publication uses atomic no-replace rename and exact session-entry content")
+    with tempfile.TemporaryDirectory(prefix="sekaipop-host-unit-guard-") as temporary:
+        root = Path(temporary)
+        release = root / "release"
+        unit_dir = root / "config" / "systemd" / "user"
+        target = release / "lib64" / "systemd" / "user" / "hyprland-session.target"
+        release_portal = release / "lib" / "systemd" / "user" / "xdg-desktop-portal-hyprland.service"
+        target.parent.mkdir(parents=True)
+        release_portal.parent.mkdir(parents=True)
+        unit_dir.mkdir(parents=True)
+        target.write_text("[Unit]\\n", encoding="utf-8")
+        release_portal.write_text("[Service]\\n", encoding="utf-8")
+        os.chmod(unit_dir, 0o700)
+        managed_link = unit_dir / "hyprland-session.target"
+        managed_link.symlink_to(target)
+        try:
+            MODULE.assert_no_user_unit_links(release, os.getuid(), str(unit_dir))
+        except SystemExit as error:
+            assert "remove the invoking user's managed systemd unit link" in str(error)
+        else:
+            raise AssertionError("managed user systemd unit link did not block release removal")
+        managed_link.unlink()
+        unrelated = unit_dir / "hyprland-session.target"
+        unrelated.symlink_to(root / "unrelated.target")
+        MODULE.assert_no_user_unit_links(release, os.getuid(), str(unit_dir))
+        unrelated.unlink()
+        (unit_dir / "hyprland-session.target").write_text("user-owned\\n", encoding="utf-8")
+        MODULE.assert_no_user_unit_links(release, os.getuid(), str(unit_dir))
+
+    print("[PASS] Fedora host publication uses atomic no-replace rename and exact session-entry and user-unit removal guards")
 
 
 if __name__ == "__main__":
