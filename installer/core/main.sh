@@ -330,7 +330,7 @@ sekaipop_main() {
     sp_info "Detected $SP_DISTRO_NAME | ID=$SP_DISTRO_ID | backend=$SP_BACKEND | release policy=$SP_RELEASE_POLICY"
     if (( ! SP_DRY_RUN )); then
         sp_transaction_journal_begin
-        sp_transaction_event system.detected "$SP_DISTRO_ID $SP_DISTRO_VERSION $SP_ARCH"
+        sp_transaction_event system.detected "${SP_DISTRO_ID:-unknown} ${SP_DISTRO_VERSION:-unknown} ${SP_ARCH:-unknown}"
     fi
     if (( ! SP_NO_DEPS )); then
         (( SP_DRY_RUN )) || sp_transaction_event native_dependencies.started
