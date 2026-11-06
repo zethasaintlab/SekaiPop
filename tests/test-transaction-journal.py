@@ -60,6 +60,7 @@ def main():
         symlink_journal = base / "state" / "installer-transactions" / "linked.json"
         symlink_journal.symlink_to(journal)
         run("event", symlink_journal, "attack", expected=1)
+        symlink_journal.unlink()
 
         lock = concurrent.with_name(concurrent.name + ".lock")
         lock.unlink()
