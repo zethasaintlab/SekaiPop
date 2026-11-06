@@ -124,10 +124,12 @@ sp_plan_and_install_dependencies() {
     if [[ "$SP_BACKEND" == dnf5 || "$SP_BACKEND" == apt ]]; then
         if (( ! SP_NO_UPDATE )); then
             sp_confirm "Refresh configured native repository metadata for $SP_DISTRO_NAME?" || {
-                sp_die 'Metadata refresh declined. Use --no-update only when all required official sources are already configured.'
+                sp_error 'Metadata refresh declined. Use --no-update only when all required official sources are already configured.'
+                return 1
             }
             if ! pm_refresh_metadata; then
-                sp_die 'Native repository metadata refresh failed. No APT source configuration was changed by SekaiPop.'
+                sp_error 'Native repository metadata refresh failed. No APT source configuration was changed by SekaiPop.'
+                return 1
             fi
         else
             sp_info 'Repository metadata refresh skipped (--no-update).'
@@ -137,7 +139,8 @@ sp_plan_and_install_dependencies() {
             if (( SP_SYSTEM_UPGRADE )); then
                 sp_warn 'Arch sync databases are missing or older than 7 days. A full system synchronization and upgrade is required before dependency resolution.'
                 sp_confirm 'Run pacman -Syu --needed now? This will upgrade the entire Arch system.' ||
-                    sp_die 'Arch synchronization cancelled. No package database refresh or package transaction was attempted.'
+                    sp_error 'Arch synchronization cancelled. No package database refresh or package transaction was attempted.'
+                    return 1
                 if pm_refresh_metadata; then
                     :
                 else
@@ -146,7 +149,8 @@ sp_plan_and_install_dependencies() {
                     return "$refresh_status"
                 fi
             else
-                sp_die 'Arch sync databases are missing or older than 7 days. Refusing an unsafe partial synchronization; rerun with --system-upgrade to authorize pacman -Syu --needed.'
+                sp_error 'Arch sync databases are missing or older than 7 days. Refusing an unsafe partial synchronization; rerun with --system-upgrade to authorize pacman -Syu --needed.'
+                return 1
             fi
         fi
     fi
@@ -161,7 +165,10 @@ sp_plan_and_install_dependencies() {
     fi
     (("${#SP_MISSING_OPTIONAL[@]}")) || sp_warn 'Some optional feature packages are unavailable. Core installation can continue; those features will be listed in the final report.'
     (("${#SP_INSTALL_PKGS[@]} == 0")) && { sp_ok 'All selected package requirements are already satisfied.'; return 0; }
-    sp_confirm "Install ${#SP_INSTALL_PKGS[@]} native package(s) on $SP_DISTRO_NAME?" || sp_die 'Package installation cancelled.'
+    if ! sp_confirm "Install ${#SP_INSTALL_PKGS[@]} native package(s) on $SP_DISTRO_NAME?"; then
+        sp_error 'Package installation cancelled.'
+        return 1
+    fi
     if pm_install "${SP_INSTALL_PKGS[@]}"; then
         :
     else
