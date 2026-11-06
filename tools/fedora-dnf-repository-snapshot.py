@@ -102,10 +102,12 @@ def snapshot(repo_info_path, inventory_path, hashes_path):
     atomic_create(inventory_path, json.dumps(inventory, indent=2, sort_keys=True) + "\n")
     try:
         atomic_create(hashes_path, json.dumps(hash_inventory, indent=2, sort_keys=True) + "\n")
-    except Exception:
+    except BaseException:
+        # atomic_create reports expected validation/collision failures via SystemExit,
+        # which does not derive from Exception. Remove only the first output we created.
         try:
             os.unlink(inventory_path)
-        except OSError:
+        except FileNotFoundError:
             pass
         raise
     print(f"DNF_REPOSITORY_PROVENANCE_OK\t{len(enabled)} repositories\t{len(hashes)} config files")
