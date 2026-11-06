@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "provider": {
+    "id": "lionheartp/Hyprland",
+    "repo_id": "copr:copr.fedorainfracloud.org:lionheartp:Hyprland",
+    "repo_file_name": "sekaipop-lionheartp-hyprland.repo",
+    "repo_baseurl": "https://download.copr.fedorainfracloud.org/results/lionheartp/Hyprland/fedora-$releasever-$basearch/",
+    "repo_file_url": "https://copr.fedorainfracloud.org/coprs/lionheartp/Hyprland/repo/fedora-$releasever/lionheartp-Hyprland-fedora-$releasever.repo",
+    "key_url": "https://download.copr.fedorainfracloud.org/results/lionheartp/Hyprland/pubkey.gpg",
+    "key_fingerprint": "97E23476C89635135407C7D5E9BA41342C4B2995",
+    "key_created_utc": "2025-11-11T02:16:55Z",
+    "key_expires_utc": "2030-11-10T02:16:55Z",
+    "package_gpgcheck": true,
+    "repository_gpgcheck": false,
+    "sslverify": true,
+    "upstream_recommended": true,
+    "official_fedora_repository": false
+  },
+  "releases": {
+    "44": {
+      "architecture": "x86_64",
+      "hyprland": {
+        "name": "hyprland",
+        "version": "0.57.1",
+        "release": "1.fc44",
+        "nevra": "hyprland-0.57.1-1.fc44.x86_64",
+        "build_id": 11249153,
+        "source_commit": "e93501dd1bfeabf6206cdaebd853008d47a7dcc1"
+      },
+      "portal": {
+        "name": "xdg-desktop-portal-hyprland",
+        "epoch": 1,
+        "version": "1.5.0",
+        "release": "1.fc44",
+        "nevra": "xdg-desktop-portal-hyprland-1:1.5.0-1.fc44.x86_64",
+        "build_id": 11218611,
+        "source_tag": "v1.5.0",
+        "sdbus_cpp_version": "2.3.1"
+      }
+    },
+    "45": {
+      "architecture": "x86_64",
+      "hyprland": {
+        "name": "hyprland",
+        "version": "0.57.1",
+        "release": "1.fc45",
+        "nevra": "hyprland-0.57.1-1.fc45.x86_64",
+        "build_id": 11249153,
+        "source_commit": "e93501dd1bfeabf6206cdaebd853008d47a7dcc1"
+      },
+      "portal": {
+        "name": "xdg-desktop-portal-hyprland",
+        "epoch": 1,
+        "version": "1.5.0",
+        "release": "1.fc45",
+        "nevra": "xdg-desktop-portal-hyprland-1:1.5.0-1.fc45.x86_64",
+        "build_id": 11218611,
+        "source_tag": "v1.5.0",
+        "sdbus_cpp_version": "2.3.1"
+      }
+    }
+  }
+}
