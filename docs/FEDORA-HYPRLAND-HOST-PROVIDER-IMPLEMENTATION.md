@@ -32,14 +32,14 @@ bash tools/fedora-hyprland-host-build.sh
 The script prints a staging path similar to:
 
 ```text
-/var/tmp/sekaipop-fedora-provider-<uid>/build.<random>/0.57.1-acc1aa0bfd4b
+/var/tmp/sekaipop-fedora-provider-<uid>/build.<random>/0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18
 ```
 
 After inspecting the generated manifest and provenance, the separate publication helper can publish that exact staged release:
 
 ```bash
 sudo python3 tools/fedora-hyprland-host-deploy.py publish \
-  --stage /var/tmp/sekaipop-fedora-provider-<uid>/build.<random>/0.57.1-acc1aa0bfd4b
+  --stage /var/tmp/sekaipop-fedora-provider-<uid>/build.<random>/0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18
 ```
 
 The helper's `remove` action removes only the exact pinned release after verifying its complete manifest and provenance:
