@@ -26,6 +26,8 @@ def run(root: Path) -> subprocess.CompletedProcess:
             "--fedora-release", "44",
             "--hyprland-version", "0.57.1",
             "--hyprland-commit", "a" * 40,
+            "--portal-version", "1.5.0",
+            "--portal-commit", "b" * 40,
             "--runtime-prefix", str(RUNTIME_PREFIX),
         ],
         text=True,
@@ -47,6 +49,8 @@ def main() -> None:
         assert manifest["prefix"] == str(RUNTIME_PREFIX)
         assert manifest["fedora_release"] == "44"
         assert manifest["hyprland_commit"] == "a" * 40
+        assert manifest["portal_version"] == "1.5.0"
+        assert manifest["portal_commit"] == "b" * 40
         files = {entry["path"]: entry for entry in manifest["files"]}
         assert files["bin/Hyprland"]["type"] == "file"
         assert len(files["bin/Hyprland"]["sha256"]) == 64
