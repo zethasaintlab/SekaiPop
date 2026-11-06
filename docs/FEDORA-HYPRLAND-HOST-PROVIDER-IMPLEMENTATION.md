@@ -61,8 +61,6 @@ sudo python3 tools/fedora-hyprland-host-deploy.py remove
 
 Replace the displayed staging path with the exact path printed by the build command. These are engineering diagnostics, not the intended end-user installation workflow.
 
-Replace the displayed staging path with the exact path printed by the build command. These are engineering diagnostics, not the intended end-user installation workflow.
-
 ## Explicit limitations
 
 The current implementation does **not** yet:
