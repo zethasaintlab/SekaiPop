@@ -22,6 +22,7 @@ secure_directory() {
     IFS=/ read -r -a components <<< "${directory#/}"
     for component in "${components[@]}"; do
         [[ -n "$component" ]] || continue
+        [[ "$component" != . && "$component" != .. ]] || fail "non-normalized transaction path component: $component"
         current="${current%/}/$component"
         [[ ! -L "$current" ]] || fail "symlink path component: $current"
         if [[ ! -e "$current" ]]; then
