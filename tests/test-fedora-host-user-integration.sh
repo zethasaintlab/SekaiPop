@@ -5,8 +5,9 @@ ROOT="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
 SCRIPT="$ROOT/tools/fedora-hyprland-host-user-integration.sh"
 TMP="$(mktemp -d /tmp/sekaipop-host-user-units.XXXXXX)"
 trap 'rm -rf -- "$TMP"' EXIT
-mkdir -p "$TMP/bin" "$TMP/home" "$TMP/prefix/lib64/systemd/user" "$TMP/prefix/lib/systemd/user"
-PREFIX="$TMP/prefix"
+RELEASE_ID="0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18"
+mkdir -p "$TMP/bin" "$TMP/home" "$TMP/$RELEASE_ID/lib64/systemd/user" "$TMP/$RELEASE_ID/lib/systemd/user"
+PREFIX="$TMP/$RELEASE_ID"
 printf '[Unit]\nDescription=Hyprland session\n' > "$PREFIX/lib64/systemd/user/hyprland-session.target"
 printf '[Service]\nExecStart=/opt/sekaipop/test/portal\n' > "$PREFIX/lib/systemd/user/xdg-desktop-portal-hyprland.service"
 
