@@ -30,7 +30,8 @@ run init "$JOURNAL" tx-one "$$" fedora 45 dnf5 standard merge
 grep -Fqx $'schema\tsekaipop-transaction-v1' "$JOURNAL" || fail 'Journal schema header is missing'
 grep -Fqx $'status\tactive' "$JOURNAL" || fail 'New transaction is not active'
 [[ "$(stat -c %a "$JOURNAL")" == 600 ]] || fail 'Journal permissions are not 0600'
-run recover-check "$DIR" || fail 'Live transaction was incorrectly classified as stale'
+if run recover-check "$DIR"; then fail 'A second transaction was allowed while the first is live'; fi
+[[ "$(awk -F '\\t' '$1 == "status" { value=$2 } END { print value }' "$JOURNAL")" == active ]] || fail 'Live transaction was incorrectly marked stale'
 run event "$JOURNAL" provider.preflight 'Fedora 45 supported'
 run event "$JOURNAL" podman.validated 'rootless=true'
 grep -Fq $'event\t' "$JOURNAL" || fail 'Transaction events were not recorded'
