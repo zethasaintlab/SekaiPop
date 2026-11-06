@@ -72,6 +72,17 @@ def main() -> None:
         assert collision.returncode != 0
         assert "refusing to overwrite" in collision.stderr
 
+    with tempfile.TemporaryDirectory(prefix="sekaipop-host-manifest-absolute-link-") as temporary:
+        prefix = Path(temporary) / "prefix"
+        create_prefix(prefix)
+        (prefix / "lib64").mkdir()
+        (prefix / "libabsolute").symlink_to(RUNTIME_PREFIX / "lib64", target_is_directory=True)
+        result = run(prefix)
+        assert result.returncode == 0, result.stderr
+        manifest = json.loads((prefix / "INSTALL-MANIFEST.json").read_text(encoding="utf-8"))
+        absolute_link = next(entry for entry in manifest["files"] if entry["path"] == "libabsolute")
+        assert absolute_link["target"] == str(RUNTIME_PREFIX / "lib64")
+
     with tempfile.TemporaryDirectory(prefix="sekaipop-host-manifest-escape-") as temporary:
         base = Path(temporary)
         prefix = base / "prefix"
