@@ -13,6 +13,8 @@ sp_transaction_journal_begin() {
     [[ -d "$SP_TRANSACTION_JOURNAL_DIR" && ! -L "$SP_TRANSACTION_JOURNAL_DIR" && -O "$SP_TRANSACTION_JOURNAL_DIR" ]] ||
         sp_die 'Installer transaction journal directory must be a real directory owned by the current user.'
     chmod 0700 "$SP_TRANSACTION_JOURNAL_DIR" || sp_die 'Could not secure installer transaction journal directory.'
+    python3 "$SP_ROOT/tools/transaction-journal.py" recover-check "$SP_TRANSACTION_JOURNAL_DIR" ||
+        sp_die "An earlier installer transaction is unfinished or requires recovery. Inspect journals in $SP_TRANSACTION_JOURNAL_DIR before retrying."
     SP_TRANSACTION_JOURNAL="$SP_TRANSACTION_JOURNAL_DIR/$SP_TIMESTAMP.json"
     metadata="$(python3 -c 'import json,sys; print(json.dumps(dict(zip(("distro","release","backend","profile","hypr_mode"),sys.argv[1:]))))' "$SP_DISTRO_ID" "$SP_DISTRO_VERSION" "$SP_BACKEND" "$SP_PROFILE" "$SP_HYPR")" ||
         sp_die 'Could not encode installer transaction metadata.'
