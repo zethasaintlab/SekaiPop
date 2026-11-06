@@ -85,7 +85,7 @@ def load_lock() -> dict:
     provider = data.get("provider", {})
     if (
         data.get("schema_version") != 1
-        or provider.get("repo_id") != "copr:copr.fedorainfracloud.org:lionheartp:Hyprland"
+        or provider.get("repo_id") != "sekaipop-copr-lionheartp-hyprland"
         or provider.get("key_fingerprint") != "97E23476C89635135407C7D5E9BA41342C4B2995"
         or provider.get("package_gpgcheck") is not True
         or provider.get("repository_gpgcheck") is not False
@@ -296,9 +296,7 @@ def validate_existing_repo(path: Path, release: str) -> bool:
 
 def find_existing_repo(release: str) -> Path | None:
     for path in sorted(REPO_DIR.glob("*.repo")):
-        if path.is_symlink():
-            fail(f"symlinked DNF repository file is not accepted: {path}")
-        if not path.is_file():
+        if path.is_symlink() or not path.is_file():
             continue
         if validate_existing_repo(path, release):
             return path
