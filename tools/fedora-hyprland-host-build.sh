@@ -27,7 +27,7 @@ rootless="$(podman info --format '{{.Host.Security.Rootless}}')"
 }
 
 BASE_TAG="docker.io/library/fedora:$FEDORA_RELEASE"
-podman pull --platform linux/amd64 "$BASE_TAG"
+podman pull --tls-verify=true --platform linux/amd64 "$BASE_TAG"
 BASE_IMAGE_REF="$(podman image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$BASE_TAG" |
     awk -v prefix="docker.io/library/fedora@" 'index($0, prefix) == 1 && $0 ~ /@sha256:[0-9a-f]{64}$/ {print; exit}')"
 [[ "$BASE_IMAGE_REF" =~ ^docker\.io/library/fedora@sha256:[0-9a-f]{64}$ ]] || {
@@ -59,17 +59,19 @@ CONTAINER_PREFIX="$CONTAINER_RELEASE_ROOT/$RELEASE_ID"
 
 printf 'Building Hyprland %s (%s) for Fedora %s in a rootless, network-isolated container.\n' \
     "$HYPRLAND_VERSION" "$HYPRLAND_COMMIT" "$FEDORA_RELEASE"
+BUILD_LOG="$STAGE_ROOT/build.log"
 podman run --rm --network none \
     --volume "$STAGE_ROOT:$CONTAINER_RELEASE_ROOT:Z" \
     --env "SEKAIPOP_HYPR_PREFIX=$CONTAINER_PREFIX" \
     --env "SEKAIPOP_PROVENANCE_OUTPUT=$CONTAINER_PREFIX/BUILD-PROVENANCE" \
-    "$IMAGE_TAG"
+    "$IMAGE_TAG" 2>&1 | tee "$BUILD_LOG"
 
 python3 "$ROOT/tools/fedora-hyprland-host-manifest.py" \
     "$STAGE_ROOT/$RELEASE_ID" \
     --fedora-release "$FEDORA_RELEASE" \
     --hyprland-version "$HYPRLAND_VERSION" \
-    --hyprland-commit "$HYPRLAND_COMMIT"
+    --hyprland-commit "$HYPRLAND_COMMIT" \
+    --runtime-prefix "$CONTAINER_PREFIX"
 
 printf 'FEDORA_HYPRLAND_HOST_BUILD_READY\t%s\t%s\n' "$RELEASE_ID" "$STAGE_ROOT/$RELEASE_ID"
 printf 'Build output is staged for the separate privileged publication phase; no host files or packages were changed.\n'
