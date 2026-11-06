@@ -29,12 +29,3 @@ sp_transaction_finish() {
     SP_TRANSACTION_FINALIZED=1
 }
 
-sp_transaction_exit_trap() {
-    local exit_status="${1:-1}"
-    if [[ -n "$SP_TRANSACTION_JOURNAL" && "$SP_TRANSACTION_FINALIZED" != 1 ]]; then
-        bash "$SP_ROOT/tools/transaction-journal.sh" finish "$SP_TRANSACTION_JOURNAL" needs_recovery \
-            "Installer exited unexpectedly with status $exit_status." >/dev/null 2>&1 ||
-            printf '[FAIL] Could not mark interrupted transaction for recovery: %s\n' "$SP_TRANSACTION_JOURNAL" >&2
-    fi
-    return "$exit_status"
-}
