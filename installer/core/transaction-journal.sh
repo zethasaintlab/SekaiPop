@@ -5,12 +5,6 @@ SP_TRANSACTION_FINALIZED=0
 
 sp_transaction_journal_begin() {
     SP_TRANSACTION_JOURNAL_DIR="$SP_STATE_DIR/installer-transactions"
-    [[ ! -L "$SP_STATE_DIR" ]] || sp_die "Refusing symlinked installer state directory: $SP_STATE_DIR"
-    [[ ! -L "$SP_TRANSACTION_JOURNAL_DIR" ]] || sp_die "Refusing symlinked transaction journal directory: $SP_TRANSACTION_JOURNAL_DIR"
-    mkdir -p -- "$SP_TRANSACTION_JOURNAL_DIR" || sp_die 'Could not create the installer transaction journal directory.'
-    [[ -d "$SP_TRANSACTION_JOURNAL_DIR" && ! -L "$SP_TRANSACTION_JOURNAL_DIR" && -O "$SP_TRANSACTION_JOURNAL_DIR" ]] ||
-        sp_die 'Installer transaction journal directory must be a real directory owned by the current user.'
-    chmod 0700 "$SP_TRANSACTION_JOURNAL_DIR" || sp_die 'Could not secure installer transaction journal directory.'
     bash "$SP_ROOT/tools/transaction-journal.sh" recover-check "$SP_TRANSACTION_JOURNAL_DIR" ||
         sp_die "An earlier installer transaction is unfinished or requires recovery. Inspect journals in $SP_TRANSACTION_JOURNAL_DIR before retrying."
     SP_TRANSACTION_JOURNAL="$SP_TRANSACTION_JOURNAL_DIR/$SP_TIMESTAMP.journal"
