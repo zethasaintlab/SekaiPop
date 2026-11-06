@@ -91,7 +91,7 @@ def inventory(root: Path, runtime_prefix: Path) -> list[dict]:
     return entries
 
 
-def verify(root: Path, runtime_prefix: Path, fedora_release: str, version: str, commit: str) -> int:
+def verify(root: Path, runtime_prefix: Path, fedora_release: str, version: str, commit: str, portal_version: str, portal_commit: str) -> int:
     manifest = root / "INSTALL-MANIFEST.json"
     try:
         metadata = manifest.lstat()
@@ -112,6 +112,8 @@ def verify(root: Path, runtime_prefix: Path, fedora_release: str, version: str, 
         "architecture": "x86_64",
         "hyprland_version": version,
         "hyprland_commit": commit,
+        "portal_version": portal_version,
+        "portal_commit": portal_commit,
         "prefix": str(runtime_prefix),
     }
     for key, value in expected.items():
@@ -131,6 +133,8 @@ def main() -> None:
     parser.add_argument("--fedora-release", choices=("44", "45"), required=True)
     parser.add_argument("--hyprland-version", required=True)
     parser.add_argument("--hyprland-commit", required=True)
+    parser.add_argument("--portal-version", required=True)
+    parser.add_argument("--portal-commit", required=True)
     parser.add_argument("--runtime-prefix", required=True)
     parser.add_argument("--verify", action="store_true")
     args = parser.parse_args()
@@ -150,7 +154,7 @@ def main() -> None:
         fail("Hyprland portal executable is missing")
 
     if args.verify:
-        count = verify(root, runtime_prefix, args.fedora_release, args.hyprland_version, args.hyprland_commit)
+        count = verify(root, runtime_prefix, args.fedora_release, args.hyprland_version, args.hyprland_commit, args.portal_version, args.portal_commit)
         print(f"FEDORA_HOST_MANIFEST_VERIFIED\\t{count} entries\\t{root}")
         return
 
@@ -164,6 +168,8 @@ def main() -> None:
         "architecture": "x86_64",
         "hyprland_version": args.hyprland_version,
         "hyprland_commit": args.hyprland_commit,
+        "portal_version": args.portal_version,
+        "portal_commit": args.portal_commit,
         "prefix": str(runtime_prefix),
         "files": inventory(root, runtime_prefix),
     }
