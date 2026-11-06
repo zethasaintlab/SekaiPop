@@ -6,6 +6,8 @@ export SEKAIPOP_INSTALLER_ROOT="$ROOT"
 source "$ROOT/installer/core/main.sh"
 
 TMP="$(mktemp -d)"
+export HOME="$TMP/home" XDG_STATE_HOME="$TMP/state"
+mkdir -p "$HOME"
 trap 'rm -rf -- "$TMP"' EXIT
 marker="$TMP/desktop-integration-started"
 
@@ -42,4 +44,7 @@ if [[ -e "$marker" ]]; then
     exit 1
 fi
 
+[[ -n "${SP_TRANSACTION_JOURNAL:-}" ]] || { printf '[FAIL] dependency-only path did not create a transaction journal\n' >&2; exit 1; }
+grep -Fqx 
+status\tfailed' "$SP_TRANSACTION_JOURNAL" || { printf '[FAIL] runtime validation failure was not journaled as failed\n' >&2; exit 1; }
 printf '[PASS] dependency-only mode gates desktop integration on mandatory runtime verification\n'
