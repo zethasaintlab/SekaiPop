@@ -44,6 +44,7 @@ def atomic_create(path, content):
 
 
 OFFICIAL_REPO_CONFIG_ROOTS = ("/etc/yum.repos.d/", "/usr/share/dnf5/repos.d/")
+OFFICIAL_GPG_KEY_ROOTS = ("/etc/pki/rpm-gpg/", "/usr/share/pki/rpm-gpg/")
 
 
 def validate_official_fedora_repositories(enabled, release):
@@ -83,10 +84,7 @@ def validate_official_fedora_repositories(enabled, release):
             if os.path.basename(configured_key_path) != key_name:
                 fail(f"repository {repo_id} uses an unexpected Fedora signing key: {configured_key_path}")
             key_path = os.path.realpath(configured_key_path)
-            if not (
-                key_path.startswith("/etc/pki/rpm-gpg/")
-                or key_path.startswith("/usr/share/pki/rpm-gpg/")
-            ):
+            if not any(key_path.startswith(root) for root in OFFICIAL_GPG_KEY_ROOTS):
                 fail(f"repository {repo_id} signing key resolves outside Fedora key directories: {key_path}")
             try:
                 metadata = os.stat(key_path)
