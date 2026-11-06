@@ -40,6 +40,13 @@ run finish "$JOURNAL" committed 'all required phases validated'
 [[ "$(awk -F '\t' '$1 == "status" { value=$2 } END { print value }' "$JOURNAL")" == committed ]] || fail 'Committed status was not persisted'
 if run event "$JOURNAL" late.event ''; then fail 'Committed journal accepted another event'; fi
 pass 'Journal lifecycle, state transitions and event validation'
+# Event details have a strict bound; package transactions must log a count, not the full package list.
+MAX_DETAIL="$(head -c 2048 /dev/zero | tr '\\0' x)"
+run event "$JOURNAL" bounded.detail "$MAX_DETAIL"
+if run event "$JOURNAL" oversized.detail "${MAX_DETAIL}x"; then fail 'Oversized event detail was accepted'; fi
+if ! grep -Fq 'package_count=${#SP_INSTALL_PKGS[@]}' "$ROOT/installer/core/main.sh"; then fail 'Package transaction journal event does not use a bounded package count'; fi
+if grep -Fq 'packages=${SP_INSTALL_PKGS[*]}' "$ROOT/installer/core/main.sh"; then fail 'Package transaction journal event serializes an unbounded package list'; fi
+pass 'Journal event bounds and package transaction metadata remain safe'
 
 CONCURRENT="$DIR/tx-concurrent.journal"
 run init "$CONCURRENT" tx-concurrent "$$" fedora 45 dnf5 standard merge
