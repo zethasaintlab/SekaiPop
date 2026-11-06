@@ -4,12 +4,16 @@ set -Eeuo pipefail
 ACTION="${1:?usage: fedora-hyprland-host-user-integration.sh install|remove PREFIX}"
 PREFIX="${2:?usage: fedora-hyprland-host-user-integration.sh install|remove PREFIX}"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+ALLOWED_PREFIX_ROOT="/opt/sekaipop/providers/hyprland/releases"
+if [[ "${SEKAIPOP_TESTING:-0}" == 1 && -n "${SEKAIPOP_TEST_PREFIX_ROOT:-}" ]]; then
+    ALLOWED_PREFIX_ROOT="$SEKAIPOP_TEST_PREFIX_ROOT"
+fi
 
 [[ "$ACTION" == install || "$ACTION" == remove ]] || {
     printf 'Unsupported user integration action: %s\n' "$ACTION" >&2
     exit 2
 }
-[[ "$PREFIX" == /opt/sekaipop/providers/hyprland/releases/* && -d "$PREFIX" && ! -L "$PREFIX" ]] || {
+[[ "$PREFIX" == "$ALLOWED_PREFIX_ROOT"/* && -d "$PREFIX" && ! -L "$PREFIX" ]] || {
     printf 'Refusing an invalid or unmanaged Hyprland release prefix: %s\n' "$PREFIX" >&2
     exit 2
 }
