@@ -44,11 +44,22 @@ sudo python3 tools/fedora-hyprland-host-deploy.py publish \
   --stage /var/tmp/sekaipop-fedora-provider-<uid>/build.<random>/0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18
 ```
 
-The helper's `remove` action removes only the exact pinned release after verifying its complete manifest and provenance:
+```bash
+sudo python3 tools/fedora-hyprland-host-deploy.py register-session
+bash tools/fedora-hyprland-host-user-integration.sh install \
+  /opt/sekaipop/providers/hyprland/releases/0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18
+```
+
+Removal must happen in reverse order so the display manager never points at a deleted release:
 
 ```bash
+bash tools/fedora-hyprland-host-user-integration.sh remove \
+  /opt/sekaipop/providers/hyprland/releases/0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18
+sudo python3 tools/fedora-hyprland-host-deploy.py unregister-session
 sudo python3 tools/fedora-hyprland-host-deploy.py remove
 ```
+
+Replace the displayed staging path with the exact path printed by the build command. These are engineering diagnostics, not the intended end-user installation workflow.
 
 Replace the displayed staging path with the exact path printed by the build command. These are engineering diagnostics, not the intended end-user installation workflow.
 
@@ -59,11 +70,12 @@ The current implementation does **not** yet:
 - Provision Podman automatically through DNF5.
 - Invoke the host builder from `./install.sh`.
 - Add provider selection to the dependency planner or initial authorization.
-- Register a unique GDM/SDDM session.
-- Install or reconcile user systemd units, the Hyprland session target, D-Bus activation metadata or portal descriptors.
-- Configure session-local `PATH` and `XDG_DATA_DIRS`.
-- Integrate the Quickshell/QML dependency closure.
+- Orchestrate the generated GDM/SDDM session entry and per-user systemd links from `./install.sh`.
+- Provision and verify D-Bus activation, portal descriptors and the complete desktop dependency closure automatically.
+- Integrate the Quickshell/QML dependency closure and verify its startup from the generated Hyprland session.
 - Implement activation, upgrade switching, or end-to-end transaction recovery.
+- Freeze the complete RPM payload checksums in a committed package lock (current provenance records NEVRAs, repository metadata, signature policy and signing-key hashes).
+- Provision rootless Podman automatically through the Fedora official DNF5 provider.
 - Prove Mesa/NVIDIA, display-manager login, portal functionality, suspend/resume or native graphical compatibility.
 
 The published compositor prefix now has a generated launcher, a unique display-manager session entry, and scoped user-systemd integration helpers. These are still development-only building blocks: they are not yet orchestrated by `./install.sh`, Quickshell/QML provisioning is not complete, and the runtime stack has not been validated in a native graphical Fedora session. The normal Fedora installer behavior remains unchanged and still requires an already-installed compatible Hyprland.
