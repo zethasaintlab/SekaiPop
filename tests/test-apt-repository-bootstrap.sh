@@ -17,6 +17,9 @@ grep -Fq 'official Universe must already be enabled for release, updates, and se
 if grep -Fq 'bootstrapped automatically' "$DETECT"; then
     fail 'Release policy must not claim that the read-only APT validator bootstraps sources'
 fi
+if grep -Fq 'trixie-backports bootstrap completed' "$ROOT/installer/core/main.sh"; then
+    fail 'Debian dependency diagnostics must not claim that SekaiPop bootstraps APT sources'
+fi
 pass 'Debian and Ubuntu release policy accurately describes read-only APT prerequisites'
 expect_rejected() {
     local distro="$1" version="$2" codename="$3"
