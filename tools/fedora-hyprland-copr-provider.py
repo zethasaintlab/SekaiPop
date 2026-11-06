@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the pinned, upstream-recommended Fedora Hyprland COPR and register SekaiPop's session."""
+"""Install the pinned, community-maintained Fedora Hyprland COPR and register SekaiPop's session."""
 
 import argparse
 import configparser
