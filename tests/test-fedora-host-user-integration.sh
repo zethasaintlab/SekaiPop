@@ -75,4 +75,19 @@ fi
 [[ -L "$REMOVE_CONFIG/systemd/user/xdg-desktop-portal-hyprland.service" ]]
 [[ "$(readlink "$REMOVE_CONFIG/systemd/user/xdg-desktop-portal-hyprland.service")" == "$TMP/unrelated.service" ]]
 
+ROLLBACK_CONFIG="$TMP/rollback-config"
+export XDG_CONFIG_HOME="$ROLLBACK_CONFIG"
+unset SEKAIPOP_TEST_SYSTEMCTL_FAIL
+bash "$SCRIPT" install "$PREFIX" >/dev/null
+export SEKAIPOP_TEST_SYSTEMCTL_FAIL=1
+if bash "$SCRIPT" remove "$PREFIX" >/dev/null 2>&1; then
+    echo '[FAIL] systemd daemon-reload failure was accepted during removal'
+    exit 1
+fi
+unset SEKAIPOP_TEST_SYSTEMCTL_FAIL
+[[ -L "$ROLLBACK_CONFIG/systemd/user/hyprland-session.target" ]]
+[[ "$(readlink "$ROLLBACK_CONFIG/systemd/user/hyprland-session.target")" == "$PREFIX/lib64/systemd/user/hyprland-session.target" ]]
+[[ -L "$ROLLBACK_CONFIG/systemd/user/xdg-desktop-portal-hyprland.service" ]]
+[[ "$(readlink "$ROLLBACK_CONFIG/systemd/user/xdg-desktop-portal-hyprland.service")" == "$PREFIX/lib/systemd/user/xdg-desktop-portal-hyprland.service" ]]
+
 echo '[PASS] Fedora Hyprland user systemd integration is idempotent, conflict-safe, and all-or-nothing on removal'
