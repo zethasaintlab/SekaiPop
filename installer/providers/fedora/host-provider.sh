@@ -13,7 +13,7 @@ sp_fedora_host_provider_release_exists() {
 }
 
 sp_fedora_host_provider_user_unit_dir() {
-    printf '%s/systemd/user\\n' "$SP_CONFIG_HOME"
+    printf '%s/systemd/user\n' "$SP_CONFIG_HOME"
 }
 
 sp_fedora_host_provider_ready() {
