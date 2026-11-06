@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 sp_hyprland_version() {
-    local output version
-    if sp_have hyprctl && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then output="$(hyprctl version 2>/dev/null || true)"
-    elif sp_have Hyprland; then output="$(Hyprland --version 2>/dev/null || true)"
-    elif sp_have hyprctl; then output="$(hyprctl version 2>/dev/null || true)"
-    else return 1; fi
-    version="$(grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' <<< "$output" | head -n1)"
-    [[ -n "$version" ]] && printf '%s\n' "$version"
+    local output version managed="${SP_FEDORA_HYPRLAND_RELEASE_PREFIX:-/opt/sekaipop/providers/hyprland/releases/0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18}/bin/Hyprland"
+    if sp_have hyprctl && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+        output="$(hyprctl version 2>/dev/null || true)"
+    elif [[ -x "$managed" ]]; then
+        output="$("$managed" --version 2>/dev/null || true)"
+    elif sp_have Hyprland; then
+        output="$(Hyprland --version 2>/dev/null || true)"
+    elif sp_have hyprctl; then
+        output="$(hyprctl version 2>/dev/null || true)"
+    else
+        return 1
+    fi
+    version="$(grep -oE '[0-9]+\\.[0-9]+(\\.[0-9]+)?' <<< "$output" | head -n1)"
+    [[ -n "$version" ]] && printf '%s\\n' "$version"
 }
 sp_validate_lua() {
     local file="$1"
