@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import importlib.util
-import os
 import tempfile
 import unittest
 from pathlib import Path
