@@ -62,6 +62,8 @@ def main() -> None:
             "--fedora-release", "44",
             "--hyprland-version", "0.57.1",
             "--hyprland-commit", "a" * 40,
+            "--portal-version", "1.5.0",
+            "--portal-commit", "b" * 40,
             "--runtime-prefix", str(RUNTIME_PREFIX),
             "--verify",
         ]
