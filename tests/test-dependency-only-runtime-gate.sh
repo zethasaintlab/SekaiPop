@@ -8,6 +8,7 @@ source "$ROOT/installer/core/main.sh"
 TMP="$(mktemp -d)"
 export HOME="$TMP/home" XDG_STATE_HOME="$TMP/state"
 mkdir -p "$HOME"
+SP_STATE_DIR="$XDG_STATE_HOME/sekaipop"
 trap 'rm -rf -- "$TMP"' EXIT
 marker="$TMP/desktop-integration-started"
 
