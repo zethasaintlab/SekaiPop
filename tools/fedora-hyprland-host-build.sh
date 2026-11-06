@@ -91,6 +91,9 @@ else
     exit "$status"
 fi
 
+bash "$ROOT/tools/fedora-hyprland-host-prepare-session.sh" \
+    "$STAGE_ROOT/$RELEASE_ID" "$CONTAINER_PREFIX"
+
 python3 "$ROOT/tools/fedora-hyprland-host-manifest.py" \
     "$STAGE_ROOT/$RELEASE_ID" \
     --fedora-release "$FEDORA_RELEASE" \
