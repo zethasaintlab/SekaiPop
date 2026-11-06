@@ -12,7 +12,11 @@ source "$ROOT/installer/providers/fedora/host-provider.sh"
 cat > "$TMP/bin/podman" <<'PODMAN'
 #!/usr/bin/env bash
 [[ "$1" == info && "$2" == --format ]] || exit 2
-printf '%s\n' "${SEKAIPOP_TEST_ROOTLESS:-true}"
+case "$3" in
+    *Rootless*) printf '%s\n' "${SEKAIPOP_TEST_ROOTLESS:-true}" ;;
+    *GraphRoot*) printf '%s\n' "${SEKAIPOP_TEST_GRAPHROOT:?}" ;;
+    *) exit 2 ;;
+esac
 PODMAN
 cat > "$TMP/bin/df" <<'DF'
 #!/usr/bin/env bash
@@ -37,6 +41,7 @@ if sp_fedora_host_provider_rootless_podman; then echo '[FAIL] rootful Podman acc
 SEKAIPOP_TEST_ROOTLESS=true
 sp_fedora_host_provider_rootless_podman || { echo '[FAIL] rootless Podman detection'; exit 1; }
 
+export SEKAIPOP_TEST_GRAPHROOT="$TMP/staging"
 SEKAIPOP_TEST_FREE_KIB=100000
 if sp_fedora_host_provider_preflight "$TMP/staging" >/dev/null 2>&1; then
     echo '[FAIL] insufficient staging space accepted'
