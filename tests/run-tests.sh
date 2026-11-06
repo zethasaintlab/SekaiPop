@@ -95,5 +95,6 @@ if bash "$ROOT/tests/test-fedora-hyprland-build-provenance.sh"; then pass 'Fedor
 if python3 "$ROOT/tests/test-fedora-dnf-repository-snapshot.py"; then pass 'DNF5 repository provenance resolves real config files and symlinks'; else fail 'DNF5 repository provenance resolves real config files and symlinks'; fi
 if bash "$ROOT/tests/test-fedora-host-provider.sh"; then pass 'Fedora host-provider preflight rejects unsupported and unsafe environments'; else fail 'Fedora host-provider preflight rejects unsupported and unsafe environments'; fi
 if python3 "$ROOT/tests/test-fedora-host-manifest.py"; then pass 'Fedora host artifact manifest verifies ownership and path containment'; else fail 'Fedora host artifact manifest verifies ownership and path containment'; fi
+if python3 "$ROOT/tests/test-fedora-host-deploy.py"; then pass 'Fedora host publication uses atomic no-replace directory rename'; else fail 'Fedora host publication uses atomic no-replace directory rename'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
