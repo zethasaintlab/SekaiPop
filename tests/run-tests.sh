@@ -97,6 +97,7 @@ if bash "$ROOT/tests/test-fedora-host-provider.sh"; then pass 'Fedora host-provi
 if python3 "$ROOT/tests/test-fedora-host-manifest.py"; then pass 'Fedora host artifact manifest verifies ownership and path containment'; else fail 'Fedora host artifact manifest verifies ownership and path containment'; fi
 if python3 "$ROOT/tests/test-fedora-host-deploy.py"; then pass 'Fedora host publication uses atomic no-replace directory rename'; else fail 'Fedora host publication uses atomic no-replace directory rename'; fi
 if python3 "$ROOT/tests/test-fedora-host-build-lock.py"; then pass 'Fedora host build lock pins images and source identities'; else fail 'Fedora host build lock pins images and source identities'; fi
+if python3 "$ROOT/tests/test-fedora-copr-provider-lock.py"; then pass 'Fedora COPR provider lock pins trust and package provenance'; else fail 'Fedora COPR provider lock pins trust and package provenance'; fi
 if bash "$ROOT/tests/test-fedora-host-prepare-session.sh"; then pass 'Fedora host session launcher is validated and collision-safe'; else fail 'Fedora host session launcher is validated and collision-safe'; fi
 if bash "$ROOT/tests/test-fedora-host-user-integration.sh"; then pass 'Fedora Hyprland user systemd integration is idempotent and collision-safe'; else fail 'Fedora Hyprland user systemd integration is idempotent and collision-safe'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
