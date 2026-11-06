@@ -68,7 +68,7 @@ RUN dnf5 install -y \
     xorg-x11-server-Xwayland \
     && mkdir -p /opt/sekaipop \
     && dnf5 repo info --json > /opt/sekaipop/DNF5-REPOSITORIES.json \
-    && python3 /usr/local/bin/fedora-dnf-repository-snapshot --repo-info /opt/sekaipop/DNF5-REPOSITORIES.json --inventory /opt/sekaipop/ENABLED-DNF-REPOSITORIES --hashes /opt/sekaipop/DNF-REPO-CONFIG-SHA256 \
+    && python3 /usr/local/bin/fedora-dnf-repository-snapshot --repo-info /opt/sekaipop/DNF5-REPOSITORIES.json --inventory /opt/sekaipop/ENABLED-DNF-REPOSITORIES --hashes /opt/sekaipop/DNF-REPO-CONFIG-SHA256 --fedora-release "$(rpm -E %fedora)" \
     && dnf5 clean all
 
 COPY tools/fedora-hyprland-source-fetch.sh /usr/local/bin/fedora-hyprland-source-fetch
