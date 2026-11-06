@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 source "$SEKAIPOP_INSTALLER_ROOT/installer/core/common.sh"
+source "$SEKAIPOP_INSTALLER_ROOT/installer/core/transaction-journal.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/core/detect.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/core/cli.sh"
 source "$SEKAIPOP_INSTALLER_ROOT/installer/provisioning/apt-repositories.sh"
@@ -195,6 +196,7 @@ sp_rollback_failed_dependency_only() {
 sp_rollback_failed_deployment() {
     local reason="$1" original_yes="${SP_YES:-0}" restart_failed=0 service_rollback_failed=0
     sp_error "$reason"
+    sp_transaction_event rollback.started "$reason"
     if (( ${SP_QS_INSTANCE_STARTED_BY_INSTALL:-0} )) && sp_have qs; then
         qs kill -p "$SP_QS_DEST" >/dev/null 2>&1 || true
         sp_wait_qs_instance_state stopped || sp_warn 'Could not confirm shutdown of the newly launched SekaiPop instance during rollback.'
@@ -202,6 +204,7 @@ sp_rollback_failed_deployment() {
     sp_service_transaction_rollback || service_rollback_failed=1
     SP_YES=1
     if [[ -n "${SP_BACKUP_DIR:-}" ]] && sp_restore_latest "$SP_BACKUP_DIR"; then
+        sp_transaction_event rollback.configuration_restored "backup=${SP_BACKUP_DIR}"
         if (( ${SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING:-0} )); then
             if ! qs -p "$SP_QS_DEST" -n -d >/dev/null 2>&1 || ! sp_wait_qs_instance_state running; then
                 restart_failed=1
@@ -213,15 +216,15 @@ sp_rollback_failed_deployment() {
         SP_QS_INSTANCE_STARTED_BY_INSTALL=0
         SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING=0
         SP_YES="$original_yes"
-        if (( restart_failed )); then
-            sp_die "$reason Configuration was restored, but the previous Quickshell instance needs to be started manually. Recovery snapshot: $SP_BACKUP_ROOT."
+        if (( restart_failed || service_rollback_failed )); then
+            sp_transaction_finish needs_recovery "$reason Configuration snapshot restored but service/process recovery is incomplete."
+            sp_die "$reason Configuration was restored, but service/process recovery is incomplete. Inspect the installer log and affected systemd units; snapshot: $SP_BACKUP_ROOT."
         fi
-        if (( service_rollback_failed )); then
-            sp_die "$reason Configuration was restored, but one or more system/user service states could not be reverted. Inspect the installer log and run systemctl status on the affected units."
-        fi
+        sp_transaction_finish failed "$reason Configuration and service rollback completed."
         sp_die "$reason The previous Quickshell/Hyprland configuration was restored automatically; the recovery snapshot is retained under $SP_BACKUP_ROOT."
     fi
     SP_YES="$original_yes"
+    sp_transaction_finish needs_recovery "$reason Automatic configuration rollback did not complete."
     if (( service_rollback_failed )); then
         sp_die "$reason Automatic configuration rollback failed and one or more service states could not be reverted. Keep the installer backup and inspect systemd unit states before retrying."
     fi
@@ -229,28 +232,40 @@ sp_rollback_failed_deployment() {
 }
 
 sp_deploy_application() {
+    sp_transaction_event desktop_deployment.started
     sp_find_rice_source
     sp_create_backup 1 "$([[ "$SP_HYPR" == skip ]] && echo 0 || echo 1)"
+    sp_transaction_event quickshell_deployment.started
     if ! (sp_deploy_quickshell "$SP_RICE"); then
         sp_rollback_failed_deployment 'Quickshell deployment failed.'
     fi
+    sp_transaction_event quickshell_deployment.completed
+    if [[ "$SP_HYPR" != skip ]]; then sp_transaction_event hyprland_config_integration.started; fi
     if [[ "$SP_HYPR" != skip ]] && ! (sp_integrate_hyprland "$SP_HYPR_SOURCE"); then
         sp_rollback_failed_deployment 'Hyprland integration failed.'
     fi
+    if [[ "$SP_HYPR" != skip ]]; then sp_transaction_event hyprland_config_integration.completed; fi
+    sp_transaction_event runtime_validation.started
     if ! (sp_check_all); then
         sp_rollback_failed_deployment 'Post-deployment runtime validation failed; Quickshell activation was skipped.'
     fi
+    sp_transaction_event runtime_validation.completed
     sp_service_transaction_begin
+    sp_transaction_event systemd_integration.started
     if ! sp_setup_services; then
         sp_rollback_failed_deployment 'A systemd service action failed and its partial state could not be reverted.'
     fi
+    sp_transaction_event systemd_integration.completed
+    sp_transaction_event quickshell_activation.started
     if ! sp_activate_sekaipop; then
         sp_rollback_failed_deployment 'Quickshell activation failed after deployment validation.'
     fi
+    sp_transaction_event quickshell_activation.completed
     if ! (sp_write_state_manifest); then
         sp_rollback_failed_deployment 'Could not write the installer state manifest.'
     fi
     sp_service_transaction_commit
+    sp_transaction_event desktop_deployment.completed
     SP_QS_INSTANCE_STARTED_BY_INSTALL=0
     SP_QS_PREVIOUS_INSTANCE_WAS_RUNNING=0
     sp_ok 'SekaiPop deployment phase completed.'
@@ -269,6 +284,7 @@ sp_dependency_only_setup() {
         sp_rollback_failed_dependency_only 'Could not write the installer state manifest in dependency-only mode.'
     fi
     sp_service_transaction_commit
+    sp_transaction_event dependency_only_integration.completed
 }
 sp_acquire_installer_lock() {
     local lock_dir lock_file
@@ -299,20 +315,33 @@ sekaipop_main() {
     (( SP_DRY_RUN || SP_CHECK )) || sp_acquire_installer_lock
     sp_make_log
     sp_info "Detected $SP_DISTRO_NAME | ID=$SP_DISTRO_ID | backend=$SP_BACKEND | release policy=$SP_RELEASE_POLICY"
+    if (( ! SP_DRY_RUN )); then
+        sp_transaction_journal_begin
+        trap 'sp_transaction_exit_trap $?' EXIT
+        sp_transaction_event system.detected "$SP_DISTRO_ID $SP_DISTRO_VERSION $SP_ARCH"
+    fi
     if (( ! SP_NO_DEPS )); then
+        (( SP_DRY_RUN )) || sp_transaction_event native_dependencies.started
         if ! sp_plan_and_install_dependencies; then
+            (( SP_DRY_RUN )) || sp_transaction_finish failed "Native dependency planning/installation failed."
             sp_error 'Dependency planning/installation failed; deployment was not started.'
             return 1
         fi
+        (( SP_DRY_RUN )) || sp_transaction_event native_dependencies.completed
+    else
+        (( SP_DRY_RUN )) || sp_transaction_event native_dependencies.skipped "--no-deps"
     fi
     if (( SP_DEPS_ONLY )); then
         sp_info 'Dependency-only mode: application source deployment is skipped.'
         if (( ! SP_DRY_RUN )); then
             if ! sp_check_all; then
+                sp_transaction_finish failed "Dependency-only runtime validation failed."
                 sp_error 'Dependency-only runtime verification failed; desktop integration was not started.'
                 return 1
             fi
+            sp_transaction_event dependency_only_integration.started
             sp_dependency_only_setup
+            sp_transaction_finish committed "Dependency-only transaction validated."
         fi
         return 0
     fi
@@ -327,4 +356,5 @@ sekaipop_main() {
     fi
     (( SP_NO_DEPS )) && sp_info 'Package transactions skipped (--no-deps); post-install verification will still run.'
     sp_deploy_application
+    sp_transaction_finish committed "Desktop deployment and runtime validation completed."
 }
