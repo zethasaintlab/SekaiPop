@@ -123,15 +123,34 @@ for index in "${!sources[@]}"; do
     fi
 done
 
+REMOVED_DESTS=()
+REMOVED_SOURCES=()
 for index in "${!sources[@]}"; do
     source="${sources[index]}"
     destination="${destinations[index]}"
     if [[ -L "$destination" && "$(readlink -- "$destination")" == "$source" ]]; then
         rm -f -- "$destination"
+        REMOVED_DESTS+=("$destination")
+        REMOVED_SOURCES+=("$source")
     fi
 done
+
 if ! systemctl --user daemon-reload; then
-    printf 'Systemd user manager could not reload after removing managed unit links.\n' >&2
+    rollback_failed=0
+    for index in "${!REMOVED_DESTS[@]}"; do
+        destination="${REMOVED_DESTS[index]}"
+        source="${REMOVED_SOURCES[index]}"
+        if [[ -e "$destination" || -L "$destination" ]] || ! ln -s -- "$source" "$destination"; then
+            printf 'Could not restore managed systemd user unit link after daemon-reload failure: %s\n' "$destination" >&2
+            rollback_failed=1
+        fi
+    done
+    systemctl --user daemon-reload >/dev/null 2>&1 || rollback_failed=1
+    if (( rollback_failed )); then
+        printf 'Systemd user manager reload failed and removal rollback was incomplete; inspect %s manually.\n' "$UNIT_DIR" >&2
+    else
+        printf 'Systemd user manager rejected removal; managed unit links were restored.\n' >&2
+    fi
     exit 1
 fi
 printf 'FEDORA_HYPRLAND_USER_UNITS_REMOVED\t%s\n' "$UNIT_DIR"
