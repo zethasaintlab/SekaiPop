@@ -30,7 +30,7 @@ def inside(path: Path, root: Path) -> bool:
         return False
 
 
-def inventory(root: Path) -> list[dict]:
+def inventory(root: Path, runtime_prefix: Path) -> list[dict]:
     entries = []
     pending = [root]
     while pending:
@@ -54,7 +54,13 @@ def inventory(root: Path) -> list[dict]:
             if stat.S_ISLNK(metadata.st_mode):
                 target = os.readlink(path)
                 try:
-                    resolved = path.resolve(strict=True)
+                    if Path(target).is_absolute():
+                        target_path = Path(target)
+                        if not inside(target_path, runtime_prefix):
+                            fail(f"absolute symlink escapes runtime prefix: {relative} -> {target}")
+                        resolved = (root / target_path.relative_to(runtime_prefix)).resolve(strict=True)
+                    else:
+                        resolved = (path.parent / target).resolve(strict=True)
                 except (OSError, RuntimeError) as error:
                     fail(f"dangling or cyclic symlink {relative}: {error}")
                 if not inside(resolved, root):
@@ -85,14 +91,16 @@ def main() -> None:
     parser.add_argument("--fedora-release", choices=("44", "45"), required=True)
     parser.add_argument("--hyprland-version", required=True)
     parser.add_argument("--hyprland-commit", required=True)
+    parser.add_argument("--runtime-prefix", required=True)
     args = parser.parse_args()
 
     root_arg = Path(args.prefix)
     if root_arg.is_symlink() or not root_arg.is_dir():
         fail("provider prefix must be an existing, non-symlink directory")
     root = root_arg.resolve(strict=True)
-    if not root.is_absolute():
-        fail("provider prefix must resolve to an absolute path")
+    runtime_prefix = Path(args.runtime_prefix)
+    if not runtime_prefix.is_absolute() or ".." in runtime_prefix.parts:
+        fail("runtime prefix must be a normalized absolute path")
     if not (root / "BUILD-PROVENANCE").is_file():
         fail("BUILD-PROVENANCE is missing")
     if not (root / "bin" / "Hyprland").is_file():
@@ -110,8 +118,8 @@ def main() -> None:
         "architecture": "x86_64",
         "hyprland_version": args.hyprland_version,
         "hyprland_commit": args.hyprland_commit,
-        "prefix": str(root),
-        "files": inventory(root),
+        "prefix": str(runtime_prefix),
+        "files": inventory(root, runtime_prefix),
     }
     payload = json.dumps(data, indent=2, sort_keys=True) + "\n"
     fd, temporary = tempfile.mkstemp(prefix=".INSTALL-MANIFEST.", dir=root)
