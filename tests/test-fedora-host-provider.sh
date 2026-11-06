@@ -36,18 +36,18 @@ SP_ARCH=aarch64
 if sp_fedora_host_provider_supported; then echo '[FAIL] unsupported architecture accepted'; exit 1; fi
 SP_ARCH=x86_64
 
-SEKAIPOP_TEST_ROOTLESS=false
+export SEKAIPOP_TEST_ROOTLESS=false
 if sp_fedora_host_provider_rootless_podman; then echo '[FAIL] rootful Podman accepted'; exit 1; fi
-SEKAIPOP_TEST_ROOTLESS=true
+export SEKAIPOP_TEST_ROOTLESS=true
 sp_fedora_host_provider_rootless_podman || { echo '[FAIL] rootless Podman detection'; exit 1; }
 
 export SEKAIPOP_TEST_GRAPHROOT="$TMP/staging"
-SEKAIPOP_TEST_FREE_KIB=100000
+export SEKAIPOP_TEST_FREE_KIB=100000
 if sp_fedora_host_provider_preflight "$TMP/staging" >/dev/null 2>&1; then
     echo '[FAIL] insufficient staging space accepted'
     exit 1
 fi
-SEKAIPOP_TEST_FREE_KIB=30000000
+export SEKAIPOP_TEST_FREE_KIB=30000000
 if (( EUID == 0 )); then
     echo '[SKIP] end-to-end preflight requires a normal user'
 else
