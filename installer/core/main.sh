@@ -138,9 +138,10 @@ sp_plan_and_install_dependencies() {
         if ! sp_pacman_sync_db_fresh; then
             if (( SP_SYSTEM_UPGRADE )); then
                 sp_warn 'Arch sync databases are missing or older than 7 days. A full system synchronization and upgrade is required before dependency resolution.'
-                sp_confirm 'Run pacman -Syu --needed now? This will upgrade the entire Arch system.' ||
+                if ! sp_confirm 'Run pacman -Syu --needed now? This will upgrade the entire Arch system.'; then
                     sp_error 'Arch synchronization cancelled. No package database refresh or package transaction was attempted.'
                     return 1
+                fi
                 if pm_refresh_metadata; then
                     :
                 else
