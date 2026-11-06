@@ -6,6 +6,8 @@ export SEKAIPOP_INSTALLER_ROOT="$ROOT"
 source "$ROOT/installer/core/main.sh"
 
 tmpdir="$(mktemp -d)"
+export HOME="$tmpdir/home" XDG_STATE_HOME="$tmpdir/state"
+mkdir -p "$HOME"
 marker="$tmpdir/deployment-started"
 trap 'rm -rf -- "$tmpdir"' EXIT
 
@@ -41,4 +43,7 @@ if [[ -e "$marker" ]]; then
     exit 1
 fi
 
+[[ -n "${SP_TRANSACTION_JOURNAL:-}" ]] || { printf '[FAIL] main installer did not create a transaction journal\n' >&2; exit 1; }
+grep -Fqx 
+status\tfailed' "$SP_TRANSACTION_JOURNAL" || { printf '[FAIL] dependency failure was not journaled as failed\n' >&2; exit 1; }
 printf '[PASS] dependency failure returns nonzero and prevents deployment\n'
