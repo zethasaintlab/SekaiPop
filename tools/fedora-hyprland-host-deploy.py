@@ -100,6 +100,10 @@ def validate_provenance(prefix: Path, release: str) -> None:
     for value in required:
         if value not in content:
             fail(f"build provenance is missing required identity: {value}")
+    build_commit_line = next((line for line in content.splitlines() if line.startswith("sekaipop_build_commit=")), "")
+    build_commit = build_commit_line.partition("=")[2]
+    if len(build_commit) != 40 or any(character not in "0123456789abcdef" for character in build_commit):
+        fail("build provenance does not contain a full SekaiPop commit SHA")
     digest_line = next((line for line in content.splitlines() if line.startswith("base_image_ref=")), "")
     digest = digest_line.partition("@sha256:")[2]
     if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
