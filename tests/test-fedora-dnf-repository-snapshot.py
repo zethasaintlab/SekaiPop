@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -34,12 +33,19 @@ class DnfRepositorySnapshotTests(unittest.TestCase):
             text=True, capture_output=True, check=False,
         )
 
+    def valid_repository(self, config_path=None):
+        return {
+            "id": "fedora",
+            "is_enabled": True,
+            "repo_file_path": str(config_path or self.config),
+            "revision": "20261106",
+            "timestamp": 1793923200,
+        }
+
     def test_enabled_repositories_and_symlinked_config_are_snapshotted(self):
         result = self.run_snapshot([
-            {"id": "fedora", "is_enabled": True, "repo_file_path": str(self.link),
-             "revision": "20261106", "timestamp": 1793923200},
-            {"id": "updates", "is_enabled": True, "repo_file_path": str(self.config),
-             "revision": "20261106", "timestamp": 1793923200},
+            {**self.valid_repository(self.link)},
+            {**self.valid_repository(), "id": "updates"},
             {"id": "disabled", "is_enabled": False, "repo_file_path": str(self.config)},
         ])
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -60,9 +66,7 @@ class DnfRepositorySnapshotTests(unittest.TestCase):
 
     def test_missing_repository_config_fails_closed(self):
         result = self.run_snapshot([
-            {"id": "fedora", "is_enabled": True,
-             "repo_file_path": str(self.root / "missing.repo"),
-             "revision": "20261106", "timestamp": 1793923200}
+            self.valid_repository(self.root / "missing.repo")
         ])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("cannot be resolved", result.stderr)
@@ -70,22 +74,31 @@ class DnfRepositorySnapshotTests(unittest.TestCase):
         self.assertFalse(self.hashes.exists())
 
     def test_enabled_repository_without_metadata_identity_fails_closed(self):
-        result = self.run_snapshot([
-            {"id": "fedora", "is_enabled": True, "repo_file_path": str(self.config),
-             "revision": "", "timestamp": 0}
-        ])
+        record = self.valid_repository()
+        record["revision"] = ""
+        record["timestamp"] = 0
+        result = self.run_snapshot([record])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("no metadata revision", result.stderr)
         self.assertFalse(self.inventory.exists())
         self.assertFalse(self.hashes.exists())
 
-    def test_existing_output_is_never_overwritten(self):
-        self.inventory.write_text("preserve", encoding="utf-8")
-        result = self.run_snapshot([
-            {"id": "fedora", "is_enabled": True, "repo_file_path": str(self.config)}
-        ])
+    def test_existing_inventory_output_is_never_overwritten(self):
+        self.inventory.write_text("preserve inventory", encoding="utf-8")
+        result = self.run_snapshot([self.valid_repository()])
         self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(self.inventory.read_text(encoding="utf-8"), "preserve")
+        self.assertIn("refusing to overwrite existing output", result.stderr)
+        self.assertEqual(self.inventory.read_text(encoding="utf-8"), "preserve inventory")
+        self.assertFalse(self.hashes.exists())
+
+    def test_existing_hash_output_is_preserved_and_inventory_is_rolled_back(self):
+        self.hashes.write_text("preserve hashes", encoding="utf-8")
+        result = self.run_snapshot([self.valid_repository()])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("refusing to overwrite existing output", result.stderr)
+        self.assertEqual(self.hashes.read_text(encoding="utf-8"), "preserve hashes")
+        self.assertFalse(self.inventory.exists())
+        self.assertEqual(list(self.root.glob(".dnf-provenance.*")), [])
 
 
 if __name__ == "__main__":
