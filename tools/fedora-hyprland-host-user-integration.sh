@@ -3,7 +3,9 @@ set -Eeuo pipefail
 
 ACTION="${1:?usage: fedora-hyprland-host-user-integration.sh install|remove PREFIX}"
 PREFIX="${2:?usage: fedora-hyprland-host-user-integration.sh install|remove PREFIX}"
-UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+UNIT_DIR="$CONFIG_HOME/systemd/user"
+RELEASE_ID="0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18"
 ALLOWED_PREFIX_ROOT="/opt/sekaipop/providers/hyprland/releases"
 if [[ "${SEKAIPOP_TESTING:-0}" == 1 && -n "${SEKAIPOP_TEST_PREFIX_ROOT:-}" ]]; then
     ALLOWED_PREFIX_ROOT="$SEKAIPOP_TEST_PREFIX_ROOT"
@@ -13,10 +15,20 @@ fi
     printf 'Unsupported user integration action: %s\n' "$ACTION" >&2
     exit 2
 }
-[[ "$PREFIX" == "$ALLOWED_PREFIX_ROOT"/* && -d "$PREFIX" && ! -L "$PREFIX" ]] || {
+[[ "$CONFIG_HOME" == /* ]] || {
+    printf 'XDG_CONFIG_HOME must be an absolute path: %s\n' "$CONFIG_HOME" >&2
+    exit 2
+}
+[[ "$PREFIX" == "$ALLOWED_PREFIX_ROOT/$RELEASE_ID" && -d "$PREFIX" && ! -L "$PREFIX" ]] || {
     printf 'Refusing an invalid or unmanaged Hyprland release prefix: %s\n' "$PREFIX" >&2
     exit 2
 }
+if [[ "${SEKAIPOP_TESTING:-0}" != 1 ]]; then
+    [[ "$(stat -c '%u' "$PREFIX")" == 0 ]] || {
+        printf 'Managed Hyprland release must be root-owned: %s\n' "$PREFIX" >&2
+        exit 2
+    }
+fi
 command -v systemctl >/dev/null 2>&1 || {
     printf 'systemctl is required for user-session integration.\n' >&2
     exit 2
