@@ -47,6 +47,22 @@ sp_fedora_host_provider_preflight() {
         printf 'Fedora provider requires at least 18 GiB free in %s; found %s KiB.\n' "$target" "$available" >&2
         return 1
     }
-    printf 'FEDORA_HOST_PROVIDER_PREFLIGHT_OK\tFedora-%s\t%s\trootless-podman\t%s-KiB\n' \
-        "$SP_DISTRO_VERSION" "$SP_ARCH" "$available"
+    graph_root="$(podman info --format '{{.Store.GraphRoot}}' 2>/dev/null)" || {
+        printf 'Cannot determine the rootless Podman storage path.\n' >&2
+        return 1
+    }
+    [[ -n "$graph_root" && -d "$graph_root" && ! -L "$graph_root" ]] || {
+        printf 'Rootless Podman reported an unsafe storage path: %s\n' "$graph_root" >&2
+        return 1
+    }
+    graph_available="$(sp_fedora_host_provider_free_space_kib "$graph_root")" || {
+        printf 'Cannot determine free space for rootless Podman storage: %s\n' "$graph_root" >&2
+        return 1
+    }
+    (( graph_available >= required_kib )) || {
+        printf 'Fedora provider requires at least 18 GiB free in Podman storage %s; found %s KiB.\n' "$graph_root" "$graph_available" >&2
+        return 1
+    }
+    printf 'FEDORA_HOST_PROVIDER_PREFLIGHT_OK\tFedora-%s\t%s\trootless-podman\tstage=%s-KiB\tstore=%s-KiB\n' \
+        "$SP_DISTRO_VERSION" "$SP_ARCH" "$available" "$graph_available"
 }
