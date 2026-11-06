@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Durable installer journal shared by native dependencies and desktop deployment.
 SP_TRANSACTION_JOURNAL=''
+SP_TRANSACTION_FINALIZED=0
 
 sp_transaction_journal_begin() {
     local metadata
@@ -32,4 +33,15 @@ sp_transaction_finish() {
     [[ -n "$SP_TRANSACTION_JOURNAL" ]] || return 0
     python3 "$SP_ROOT/tools/transaction-journal.py" finish "$SP_TRANSACTION_JOURNAL" "$status" "$detail" ||
         sp_die "Could not finalize installer transaction as $status."
+    SP_TRANSACTION_FINALIZED=1
+}
+
+sp_transaction_exit_trap() {
+    local exit_status="${1:-1}"
+    if [[ -n "$SP_TRANSACTION_JOURNAL" && "$SP_TRANSACTION_FINALIZED" != 1 ]]; then
+        python3 "$SP_ROOT/tools/transaction-journal.py" finish "$SP_TRANSACTION_JOURNAL" needs_recovery \
+            "Installer exited unexpectedly with status $exit_status." >/dev/null 2>&1 ||
+            printf '[FAIL] Could not mark interrupted transaction for recovery: %s\n' "$SP_TRANSACTION_JOURNAL" >&2
+    fi
+    return "$exit_status"
 }
