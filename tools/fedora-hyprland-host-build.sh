@@ -80,7 +80,8 @@ podman create --name "$CONTAINER_NAME" --network none \
     --env "SEKAIPOP_BUILD_GIT_COMMIT=$BUILD_GIT_COMMIT" \
     "$IMAGE_TAG" >/dev/null
 if podman start --attach "$CONTAINER_NAME" 2>&1 | tee "$BUILD_LOG"; then
-    podman cp "$CONTAINER_NAME:$CONTAINER_PREFIX" "$STAGE_ROOT"
+    mkdir -m 0755 "$STAGE_ROOT/$RELEASE_ID"
+    podman cp "$CONTAINER_NAME:$CONTAINER_PREFIX/." "$STAGE_ROOT/$RELEASE_ID"
     podman rm "$CONTAINER_NAME" >/dev/null
 else
     status=$?
