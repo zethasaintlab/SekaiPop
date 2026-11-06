@@ -6,6 +6,8 @@ WORK="${SEKAIPOP_HYPR_WORK:-/opt/sekaipop/work}"
 PREFIX="${SEKAIPOP_HYPR_PREFIX:-/opt/sekaipop/prefix}"
 JOBS="${BUILD_JOBS:-2}"
 PRIVATE_PREFIX_VALIDATOR="${SEKAIPOP_PRIVATE_PREFIX_VALIDATOR:-/usr/local/bin/sekaipop-private-prefix-validation}"
+PROVENANCE_WRITER="${SEKAIPOP_PROVENANCE_WRITER:-/usr/local/bin/fedora-hyprland-build-provenance}"
+PROVENANCE_OUTPUT="${SEKAIPOP_PROVENANCE_OUTPUT:-/opt/sekaipop/BUILD-PROVENANCE}"
 
 [[ -d "$SOURCES" && ! -L "$SOURCES" ]] || { printf 'Missing or unsafe source directory: %s\n' "$SOURCES" >&2; exit 2; }
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { printf 'BUILD_JOBS must be a positive integer.\n' >&2; exit 2; }
@@ -25,6 +27,8 @@ done
 printf 'Fedora source-build smoke: '
 . /etc/os-release
 case "${VERSION_ID:-}" in 44|45) printf '%s\n' "$PRETTY_NAME" ;; *) printf 'unsupported Fedora release %s\n' "${VERSION_ID:-unknown}" >&2; exit 2 ;; esac
+
+"$PROVENANCE_WRITER" "$PROVENANCE_OUTPUT" "$SOURCES"
 
 # Build the same pinned Lua 5.5.1 into a private prefix on both Fedora targets.
 tar -xzf "$SOURCES/lua-5.5.1.tar.gz" -C "$WORK"
@@ -194,4 +198,7 @@ grep -Eq '^Exec=.*(Hyprland|start-hyprland)' "$PREFIX/share/wayland-sessions/hyp
     exit 1
 }
 
+printf '\nFEDORA_HYPRLAND_BUILD_PROVENANCE_BEGIN\n'
+cat "$PROVENANCE_OUTPUT"
+printf 'FEDORA_HYPRLAND_BUILD_PROVENANCE_END\n'
 printf '\nFEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK\n'

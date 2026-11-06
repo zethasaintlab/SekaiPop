@@ -51,8 +51,8 @@ sp_detect_distribution() {
     case "$SP_DISTRO_ID:$SP_DISTRO_VERSION:$SP_DISTRO_CODENAME" in
         fedora:44:*) SP_RELEASE_POLICY='Fedora 44; official Quickshell package verified; Hyprland must already be installed from a source the user trusts' ;;
         fedora:45:*) SP_RELEASE_POLICY='Fedora 45; native DNF5/Qt/Quickshell profile; compatible Hyprland must already be installed from a source the user trusts; no COPR is enabled' ;;
-        debian:13:trixie) SP_RELEASE_POLICY='Debian 13 (trixie); official trixie-backports is bootstrapped automatically when missing' ;;
-        ubuntu:26.10:stonking) SP_RELEASE_POLICY='Ubuntu 26.10 (Stonking Stingray); official Universe is bootstrapped automatically when missing' ;;
+        debian:13:trixie) SP_RELEASE_POLICY='Debian 13 (trixie); official trixie-backports main must already be configured; APT source validation is read-only' ;;
+        ubuntu:26.10:stonking) SP_RELEASE_POLICY='Ubuntu 26.10 (Stonking Stingray); official Universe must already be enabled for release, updates, and security; APT source validation is read-only' ;;
         arch:*:*) SP_RELEASE_POLICY='Arch Linux rolling; package and runtime version checks apply' ;;
         endeavouros:*:*) SP_RELEASE_POLICY='EndeavourOS rolling; package and runtime version checks apply' ;;
         cachyos:*:*) SP_RELEASE_POLICY='CachyOS rolling; package and runtime version checks apply' ;;

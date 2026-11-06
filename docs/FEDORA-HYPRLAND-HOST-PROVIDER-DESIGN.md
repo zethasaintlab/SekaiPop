@@ -42,14 +42,14 @@ Preferred candidate: rootless Podman with an official Fedora base image matching
 
 ### Reproducibility gap
 
-The current sources and Lua archive are pinned, but the CI Dockerfile uses mutable `fedora:44` / `fedora:45` tags and resolves current RPM candidates from live repositories. Thus the current build is source-pinned and offline during compilation, but not a fully reproducible binary build.
+The source-build workflow now resolves the official Fedora 44/45 tag to a `sha256` image digest, passes that immutable reference to the Dockerfile, and refuses tag-only builds. The new `BUILD-PROVENANCE` record captures the selected image digest, Fedora release/architecture, enabled DNF repository metadata, installed RPM NEVRAs, compiler/build-tool versions, every pinned source commit, and the Lua archive SHA256. The record is emitted only after source acquisition and before compilation; the offline build log prints it on successful completion, and each Fedora matrix job uploads it as a 30-day GitHub Actions artifact.
 
-Before a host release:
-- Pin each official base image by digest.
-- Record enabled repository IDs, metadata timestamps/checksums, exact RPM NEVRAs, and RPM checksums.
-- Record compiler, C++ standard library, CMake, Ninja, Meson, pkg-config, Lua, and native dependency versions.
-- Fail if resolved dependencies diverge from a reviewed lock/provenance policy.
-- Consolidate source commits and archive hashes into one machine-readable manifest consumed by fetch and build steps.
+This closes the **per-run base-image identity and build-input traceability gap**, but does not yet make builds bit-for-bit reproducible. The digest is resolved from the moving official tag on each run rather than selected from a committed release lock, and DNF repositories still resolve live RPM versions. Before a host release:
+- Commit reviewed Fedora 44/45 base-image digests and update them deliberately.
+- Snapshot or lock enabled repository metadata and exact RPM NEVRAs/checksums; fail if resolution differs from the reviewed lock.
+- Promote the reviewed provenance record into a durable release/build-input archive before a host-provider release; the current 30-day CI artifact is useful for run traceability but is not a permanent lock.
+- Verify compiler, C++ standard library, CMake, Ninja, Meson, pkg-config, Lua, and all native dependency versions against the lock.
+- Keep source commits and archive hashes in one machine-readable manifest consumed by fetch and build steps.
 
 ### Versioned artifact layout
 

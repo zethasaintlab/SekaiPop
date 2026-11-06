@@ -373,3 +373,167 @@ Every CMake install manifest is validated artifact-by-artifact. Both lexical and
 A failed Docker build, non-zero container exit, missing success marker, missing required artifact, unresolved ELF dependency, or prefix escape is a failed smoke test. Preserve the full build log when reporting a failure.
 
 **Important scope boundary:** this smoke does not integrate the compiled compositor into the SekaiPop installer lifecycle. The current Fedora installer still requires a compatible trusted Hyprland installation already present on the target host. It does not install this container-built prefix onto the host, register its session target, configure runtime library paths, or switch the display-manager session. Native installation must continue to follow the existing-Hyprland precondition in Sections 1 and 3. Do not interpret the container smoke as proof of a complete automatic Fedora compositor installation.
+
+## 11. Fedora 44/45 pinned Hyprland source-build smoke
+
+**Scope boundary:** this procedure validates the repository's isolated Fedora source-build smoke inside a disposable Docker container. It does not install Hyprland onto the Fedora VM or host, register a desktop session, configure a display manager, or certify graphical login. Run it inside a disposable Fedora 44/45 VM with Docker available. Never bind-mount host system directories into the build container.
+
+Run the complete procedure once with `FEDORA_VERSION=44` and once with `FEDORA_VERSION=45`.
+
+### 11.1 Acquire the immutable base image and pinned sources
+
+From a clean checkout of the exact commit under test:
+
+```bash
+set -Eeuo pipefail
+git status --short
+git rev-parse HEAD
+export FEDORA_VERSION=44
+BASE_TAG="fedora:$FEDORA_VERSION"
+docker pull --platform linux/amd64 "$BASE_TAG"
+BASE_IMAGE_REF="$(docker image inspect "$BASE_TAG" --format '{{range .RepoDigests}}{{println .}}{{end}}' | awk '/@sha256:[0-9a-f]{64}$/ {print; exit}')"
+[[ "$BASE_IMAGE_REF" =~ @sha256:[0-9a-f]{64}$ ]]
+printf 'FEDORA_BASE_IMAGE_REF=%s\n' "$BASE_IMAGE_REF"
+docker build --platform linux/amd64 --pull --progress=plain \
+  --build-arg FEDORA_BASE_IMAGE="$BASE_IMAGE_REF" \
+  --file tools/fedora-hyprland-build-smoke.Dockerfile \
+  --tag "sekaipop-fedora-hyprland:$FEDORA_VERSION" .
+```
+
+Repeat with `FEDORA_VERSION=45`. The Dockerfile deliberately has an unusable zero-digest default; a build must receive a resolved immutable image reference. During image construction, DNF5 installs the Fedora-native build dependencies, captures enabled repository metadata and hashes the actual repository configuration files reported by DNF5, then acquires the immutable source commits and Lua archive. The later compile/install phase runs with container networking disabled.
+
+The digest is resolved from the official moving Fedora tag at test time. RPM repositories remain live inputs. This records per-run build provenance; it is not a committed RPM lock or a bit-for-bit reproducibility guarantee.
+
+### 11.2 Run the offline build and preserve diagnostics
+
+Use a unique container name and a dedicated evidence directory. Do not use `--rm` for this diagnostic run: a stopped container is needed to copy the build tree after a failure.
+
+```bash
+set -Eeuo pipefail
+export FEDORA_VERSION=44
+CONTAINER="sekaipop-fedora-hyprland-$FEDORA_VERSION-acceptance"
+EVIDENCE="$PWD/fedora-$FEDORA_VERSION-build-evidence"
+mkdir -m 700 -p "$EVIDENCE"
+if docker container inspect "$CONTAINER" >/dev/null 2>&1; then
+  printf 'Refusing to reuse existing container %s\n' "$CONTAINER" >&2
+  exit 1
+fi
+set +e
+docker run --platform linux/amd64 --name "$CONTAINER" --network none \
+  --env "SEKAIPOP_BUILD_GIT_COMMIT=$(git rev-parse HEAD)" \
+  --env SEKAIPOP_PROVENANCE_OUTPUT=/artifacts/BUILD-PROVENANCE \
+  --volume "$EVIDENCE:/artifacts" \
+  "sekaipop-fedora-hyprland:$FEDORA_VERSION" 2>&1 | tee "$EVIDENCE/build.log"
+BUILD_STATUS=${PIPESTATUS[0]}
+set -e
+printf 'Build exit status: %s\n' "$BUILD_STATUS"
+```
+
+Repeat for Fedora 45 using distinct container and evidence names. The command intentionally captures the container's exit status separately from `tee`.
+
+Expected successful output contains all three markers:
+
+- `FEDORA_HYPRLAND_BUILD_PROVENANCE_BEGIN`
+- `FEDORA_HYPRLAND_BUILD_PROVENANCE_END`
+- `FEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK`
+
+The evidence directory should contain `BUILD-PROVENANCE`. If the build fails after provenance generation, the provenance file should still exist. If the failure occurs before provenance generation, record that no complete provenance artifact was produced.
+
+### 11.3 Inspect CMake configuration and private-prefix installation
+
+Copy the build workspace and installed prefix out of the stopped container before cleanup:
+
+```bash
+docker cp "$CONTAINER:/opt/sekaipop/work" "$EVIDENCE/work"
+docker cp "$CONTAINER:/opt/sekaipop/prefix" "$EVIDENCE/prefix"
+```
+
+Inspect the Hyprland configure cache and generated install metadata:
+
+```bash
+CACHE="$EVIDENCE/work/build-Hyprland/CMakeCache.txt"
+grep -E '^(CMAKE_INSTALL_PREFIX|CMAKE_INSTALL_LIBDIR|CMAKE_INSTALL_BINDIR|CMAKE_INSTALL_DATAROOTDIR):' "$CACHE"
+grep -F '/opt/sekaipop/prefix/lib64/systemd/user' \
+  "$EVIDENCE/work/build-Hyprland/cmake_install.cmake"
+grep -F '/opt/sekaipop/prefix/lib64/systemd/user/hyprland-session.target' \
+  "$EVIDENCE/work/build-Hyprland/install_manifest.txt"
+```
+
+Expected Hyprland values:
+
+- `CMAKE_INSTALL_PREFIX=/opt/sekaipop/prefix`
+- `CMAKE_INSTALL_LIBDIR=/opt/sekaipop/prefix/lib64` for the Hyprland configure (an absolute private-prefix libdir is intentional for this CMake project).
+- `CMAKE_INSTALL_BINDIR=bin`
+- `CMAKE_INSTALL_DATAROOTDIR=share`
+- The generated install script and install manifest place `hyprland-session.target` at `/opt/sekaipop/prefix/lib64/systemd/user/hyprland-session.target`.
+
+The source-build smoke uses an absolute private install prefix and validates each CMake install manifest artifact-by-artifact, including symlink-resolved paths. It does **not** use `DESTDIR`; do not infer that a staging-root installation or a host deployment has been tested. `CMAKE_INSTALL_FULL_LIBDIR` is the fully expanded install destination; inspect generated install scripts and the actual manifest in addition to the cache's relative/absolute libdir setting.
+
+Check the actual target and every generated CMake install manifest:
+
+```bash
+test -s "$EVIDENCE/prefix/lib64/systemd/user/hyprland-session.target"
+while IFS= read -r manifest; do
+  awk -v prefix='/opt/sekaipop/prefix/' \
+    'index($0, prefix) != 1 { print "OUTSIDE PRIVATE PREFIX: " $0; bad = 1 } END { exit bad }' \
+    "$manifest"
+done < <(find "$EVIDENCE/work" -type f -name install_manifest.txt -print)
+```
+
+Expected: every installed artifact path begins with `/opt/sekaipop/prefix/`; the dedicated validator additionally resolves symlinks and rejects paths that escape the prefix. The build container receives no host system-directory bind mounts, so its install commands cannot write into the VM's `/usr`, `/lib`, or `/etc` trees. The container's private prefix is the authoritative artifact location.
+
+### 11.4 Verify ELF and runtime-library checks
+
+The build smoke validates these six installed executables:
+
+- `Hyprland`
+- `start-hyprland`
+- `hyprland-share-picker`
+- `hyprctl`
+- `hyprwire-scanner`
+- `xdg-desktop-portal-hyprland`
+
+For each, the smoke runs `ldd` with `LD_LIBRARY_PATH` explicitly removed and fails on any `not found` dependency. It also checks private-prefix RUNPATH/RPATH and rejects build/source-tree path leakage on the Hyprland and portal executables. These are selected executable checks, not a claim that every ELF object in the prefix has been exhaustively audited.
+
+Inspect the captured executable dynamic tags for additional diagnosis:
+
+```bash
+readelf -d "$EVIDENCE/prefix/bin/Hyprland" | grep -E 'RPATH|RUNPATH'
+readelf -d "$EVIDENCE/prefix/libexec/xdg-desktop-portal-hyprland" | grep -E 'RPATH|RUNPATH'
+```
+
+Expected: private-prefix library paths are present where required; `/opt/sekaipop/work` and `/opt/sekaipop/sources` do not appear in installed runtime paths. The smoke's `LD_LIBRARY_PATH` is a build-time environment convenience, not proof of a production host launch environment. No global loader configuration, `ldconfig` entry, system SONAME symlink, or host-wide `LD_LIBRARY_PATH` is installed.
+
+### 11.5 Failure recovery and cleanup
+
+On any non-zero build result:
+
+1. Preserve `build.log`, `BUILD-PROVENANCE` if present, the copied CMake caches, install manifests, and the copied prefix.
+2. Identify the first failing command in the log; distinguish source acquisition, CMake configure, compile, install, prefix validation, ELF validation, and session/portal metadata checks.
+3. Confirm the container is stopped and inspect its exit status with `docker inspect "$CONTAINER" --format '{{.State.Status}} {{.State.ExitCode}}'`.
+4. Do not reuse the failed container or its partial prefix. A fresh container from the same reviewed image starts with an empty `/opt/sekaipop/work` and `/opt/sekaipop/prefix`.
+5. Do not run `docker system prune`, `docker builder prune`, or broad `rm -rf` cleanup commands. They can remove unrelated images, caches, or user data.
+
+After evidence has been reviewed and copied, remove only the exact test container and image tag:
+
+```bash
+docker rm "$CONTAINER"
+docker image rm "sekaipop-fedora-hyprland:$FEDORA_VERSION"
+```
+
+Retain the evidence directory until the test record has been reviewed and backed up. Remove it manually only after confirming its exact path and contents.
+
+### 11.6 Acceptance boundary
+
+A passing Fedora 44/45 source-build smoke establishes that the pinned source closure can be acquired, compiled and installed offline inside the corresponding Fedora container image; the generated install manifests remain inside the private prefix; the required systemd user target is in that prefix; the selected ELF checks pass; and build provenance is captured.
+
+It does **not** establish:
+
+- a Fedora host provider in the SekaiPop installer;
+- deployment of `/opt/sekaipop/prefix` onto the host;
+- a scoped production launcher or session environment;
+- display-manager session discovery or graphical login;
+- real D-Bus/systemd portal activation;
+- Quickshell QML/plugin compatibility, NVIDIA/Mesa behavior, screen sharing, suspend/resume, upgrade, uninstall, or native rollback.
+
+Fedora 44/45 installation acceptance still requires a compatible Hyprland already installed from a source trusted by the user. Do not interpret this container smoke as automatic Fedora Hyprland provisioning.

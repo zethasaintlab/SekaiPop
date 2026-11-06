@@ -1,7 +1,11 @@
 name: Installer validation
 on:
   push:
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
 permissions:
   contents: read
 concurrency:
@@ -155,11 +159,38 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Acquire official build dependencies and verify immutable source pins
         run: |
-          docker build --progress=plain \
-            --build-arg FEDORA_VERSION="${{ matrix.fedora }}" \
+          set -Eeuo pipefail
+          BASE_TAG="fedora:${{ matrix.fedora }}"
+          docker pull --platform linux/amd64 "$BASE_TAG"
+          BASE_IMAGE_REF="$(docker image inspect "$BASE_TAG" --format '{{range .RepoDigests}}{{println .}}{{end}}' | awk '/@sha256:[0-9a-f]{64}$/ {print; exit}')"
+          [[ "$BASE_IMAGE_REF" =~ @sha256:[0-9a-f]{64}$ ]] || {
+            printf 'Could not resolve an immutable Fedora base image digest for %s.\n' "$BASE_TAG" >&2
+            exit 1
+          }
+          printf 'FEDORA_BASE_IMAGE_REF=%s\n' "$BASE_IMAGE_REF"
+          docker build --platform linux/amd64 --pull --progress=plain \
+            --build-arg FEDORA_BASE_IMAGE="$BASE_IMAGE_REF" \
             --file tools/fedora-hyprland-build-smoke.Dockerfile \
             --tag "sekaipop-fedora-hyprland:${{ matrix.fedora }}" .
       - name: Build compositor and portal with network disabled
         run: |
-          docker run --rm --network none \
-            "sekaipop-fedora-hyprland:${{ matrix.fedora }}"
+          set -Eeuo pipefail
+          PROVENANCE_DIR="$RUNNER_TEMP/fedora-hyprland-${{ matrix.fedora }}"
+          mkdir -p "$PROVENANCE_DIR"
+          BUILD_LOG="$RUNNER_TEMP/fedora-hyprland-${{ matrix.fedora }}.log"
+          docker run --platform linux/amd64 --rm --network none \
+            --env "SEKAIPOP_BUILD_GIT_COMMIT=$GITHUB_SHA" \
+            --env "SEKAIPOP_PROVENANCE_OUTPUT=/artifacts/BUILD-PROVENANCE" \
+            --volume "$PROVENANCE_DIR:/artifacts" \
+            "sekaipop-fedora-hyprland:${{ matrix.fedora }}" | tee "$BUILD_LOG"
+          grep -Fq 'FEDORA_HYPRLAND_BUILD_PROVENANCE_BEGIN' "$BUILD_LOG"
+          grep -Fq 'FEDORA_HYPRLAND_BUILD_PROVENANCE_END' "$BUILD_LOG"
+          grep -Fq 'FEDORA_HYPRLAND_SOURCE_BUILD_SMOKE_OK' "$BUILD_LOG"
+      - name: Upload Fedora build provenance
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fedora-${{ matrix.fedora }}-hyprland-build-provenance
+          path: ${{ runner.temp }}/fedora-hyprland-${{ matrix.fedora }}/BUILD-PROVENANCE
+          if-no-files-found: ignore
+          retention-days: 30

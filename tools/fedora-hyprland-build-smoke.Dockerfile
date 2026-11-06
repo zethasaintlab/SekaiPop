@@ -1,8 +1,13 @@
-ARG FEDORA_VERSION=44
-FROM fedora:${FEDORA_VERSION}
+# The zero digest is intentionally unusable; callers must pass a resolved immutable Fedora image digest.
+ARG FEDORA_BASE_IMAGE=docker.io/library/fedora@sha256:0000000000000000000000000000000000000000000000000000000000000000
+FROM ${FEDORA_BASE_IMAGE}
+ARG FEDORA_BASE_IMAGE
+ENV SEKAIPOP_BASE_IMAGE_REF=${FEDORA_BASE_IMAGE}
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
+
+COPY tools/fedora-dnf-repository-snapshot.py /usr/local/bin/fedora-dnf-repository-snapshot
 
 RUN dnf5 install -y \
     binutils \
@@ -61,12 +66,16 @@ RUN dnf5 install -y \
     libzip-devel \
     tomlplusplus-devel \
     xorg-x11-server-Xwayland \
+    && mkdir -p /opt/sekaipop \
+    && dnf5 repo info --json > /opt/sekaipop/DNF5-REPOSITORIES.json \
+    && python3 /usr/local/bin/fedora-dnf-repository-snapshot --repo-info /opt/sekaipop/DNF5-REPOSITORIES.json --inventory /opt/sekaipop/ENABLED-DNF-REPOSITORIES --hashes /opt/sekaipop/DNF-REPO-CONFIG-SHA256 \
     && dnf5 clean all
 
 COPY tools/fedora-hyprland-source-fetch.sh /usr/local/bin/fedora-hyprland-source-fetch
+COPY tools/fedora-hyprland-build-provenance.sh /usr/local/bin/fedora-hyprland-build-provenance
 COPY tools/fedora-hyprland-source-build-smoke.sh /usr/local/bin/fedora-hyprland-source-build-smoke
 COPY tools/private-prefix-validation.sh /usr/local/bin/sekaipop-private-prefix-validation
-RUN chmod 0755 /usr/local/bin/fedora-hyprland-source-fetch /usr/local/bin/fedora-hyprland-source-build-smoke /usr/local/bin/sekaipop-private-prefix-validation \
+RUN chmod 0755 /usr/local/bin/fedora-hyprland-source-fetch /usr/local/bin/fedora-hyprland-source-build-smoke /usr/local/bin/sekaipop-private-prefix-validation /usr/local/bin/fedora-hyprland-build-provenance \
     && /usr/local/bin/fedora-hyprland-source-fetch /opt/sekaipop/sources
 
 ENTRYPOINT ["/usr/local/bin/fedora-hyprland-source-build-smoke"]
