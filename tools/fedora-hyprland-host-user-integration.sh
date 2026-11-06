@@ -107,27 +107,31 @@ if [[ "$ACTION" == install ]]; then
     exit 0
 fi
 
-conflict=0
+# Preflight every destination before mutating any of them. A conflict must
+# leave the complete managed integration intact rather than partially removing it.
 for index in "${!sources[@]}"; do
     source="${sources[index]}"
     destination="${destinations[index]}"
     if [[ -L "$destination" ]]; then
-        if [[ "$(readlink -- "$destination")" == "$source" ]]; then
-            rm -f -- "$destination"
-        else
-            printf 'Preserving unrelated systemd user unit symlink: %s\n' "$destination" >&2
-            conflict=1
-        fi
+        [[ "$(readlink -- "$destination")" == "$source" ]] || {
+            printf 'Preserving unrelated systemd user unit symlink: %s\\n' "$destination" >&2
+            exit 1
+        }
     elif [[ -e "$destination" ]]; then
-        printf 'Preserving unrelated systemd user unit: %s\n' "$destination" >&2
-        conflict=1
+        printf 'Preserving unrelated systemd user unit: %s\\n' "$destination" >&2
+        exit 1
+    fi
+done
+
+for index in "${!sources[@]}"; do
+    source="${sources[index]}"
+    destination="${destinations[index]}"
+    if [[ -L "$destination" && "$(readlink -- "$destination")" == "$source" ]]; then
+        rm -f -- "$destination"
     fi
 done
 if ! systemctl --user daemon-reload; then
-    printf 'Systemd user manager could not reload after removing managed unit links.\n' >&2
+    printf 'Systemd user manager could not reload after removing managed unit links.\\n' >&2
     exit 1
 fi
-if (( conflict != 0 )); then
-    exit 1
-fi
-printf 'FEDORA_HYPRLAND_USER_UNITS_REMOVED\t%s\n' "$UNIT_DIR"
+printf 'FEDORA_HYPRLAND_USER_UNITS_REMOVED\\t%s\\n' "$UNIT_DIR"
