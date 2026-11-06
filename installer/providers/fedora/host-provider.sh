@@ -26,7 +26,7 @@ sp_fedora_host_provider_free_space_kib() {
 }
 
 sp_fedora_host_provider_preflight() {
-    local target="${1:-${TMPDIR:-/var/tmp}}" available graph_root graph_available required_kib=$((18 * 1024 * 1024))
+    local target="${1:-/var/tmp}" available graph_root graph_available required_kib=$((18 * 1024 * 1024))
     sp_fedora_host_provider_supported || {
         printf 'Fedora host provider supports only Fedora 44/45, x86_64, systemd, mutable hosts.\n' >&2
         return 1
