@@ -35,6 +35,16 @@ BASE_IMAGE_REF="$(podman image inspect --format '{{range .RepoDigests}}{{println
     exit 1
 }
 
+command -v git >/dev/null 2>&1 || {
+    printf 'Git is required to record the exact SekaiPop build revision.\\n' >&2
+    exit 2
+}
+BUILD_GIT_COMMIT="$(git -C "$ROOT" rev-parse --verify HEAD)"
+[[ "$BUILD_GIT_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
+    printf 'Could not determine the full SekaiPop source commit.\\n' >&2
+    exit 1
+}
+
 IMAGE_TAG="localhost/sekaipop-fedora-hyprland:$FEDORA_RELEASE-${BASE_IMAGE_REF##*@sha256:}"
 podman build --platform linux/amd64 --pull=never \
     --build-arg "FEDORA_BASE_IMAGE=$BASE_IMAGE_REF" \
@@ -67,6 +77,7 @@ podman run --rm --network none \
     --volume "$STAGE_ROOT:$CONTAINER_RELEASE_ROOT:Z" \
     --env "SEKAIPOP_HYPR_PREFIX=$CONTAINER_PREFIX" \
     --env "SEKAIPOP_PROVENANCE_OUTPUT=$CONTAINER_PREFIX/BUILD-PROVENANCE" \
+    --env "SEKAIPOP_BUILD_GIT_COMMIT=$BUILD_GIT_COMMIT" \
     "$IMAGE_TAG" 2>&1 | tee "$BUILD_LOG"
 
 python3 "$ROOT/tools/fedora-hyprland-host-manifest.py" \
