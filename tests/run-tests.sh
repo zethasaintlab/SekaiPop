@@ -82,6 +82,7 @@ if bash "$ROOT/tests/test-fedora-power-provider.sh"; then pass 'Fedora power-pro
 if bash "$ROOT/tests/test-deployment-transaction.sh"; then pass 'Deployment staging and rollback regression fixtures'; else fail 'Deployment staging and rollback regression fixtures'; fi
 if bash "$ROOT/tests/test-pacman-safety.sh"; then pass 'Arch pacman synchronization and authorization fixtures'; else fail 'Arch pacman synchronization and authorization fixtures'; fi
 if bash "$ROOT/tests/test-installer-lock.sh"; then pass 'Installer concurrency lock fixtures'; else fail 'Installer concurrency lock fixtures'; fi
+if python3 "$ROOT/tests/test-transaction-journal.py"; then pass 'Durable installer journal integrity and concurrency fixtures'; else fail 'Durable installer journal integrity and concurrency fixtures'; fi
 if bash "$ROOT/tests/test-shader-plan.sh"; then pass 'Qt Shader Tools planning fixtures'; else fail 'Qt Shader Tools planning fixtures'; fi
 if bash "$ROOT/tests/test-power-profile-api.sh"; then pass 'PowerProfiles D-Bus API fixtures'; else fail 'PowerProfiles D-Bus API fixtures'; fi
 if bash "$ROOT/tests/test-hyprland-touchpad-key.sh"; then pass 'Hyprland Lua touchpad key fixtures'; else fail 'Hyprland Lua touchpad key fixtures'; fi
