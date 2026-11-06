@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,6 +15,16 @@ SPEC.loader.exec_module(MODULE)
 
 
 class FedoraCoprProviderTests(unittest.TestCase):
+    def test_lock_rejects_unverified_upstream_endorsement_claim(self):
+        payload = json.loads(MODULE.LOCK_PATH.read_text(encoding="utf-8"))
+        payload["provider"]["upstream_recommended"] = True
+        with tempfile.TemporaryDirectory(prefix="sekaipop-copr-lock-") as temporary:
+            lock_path = Path(temporary) / "lock.json"
+            lock_path.write_text(json.dumps(payload), encoding="utf-8")
+            with patch.object(MODULE, "LOCK_PATH", lock_path):
+                with self.assertRaisesRegex(SystemExit, "trust policy"):
+                    MODULE.load_lock()
+
     def test_repo_content_is_pinned_and_fail_closed(self):
         content = MODULE.expected_repo_content()
         self.assertIn("[sekaipop-copr-lionheartp-hyprland]", content)
