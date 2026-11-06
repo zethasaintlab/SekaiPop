@@ -13,7 +13,7 @@
     "package_gpgcheck": true,
     "repository_gpgcheck": false,
     "sslverify": true,
-    "upstream_recommended": true,
+    "upstream_recommended": false,
     "official_fedora_repository": false
   },
   "releases": {
