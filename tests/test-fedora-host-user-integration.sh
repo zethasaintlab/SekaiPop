@@ -70,8 +70,9 @@ if bash "$SCRIPT" remove "$PREFIX" >/dev/null 2>&1; then
     echo '[FAIL] unrelated user unit symlink was removed silently'
     exit 1
 fi
-[[ ! -e "$REMOVE_CONFIG/systemd/user/hyprland-session.target" ]]
+[[ -L "$REMOVE_CONFIG/systemd/user/hyprland-session.target" ]]
+[[ "$(readlink "$REMOVE_CONFIG/systemd/user/hyprland-session.target")" == "$PREFIX/lib64/systemd/user/hyprland-session.target" ]]
 [[ -L "$REMOVE_CONFIG/systemd/user/xdg-desktop-portal-hyprland.service" ]]
 [[ "$(readlink "$REMOVE_CONFIG/systemd/user/xdg-desktop-portal-hyprland.service")" == "$TMP/unrelated.service" ]]
 
-echo '[PASS] Fedora Hyprland user systemd integration is idempotent and preserves conflicting user units'
+echo '[PASS] Fedora Hyprland user systemd integration is idempotent, conflict-safe, and all-or-nothing on removal'
