@@ -67,8 +67,8 @@ def inventory(root: Path, runtime_prefix: Path) -> list[dict]:
             elif stat.S_ISDIR(metadata.st_mode):
                 if mode & 0o6000:
                     fail(f"setuid/setgid mode is forbidden: {relative}")
-                if mode & 0o002:
-                    fail(f"world-writable provider artifact is forbidden: {relative}")
+                if mode & 0o022:
+                    fail(f"group/world-writable provider artifact is forbidden: {relative}")
                 entries.append({"path": relative, "type": "directory", "mode": mode})
                 pending.append(path)
             elif stat.S_ISREG(metadata.st_mode):
@@ -103,6 +103,8 @@ def verify(root: Path, runtime_prefix: Path, fedora_release: str, version: str, 
         data = json.loads(manifest.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         fail(f"manifest cannot be parsed: {error}")
+    if not isinstance(data, dict):
+        fail("manifest root must be a JSON object")
     expected = {
         "schema": "sekaipop-fedora-hyprland-install-manifest-v1",
         "provider": "sekaipop-managed-source",
@@ -174,6 +176,11 @@ def main() -> None:
             os.fsync(stream.fileno())
         os.chmod(temporary, 0o600)
         os.link(temporary, output)
+        directory_fd = os.open(root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
     except FileExistsError:
         fail("manifest path was created concurrently")
     finally:
