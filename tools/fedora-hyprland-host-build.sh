@@ -30,7 +30,7 @@ HYPRLAND_VERSION=0.57.1
 HYPRLAND_COMMIT=acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9
 PORTAL_VERSION=1.5.0
 PORTAL_COMMIT=d1467fea8d1895cb7835829c2fbb271a0d37760a
-BASE_IMAGE_REF="$(python3 -c 'import json,sys; data=json.load(open(sys.argv[1], encoding="utf-8")); print(data["targets"][sys.argv[2]]["image"])' "$ROOT/tools/fedora-hyprland-base-images.lock.json" "$FEDORA_RELEASE")"
+BASE_IMAGE_REF="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); s=d.get("source", {}); expected=("sekaipop-fedora-hyprland-base-image-lock-v1", "0.57.1", "acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9", "1.5.0", "d1467fea8d1895cb7835829c2fbb271a0d37760a"); actual=(d.get("schema"), s.get("hyprland_version"), s.get("hyprland_commit"), s.get("portal_version"), s.get("portal_commit")); sys.exit("base-image lock source identity mismatch") if actual != expected else None; print(d["targets"][sys.argv[2]]["image"])' "$ROOT/tools/fedora-hyprland-base-images.lock.json" "$FEDORA_RELEASE")"
 [[ "$BASE_IMAGE_REF" =~ ^docker\.io/library/fedora@sha256:[0-9a-f]{64}$ ]] || {
     printf 'Pinned Fedora base-image lock is missing or invalid.\n' >&2
     exit 1
