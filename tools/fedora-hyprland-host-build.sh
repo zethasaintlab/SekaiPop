@@ -73,12 +73,21 @@ CONTAINER_PREFIX="$CONTAINER_RELEASE_ROOT/$RELEASE_ID"
 printf 'Building Hyprland %s (%s) for Fedora %s in a rootless, network-isolated container.\n' \
     "$HYPRLAND_VERSION" "$HYPRLAND_COMMIT" "$FEDORA_RELEASE"
 BUILD_LOG="$STAGE_ROOT/build.log"
-podman run --rm --network none \
-    --volume "$STAGE_ROOT:$CONTAINER_RELEASE_ROOT:Z" \
+CONTAINER_NAME="sekaipop-hyprland-build-$UID-$"
+podman create --name "$CONTAINER_NAME" --network none \
     --env "SEKAIPOP_HYPR_PREFIX=$CONTAINER_PREFIX" \
     --env "SEKAIPOP_PROVENANCE_OUTPUT=$CONTAINER_PREFIX/BUILD-PROVENANCE" \
     --env "SEKAIPOP_BUILD_GIT_COMMIT=$BUILD_GIT_COMMIT" \
-    "$IMAGE_TAG" 2>&1 | tee "$BUILD_LOG"
+    "$IMAGE_TAG" >/dev/null
+if podman start --attach "$CONTAINER_NAME" 2>&1 | tee "$BUILD_LOG"; then
+    podman cp "$CONTAINER_NAME:$CONTAINER_PREFIX" "$STAGE_ROOT"
+    podman rm "$CONTAINER_NAME" >/dev/null
+else
+    status=$?
+    printf 'Hyprland build container failed (exit %s); container %s and log %s were retained for diagnostics.\\n' \
+        "$status" "$CONTAINER_NAME" "$BUILD_LOG" >&2
+    exit "$status"
+fi
 
 python3 "$ROOT/tools/fedora-hyprland-host-manifest.py" \
     "$STAGE_ROOT/$RELEASE_ID" \
