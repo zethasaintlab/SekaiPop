@@ -42,6 +42,8 @@ def inventory(root: Path, runtime_prefix: Path) -> list[dict]:
         for child in children:
             path = Path(child.path)
             relative = path.relative_to(root).as_posix()
+            if relative == "INSTALL-MANIFEST.json":
+                continue
             try:
                 metadata = path.lstat()
             except OSError as error:
@@ -85,6 +87,38 @@ def inventory(root: Path, runtime_prefix: Path) -> list[dict]:
     return entries
 
 
+def verify(root: Path, runtime_prefix: Path, fedora_release: str, version: str, commit: str) -> int:
+    manifest = root / "INSTALL-MANIFEST.json"
+    try:
+        metadata = manifest.lstat()
+    except OSError as error:
+        fail(f"manifest is missing: {error}")
+    if not stat.S_ISREG(metadata.st_mode) or stat.S_IMODE(metadata.st_mode) != 0o600:
+        fail("manifest must be a regular mode-0600 file")
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        fail(f"manifest cannot be parsed: {error}")
+    expected = {
+        "schema": "sekaipop-fedora-hyprland-install-manifest-v1",
+        "provider": "sekaipop-managed-source",
+        "fedora_release": fedora_release,
+        "architecture": "x86_64",
+        "hyprland_version": version,
+        "hyprland_commit": commit,
+        "prefix": str(runtime_prefix),
+    }
+    for key, value in expected.items():
+        if data.get(key) != value:
+            fail(f"manifest field {key!r} does not match the expected value")
+    if not isinstance(data.get("files"), list):
+        fail("manifest file inventory is missing or malformed")
+    actual = inventory(root, runtime_prefix)
+    if data["files"] != actual:
+        fail("provider files do not match the recorded ownership manifest")
+    return len(actual)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("prefix")
@@ -92,6 +126,7 @@ def main() -> None:
     parser.add_argument("--hyprland-version", required=True)
     parser.add_argument("--hyprland-commit", required=True)
     parser.add_argument("--runtime-prefix", required=True)
+    parser.add_argument("--verify", action="store_true")
     args = parser.parse_args()
 
     root_arg = Path(args.prefix)
@@ -107,6 +142,11 @@ def main() -> None:
         fail("Hyprland executable is missing")
     if not (root / "libexec" / "xdg-desktop-portal-hyprland").is_file():
         fail("Hyprland portal executable is missing")
+
+    if args.verify:
+        count = verify(root, runtime_prefix, args.fedora_release, args.hyprland_version, args.hyprland_commit)
+        print(f"FEDORA_HOST_MANIFEST_VERIFIED\\t{count} entries\\t{root}")
+        return
 
     output = root / "INSTALL-MANIFEST.json"
     if output.exists() or output.is_symlink():
