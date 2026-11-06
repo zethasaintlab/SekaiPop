@@ -17,7 +17,7 @@ class FedoraCoprProviderLockTests(unittest.TestCase):
         self.assertEqual(provider["id"], "lionheartp/Hyprland")
         self.assertEqual(provider["repo_id"], "sekaipop-copr-lionheartp-hyprland")
         self.assertFalse(provider["official_fedora_repository"])
-        self.assertTrue(provider["upstream_recommended"])
+        self.assertFalse(provider["upstream_recommended"])
         self.assertTrue(provider["package_gpgcheck"])
         self.assertFalse(provider["repository_gpgcheck"])
         self.assertTrue(provider["sslverify"])
