@@ -469,15 +469,18 @@ Expected Hyprland values:
 
 The source-build smoke uses an absolute private install prefix and validates each CMake install manifest artifact-by-artifact, including symlink-resolved paths. It does **not** use `DESTDIR`; do not infer that a staging-root installation or a host deployment has been tested. `CMAKE_INSTALL_FULL_LIBDIR` is the fully expanded install destination; inspect generated install scripts and the actual manifest in addition to the cache's relative/absolute libdir setting.
 
-Check the actual target and ensure no host-level destination was populated by the container build:
+Check the actual target and every generated CMake install manifest:
 
 ```bash
 test -s "$EVIDENCE/prefix/lib64/systemd/user/hyprland-session.target"
-test ! -e /lib64/systemd/user/hyprland-session.target
-test ! -e /usr/lib/systemd/user/hyprland-session.target
+while IFS= read -r manifest; do
+  awk -v prefix='/opt/sekaipop/prefix/' \
+    'index($0, prefix) != 1 { print "OUTSIDE PRIVATE PREFIX: " $0; bad = 1 } END { exit bad }' \
+    "$manifest"
+done < <(find "$EVIDENCE/work" -type f -name install_manifest.txt -print)
 ```
 
-The final two checks are meaningful only inside the disposable VM after confirming those paths were absent before the test. Do not delete or modify any pre-existing host file to make these checks pass. The container's private prefix is the authoritative artifact location.
+Expected: every installed artifact path begins with `/opt/sekaipop/prefix/`; the dedicated validator additionally resolves symlinks and rejects paths that escape the prefix. The build container receives no host system-directory bind mounts, so its install commands cannot write into the VM's `/usr`, `/lib`, or `/etc` trees. The container's private prefix is the authoritative artifact location.
 
 ### 11.4 Verify ELF and runtime-library checks
 
