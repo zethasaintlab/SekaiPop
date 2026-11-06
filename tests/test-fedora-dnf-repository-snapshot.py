@@ -61,7 +61,8 @@ class DnfRepositorySnapshotTests(unittest.TestCase):
     def test_missing_repository_config_fails_closed(self):
         result = self.run_snapshot([
             {"id": "fedora", "is_enabled": True,
-             "repo_file_path": str(self.root / "missing.repo")}
+             "repo_file_path": str(self.root / "missing.repo"),
+             "revision": "20261106", "timestamp": 1793923200}
         ])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("cannot be resolved", result.stderr)
