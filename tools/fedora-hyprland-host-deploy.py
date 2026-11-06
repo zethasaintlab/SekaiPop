@@ -318,7 +318,53 @@ def publish(stage: Path, release: str, sudo_uid: int) -> None:
         os.close(lock_fd)
 
 
-def remove(release: str) -> None:
+def invoking_user_unit_directory(sudo_uid: int, supplied: str | None) -> Path:
+    if supplied:
+        path = Path(supplied)
+    else:
+        try:
+            home = Path(pwd.getpwuid(sudo_uid).pw_dir)
+        except KeyError:
+            fail(f"cannot resolve the invoking user's home directory for UID {sudo_uid}")
+        path = home / ".config" / "systemd" / "user"
+    if not path.is_absolute():
+        fail("user systemd unit directory must be an absolute path")
+    if path.exists() or path.is_symlink():
+        metadata = path.lstat()
+        if path.is_symlink() or not stat.S_ISDIR(metadata.st_mode):
+            fail(f"user systemd unit directory is not a real directory: {path}")
+        if metadata.st_uid != sudo_uid:
+            fail(f"user systemd unit directory is not owned by invoking UID {sudo_uid}: {path}")
+        if stat.S_IMODE(metadata.st_mode) & 0o022:
+            fail(f"user systemd unit directory is group/world writable: {path}")
+    return path
+
+
+def assert_no_user_unit_links(release_path: Path, sudo_uid: int, supplied_unit_dir: str | None) -> None:
+    unit_dir = invoking_user_unit_directory(sudo_uid, supplied_unit_dir)
+    if not unit_dir.is_dir():
+        return
+    expected_sources = (
+        release_path / "lib64" / "systemd" / "user" / "hyprland-session.target",
+        release_path / "lib" / "systemd" / "user" / "xdg-desktop-portal-hyprland.service",
+    )
+    for name, source in zip(
+        ("hyprland-session.target", "xdg-desktop-portal-hyprland.service"),
+        expected_sources,
+    ):
+        destination = unit_dir / name
+        if not destination.is_symlink():
+            continue
+        try:
+            target = destination.resolve(strict=False)
+            expected = source.resolve(strict=False)
+        except OSError as error:
+            fail(f"cannot safely inspect user systemd unit link {destination}: {error}")
+        if target == expected:
+            fail(f"remove the invoking user's managed systemd unit link before removing this release: {destination}")
+
+
+def remove(release: str, sudo_uid: int, user_unit_dir: str | None) -> None:
     ensure_secure_directory(RELEASES)
     lock_fd = provider_lock()
     try:
@@ -327,6 +373,7 @@ def remove(release: str) -> None:
             fail("unregister the SekaiPop display-manager session before removing its release")
         if destination.is_symlink() or not destination.is_dir():
             fail(f"managed release is missing or is not a real directory: {destination}")
+        assert_no_user_unit_links(destination, sudo_uid, user_unit_dir)
         metadata = destination.lstat()
         if metadata.st_uid != 0:
             fail("managed release is not root-owned")
@@ -343,6 +390,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=("publish", "register-session", "unregister-session", "remove"))
     parser.add_argument("--stage")
+    parser.add_argument("--user-unit-dir")
     args = parser.parse_args()
     require_root()
     release = host_release()
@@ -360,7 +408,7 @@ def main() -> None:
     elif args.action == "unregister-session":
         unregister_session(release)
     else:
-        remove(release)
+        remove(release, sudo_uid, args.user_unit_dir)
 
 
 if __name__ == "__main__":
