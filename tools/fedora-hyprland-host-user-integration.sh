@@ -114,11 +114,11 @@ for index in "${!sources[@]}"; do
     destination="${destinations[index]}"
     if [[ -L "$destination" ]]; then
         [[ "$(readlink -- "$destination")" == "$source" ]] || {
-            printf 'Preserving unrelated systemd user unit symlink: %s\\n' "$destination" >&2
+            printf 'Preserving unrelated systemd user unit symlink: %s\n' "$destination" >&2
             exit 1
         }
     elif [[ -e "$destination" ]]; then
-        printf 'Preserving unrelated systemd user unit: %s\\n' "$destination" >&2
+        printf 'Preserving unrelated systemd user unit: %s\n' "$destination" >&2
         exit 1
     fi
 done
@@ -131,7 +131,7 @@ for index in "${!sources[@]}"; do
     fi
 done
 if ! systemctl --user daemon-reload; then
-    printf 'Systemd user manager could not reload after removing managed unit links.\\n' >&2
+    printf 'Systemd user manager could not reload after removing managed unit links.\n' >&2
     exit 1
 fi
-printf 'FEDORA_HYPRLAND_USER_UNITS_REMOVED\\t%s\\n' "$UNIT_DIR"
+printf 'FEDORA_HYPRLAND_USER_UNITS_REMOVED\t%s\n' "$UNIT_DIR"
