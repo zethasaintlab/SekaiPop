@@ -53,6 +53,21 @@ def main() -> None:
         assert files["lib"]["type"] == "symlink"
         assert files["lib"]["target"] == "lib64"
 
+        verify_command = [
+            sys.executable, str(SCRIPT), str(prefix),
+            "--fedora-release", "44",
+            "--hyprland-version", "0.57.1",
+            "--hyprland-commit", "a" * 40,
+            "--runtime-prefix", str(RUNTIME_PREFIX),
+            "--verify",
+        ]
+        verified = subprocess.run(verify_command, text=True, capture_output=True, check=False)
+        assert verified.returncode == 0, verified.stderr
+        (prefix / "bin" / "Hyprland").write_text("tampered\\n", encoding="utf-8")
+        tampered = subprocess.run(verify_command, text=True, capture_output=True, check=False)
+        assert tampered.returncode != 0
+        assert "do not match" in tampered.stderr
+
         collision = run(prefix)
         assert collision.returncode != 0
         assert "refusing to overwrite" in collision.stderr
