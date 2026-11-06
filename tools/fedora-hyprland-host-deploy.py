@@ -229,11 +229,11 @@ def main() -> None:
     args = parser.parse_args()
     require_root()
     release = host_release()
-    ensure_secure_directory(PROVIDER_ROOT)
     sudo_uid_text = os.environ.get("SUDO_UID")
-    if not sudo_uid_text or not sudo_uid_text.isdigit():
-        fail("SUDO_UID is missing; invoke this helper through sudo from the normal user account")
+    if not sudo_uid_text or not sudo_uid_text.isdigit() or int(sudo_uid_text) == 0:
+        fail("SUDO_UID is missing or invalid; invoke this helper through sudo from the normal user account")
     sudo_uid = int(sudo_uid_text)
+    ensure_secure_directory(PROVIDER_ROOT)
     if args.action == "publish":
         if not args.stage:
             fail("publish requires --stage")
