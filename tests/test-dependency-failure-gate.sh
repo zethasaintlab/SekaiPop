@@ -8,6 +8,7 @@ source "$ROOT/installer/core/main.sh"
 tmpdir="$(mktemp -d)"
 export HOME="$tmpdir/home" XDG_STATE_HOME="$tmpdir/state"
 mkdir -p "$HOME"
+SP_STATE_DIR="$XDG_STATE_HOME/sekaipop"
 marker="$tmpdir/deployment-started"
 trap 'rm -rf -- "$tmpdir"' EXIT
 
