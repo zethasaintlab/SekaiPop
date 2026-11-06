@@ -70,6 +70,7 @@ def main():
         malformed.write_text('{"schema_version":999}')
         malformed.chmod(0o600)
         run("event", malformed, "unsafe", expected=1)
+        malformed.unlink()
 
         stale = base / "state" / "installer-transactions" / "tx-stale.json"
         run("init", stale, "tx-stale")
