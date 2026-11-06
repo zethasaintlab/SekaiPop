@@ -32,9 +32,13 @@ def secure_parent(path: Path) -> None:
         fail("journal path must be absolute")
     parent = path.parent
     parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    current = Path(parent.anchor)
+    for component in parent.parts[1:]:
+        current = current / component
+        info = current.lstat()
+        if not stat.S_IS_DIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
+            fail(f"journal path contains a non-directory or symlink component: {current}")
     info = parent.lstat()
-    if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
-        fail(f"journal parent is not a real directory: {parent}")
     if info.st_uid != os.geteuid():
         fail(f"journal parent is not owned by the current user: {parent}")
     os.chmod(parent, 0o700)
