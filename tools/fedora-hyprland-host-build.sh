@@ -26,6 +26,13 @@ rootless="$(podman info --format '{{.Host.Security.Rootless}}')"
     exit 2
 }
 
+source "$ROOT/installer/providers/fedora/host-provider.sh"
+SP_DISTRO_ID="$ID"
+SP_DISTRO_VERSION="$FEDORA_RELEASE"
+SP_ARCH="$(uname -m)"
+SP_INIT=systemd
+sp_fedora_host_provider_preflight /var/tmp
+
 HYPRLAND_VERSION=0.57.1
 HYPRLAND_COMMIT=acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9
 PORTAL_VERSION=1.5.0
