@@ -44,7 +44,7 @@ podman build --platform linux/amd64 --pull=never \
 HYPRLAND_VERSION=0.57.1
 HYPRLAND_COMMIT=acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9
 RELEASE_ID="$HYPRLAND_VERSION-${HYPRLAND_COMMIT:0:12}"
-STAGE_PARENT="${TMPDIR:-/var/tmp}/sekaipop-fedora-provider-$UID"
+STAGE_PARENT="/var/tmp/sekaipop-fedora-provider-$UID"
 [[ ! -L "$STAGE_PARENT" ]] || {
     printf 'Refusing symlinked provider staging directory: %s\n' "$STAGE_PARENT" >&2
     exit 1
