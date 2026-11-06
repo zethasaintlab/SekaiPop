@@ -26,22 +26,23 @@ rootless="$(podman info --format '{{.Host.Security.Rootless}}')"
     exit 2
 }
 
-BASE_TAG="docker.io/library/fedora:$FEDORA_RELEASE"
-podman pull --tls-verify=true --platform linux/amd64 "$BASE_TAG"
-BASE_IMAGE_REF="$(podman image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$BASE_TAG" |
-    awk -v prefix="docker.io/library/fedora@" 'index($0, prefix) == 1 && $0 ~ /@sha256:[0-9a-f]{64}$/ {print; exit}')"
+HYPRLAND_VERSION=0.57.1
+HYPRLAND_COMMIT=acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9
+BASE_IMAGE_REF="$(python3 -c 'import json,sys; data=json.load(open(sys.argv[1], encoding="utf-8")); print(data["targets"][sys.argv[2]]["image"])' "$ROOT/tools/fedora-hyprland-base-images.lock.json" "$FEDORA_RELEASE")"
 [[ "$BASE_IMAGE_REF" =~ ^docker\.io/library/fedora@sha256:[0-9a-f]{64}$ ]] || {
-    printf 'Could not resolve the official Fedora image to an immutable digest.\n' >&2
+    printf 'Pinned Fedora base-image lock is missing or invalid.\n' >&2
     exit 1
 }
+podman pull --tls-verify=true --platform linux/amd64 "$BASE_IMAGE_REF"
+podman image inspect "$BASE_IMAGE_REF" >/dev/null
 
 command -v git >/dev/null 2>&1 || {
-    printf 'Git is required to record the exact SekaiPop build revision.\\n' >&2
+    printf 'Git is required to record the exact SekaiPop build revision.\n' >&2
     exit 2
 }
 BUILD_GIT_COMMIT="$(git -C "$ROOT" rev-parse --verify HEAD)"
 [[ "$BUILD_GIT_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
-    printf 'Could not determine the full SekaiPop source commit.\\n' >&2
+    printf 'Could not determine the full SekaiPop source commit.\n' >&2
     exit 1
 }
 
@@ -51,8 +52,6 @@ podman build --platform linux/amd64 --pull=never \
     --file "$ROOT/tools/fedora-hyprland-build-smoke.Dockerfile" \
     --tag "$IMAGE_TAG" "$ROOT"
 
-HYPRLAND_VERSION=0.57.1
-HYPRLAND_COMMIT=acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9
 RELEASE_ID="$HYPRLAND_VERSION-${HYPRLAND_COMMIT:0:12}"
 STAGE_PARENT="/var/tmp/sekaipop-fedora-provider-$UID"
 [[ ! -L "$STAGE_PARENT" ]] || {
@@ -73,7 +72,7 @@ CONTAINER_PREFIX="$CONTAINER_RELEASE_ROOT/$RELEASE_ID"
 printf 'Building Hyprland %s (%s) for Fedora %s in a rootless, network-isolated container.\n' \
     "$HYPRLAND_VERSION" "$HYPRLAND_COMMIT" "$FEDORA_RELEASE"
 BUILD_LOG="$STAGE_ROOT/build.log"
-CONTAINER_NAME="sekaipop-hyprland-build-$UID-$"
+CONTAINER_NAME="sekaipop-hyprland-build-${UID}-${BASHPID}"
 podman create --name "$CONTAINER_NAME" --network none \
     --env "SEKAIPOP_HYPR_PREFIX=$CONTAINER_PREFIX" \
     --env "SEKAIPOP_PROVENANCE_OUTPUT=$CONTAINER_PREFIX/BUILD-PROVENANCE" \
@@ -85,7 +84,7 @@ if podman start --attach "$CONTAINER_NAME" 2>&1 | tee "$BUILD_LOG"; then
     podman rm "$CONTAINER_NAME" >/dev/null
 else
     status=$?
-    printf 'Hyprland build container failed (exit %s); container %s and log %s were retained for diagnostics.\\n' \
+    printf 'Hyprland build container failed (exit %s); container %s and log %s were retained for diagnostics.\n' \
         "$status" "$CONTAINER_NAME" "$BUILD_LOG" >&2
     exit "$status"
 fi
