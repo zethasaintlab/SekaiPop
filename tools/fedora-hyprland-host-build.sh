@@ -54,7 +54,7 @@ podman build --platform linux/amd64 --pull=never \
     --file "$ROOT/tools/fedora-hyprland-build-smoke.Dockerfile" \
     --tag "$IMAGE_TAG" "$ROOT"
 
-RELEASE_ID="$HYPRLAND_VERSION-${HYPRLAND_COMMIT:0:12}"
+RELEASE_ID="$HYPRLAND_VERSION-${HYPRLAND_COMMIT:0:12}-portal-$PORTAL_VERSION-${PORTAL_COMMIT:0:12}"
 STAGE_PARENT="/var/tmp/sekaipop-fedora-provider-$UID"
 [[ ! -L "$STAGE_PARENT" ]] || {
     printf 'Refusing symlinked provider staging directory: %s\n' "$STAGE_PARENT" >&2
