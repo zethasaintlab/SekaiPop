@@ -279,6 +279,8 @@ def validate_existing_repo(path: Path, release: str) -> bool:
         "enabled": "1",
         "sslverify": "1",
         "skip_if_unavailable": "0",
+        "type": "rpm-md",
+        "enabled_metadata": "1",
     }
     for key, value in expected_values.items():
         if section.get(key, "").strip() != value:
@@ -294,7 +296,9 @@ def validate_existing_repo(path: Path, release: str) -> bool:
 
 def find_existing_repo(release: str) -> Path | None:
     for path in sorted(REPO_DIR.glob("*.repo")):
-        if path.is_symlink() or not path.is_file():
+        if path.is_symlink():
+            fail(f"symlinked DNF repository file is not accepted: {path}")
+        if not path.is_file():
             continue
         if validate_existing_repo(path, release):
             return path
@@ -327,6 +331,9 @@ def install_repo(key_path: Path, release: str, sudo_uid: int) -> None:
     if KEY_FILE.exists() or KEY_FILE.is_symlink():
         if KEY_FILE.is_symlink() or not KEY_FILE.is_file():
             fail(f"existing signing-key path is not a regular file: {KEY_FILE}")
+        key_metadata = KEY_FILE.lstat()
+        if key_metadata.st_uid != 0 or stat.S_IMODE(key_metadata.st_mode) != 0o644:
+            fail(f"existing signing-key file has unsafe ownership or permissions: {KEY_FILE}")
         if key_fingerprint(KEY_FILE) != fingerprint:
             fail(f"existing signing-key file has a different fingerprint; preserving {KEY_FILE}")
     else:
@@ -380,7 +387,21 @@ def require_rpm_owner(path: str, package: str) -> None:
         fail(f"{path} is not owned by the expected RPM {package}; received {owner}")
 
 
+def validate_repo_state(release: str) -> None:
+    state = load_state()
+    if not state or state.get("fedora_release") != release or state.get("repo_id") != expected_repo_id():
+        fail("managed COPR repository state is missing or does not match this host")
+    repo_path = Path(state.get("repo_file", ""))
+    if repo_path.is_symlink() or not repo_path.is_file() or not validate_existing_repo(repo_path, release):
+        fail("managed COPR repository configuration is missing or no longer satisfies the pinned policy")
+    if state.get("key_fingerprint") != load_lock()["provider"]["key_fingerprint"]:
+        fail("managed COPR state has an unexpected signing-key fingerprint")
+    if not KEY_FILE.is_file() or KEY_FILE.is_symlink() or key_fingerprint(KEY_FILE) != state["key_fingerprint"]:
+        fail("managed COPR signing-key file is missing or has changed")
+
+
 def validate_installed_provider(release: str) -> None:
+    validate_repo_state(release)
     installed_package_query("hyprland", release)
     installed_package_query("xdg-desktop-portal-hyprland", release, portal=True)
     required = (
@@ -417,6 +438,7 @@ def register_session(release: str) -> None:
 
 
 def unregister_session() -> None:
+    ensure_secure_directory(SESSION_DIR)
     if not SESSION_ENTRY.exists() and not SESSION_ENTRY.is_symlink():
         print(f"FEDORA_COPR_SESSION_ALREADY_UNREGISTERED\t{SESSION_ENTRY}")
         return
@@ -433,6 +455,7 @@ def unregister_session() -> None:
 
 
 def remove_repo(release: str) -> None:
+    ensure_secure_directory(REPO_DIR)
     for package in ("hyprland", "xdg-desktop-portal-hyprland"):
         result = subprocess.run(["rpm", "-q", package], text=True, capture_output=True, check=False)
         if result.returncode == 0:
