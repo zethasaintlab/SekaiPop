@@ -170,7 +170,7 @@ sp_plan_and_install_dependencies() {
         sp_error 'Package installation cancelled.'
         return 1
     fi
-    sp_transaction_event native_package_transaction.started "backend=$SP_BACKEND packages=${SP_INSTALL_PKGS[*]}"
+    sp_transaction_event native_package_transaction.started "backend=$SP_BACKEND package_count=${#SP_INSTALL_PKGS[@]}"
     if pm_install "${SP_INSTALL_PKGS[@]}"; then
         :
     else
