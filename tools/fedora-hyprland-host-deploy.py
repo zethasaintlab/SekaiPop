@@ -22,6 +22,8 @@ PORTAL_COMMIT = "d1467fea8d1895cb7835829c2fbb271a0d37760a"
 RELEASE_ID = f"{VERSION}-{COMMIT[:12]}-portal-{PORTAL_VERSION}-{PORTAL_COMMIT[:12]}"
 RELEASES = Path("/opt/sekaipop/providers/hyprland/releases")
 PROVIDER_ROOT = Path("/opt/sekaipop/providers/hyprland")
+SESSION_DIR = Path("/usr/share/wayland-sessions")
+SESSION_ENTRY = SESSION_DIR / "sekaipop-hyprland.desktop"
 MANIFEST_TOOL = Path(__file__).with_name("fedora-hyprland-host-manifest.py")
 
 
@@ -175,6 +177,117 @@ def rename_noreplace(source: Path, destination: Path) -> None:
         fail(f"atomic release publication failed: {os.strerror(error)}")
 
 
+def expected_session_entry(release_path: Path) -> str:
+    launcher = release_path / "bin" / "sekaipop-hyprland-session"
+    return (
+        "[Desktop Entry]\\n"
+        "Name=SekaiPop (Hyprland)\\n"
+        "Comment=SekaiPop managed Hyprland desktop session\\n"
+        f"Exec={launcher}\\n"
+        f"TryExec={launcher}\\n"
+        "Type=Application\\n"
+        "DesktopNames=Hyprland\\n"
+        "Keywords=tiling;wayland;compositor;sekaipop;\\n"
+    )
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def validate_published_release(release: str) -> Path:
+    release_path = RELEASES / RELEASE_ID
+    if release_path.is_symlink() or not release_path.is_dir():
+        fail(f"managed release is missing or is not a real directory: {release_path}")
+    metadata = release_path.lstat()
+    if metadata.st_uid != 0:
+        fail("managed release is not root-owned")
+    run_manifest(release_path, release, release_path)
+    validate_provenance(release_path, release)
+    return release_path
+
+
+def register_session(release: str) -> None:
+    ensure_secure_directory(SESSION_DIR)
+    release_path = validate_published_release(release)
+    source_entry = release_path / "share" / "wayland-sessions" / "sekaipop-hyprland.desktop"
+    launcher = release_path / "bin" / "sekaipop-hyprland-session"
+    expected = expected_session_entry(release_path)
+    for path in (source_entry, launcher):
+        try:
+            metadata = path.lstat()
+        except OSError as error:
+            fail(f"required session artifact is missing: {path}: {error}")
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0:
+            fail(f"required session artifact is not a root-owned regular file: {path}")
+    if stat.S_IMODE(source_entry.stat().st_mode) != 0o644:
+        fail("staged session desktop entry must have mode 0644")
+    if not os.access(launcher, os.X_OK):
+        fail("staged session launcher is not executable")
+    if source_entry.read_text(encoding="utf-8") != expected:
+        fail("staged session desktop entry does not match the managed release")
+
+    lock_fd = provider_lock()
+    temporary = None
+    try:
+        if SESSION_ENTRY.exists() or SESSION_ENTRY.is_symlink():
+            if SESSION_ENTRY.is_symlink() or not SESSION_ENTRY.is_file():
+                fail(f"refusing to overwrite an existing session entry: {SESSION_ENTRY}")
+            metadata = SESSION_ENTRY.lstat()
+            if metadata.st_uid == 0 and stat.S_IMODE(metadata.st_mode) == 0o644 and SESSION_ENTRY.read_text(encoding="utf-8") == expected:
+                print(f"FEDORA_HYPRLAND_SESSION_ALREADY_REGISTERED\\t{SESSION_ENTRY}")
+                return
+            fail(f"conflicting session entry preserved: {SESSION_ENTRY}")
+
+        descriptor, temporary_name = tempfile.mkstemp(prefix=".sekaipop-hyprland.", dir=SESSION_DIR)
+        temporary = Path(temporary_name)
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8", newline="\\n") as stream:
+                stream.write(expected)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.chmod(temporary, 0o644)
+            rename_noreplace(temporary, SESSION_ENTRY)
+            temporary = None
+            fsync_directory(SESSION_DIR)
+        except BaseException:
+            if temporary is not None and temporary.exists():
+                temporary.unlink()
+            raise
+        print(f"FEDORA_HYPRLAND_SESSION_REGISTERED\\t{SESSION_ENTRY}")
+    finally:
+        if temporary is not None and temporary.exists():
+            temporary.unlink()
+        os.close(lock_fd)
+
+
+def unregister_session(release: str) -> None:
+    ensure_secure_directory(SESSION_DIR)
+    release_path = validate_published_release(release)
+    expected = expected_session_entry(release_path)
+    lock_fd = provider_lock()
+    try:
+        if not SESSION_ENTRY.exists() and not SESSION_ENTRY.is_symlink():
+            print(f"FEDORA_HYPRLAND_SESSION_ALREADY_UNREGISTERED\\t{SESSION_ENTRY}")
+            return
+        if SESSION_ENTRY.is_symlink() or not SESSION_ENTRY.is_file():
+            fail(f"refusing to remove a non-regular session entry: {SESSION_ENTRY}")
+        metadata = SESSION_ENTRY.lstat()
+        if metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) != 0o644:
+            fail("session entry ownership or permissions changed; preserving it")
+        if SESSION_ENTRY.read_text(encoding="utf-8") != expected:
+            fail("session entry content changed; preserving it")
+        SESSION_ENTRY.unlink()
+        fsync_directory(SESSION_DIR)
+        print(f"FEDORA_HYPRLAND_SESSION_UNREGISTERED\\t{SESSION_ENTRY}")
+    finally:
+        os.close(lock_fd)
+
+
 def publish(stage: Path, release: str, sudo_uid: int) -> None:
     stage = validate_stage(stage, release, sudo_uid)
     ensure_secure_directory(RELEASES)
@@ -197,11 +310,7 @@ def publish(stage: Path, release: str, sudo_uid: int) -> None:
         validate_provenance(temporary, release)
         rename_noreplace(temporary, destination)
         temporary = None
-        parent_fd = os.open(RELEASES, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-        try:
-            os.fsync(parent_fd)
-        finally:
-            os.close(parent_fd)
+        fsync_directory(RELEASES)
         print(f"FEDORA_HYPRLAND_RELEASE_PUBLISHED\t{destination}")
     finally:
         if temporary is not None and temporary.exists():
@@ -214,6 +323,8 @@ def remove(release: str) -> None:
     lock_fd = provider_lock()
     try:
         destination = RELEASES / RELEASE_ID
+        if SESSION_ENTRY.exists() or SESSION_ENTRY.is_symlink():
+            fail("unregister the SekaiPop display-manager session before removing its release")
         if destination.is_symlink() or not destination.is_dir():
             fail(f"managed release is missing or is not a real directory: {destination}")
         metadata = destination.lstat()
@@ -222,11 +333,7 @@ def remove(release: str) -> None:
         run_manifest(destination, release, destination)
         validate_provenance(destination, release)
         shutil.rmtree(destination)
-        parent_fd = os.open(RELEASES, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-        try:
-            os.fsync(parent_fd)
-        finally:
-            os.close(parent_fd)
+        fsync_directory(RELEASES)
         print(f"FEDORA_HYPRLAND_RELEASE_REMOVED\t{destination}")
     finally:
         os.close(lock_fd)
@@ -234,7 +341,7 @@ def remove(release: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("publish", "remove"))
+    parser.add_argument("action", choices=("publish", "register-session", "unregister-session", "remove"))
     parser.add_argument("--stage")
     args = parser.parse_args()
     require_root()
@@ -248,6 +355,10 @@ def main() -> None:
         if not args.stage:
             fail("publish requires --stage")
         publish(Path(args.stage), release, sudo_uid)
+    elif args.action == "register-session":
+        register_session(release)
+    elif args.action == "unregister-session":
+        unregister_session(release)
     else:
         remove(release)
 
