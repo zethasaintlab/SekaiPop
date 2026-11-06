@@ -34,14 +34,22 @@ class FedoraCoprProviderTests(unittest.TestCase):
         fingerprint = MODULE.load_lock()["provider"]["key_fingerprint"]
         output = f"pub:::::::::\nfpr:::::::::{fingerprint}:\nuid:::::::::lionheartp_Hyprland:\n"
         result = SimpleNamespace(returncode=0, stdout=output, stderr="")
-        with patch.object(MODULE.subprocess, "run", return_value=result):
-            self.assertEqual(MODULE.key_fingerprint(Path("/tmp/key.gpg")), fingerprint)
+        with tempfile.TemporaryDirectory(prefix="sekaipop-copr-key-") as temporary:
+            key = Path(temporary) / "key.gpg"
+            key.write_bytes(b"fixture signing key")
+            key.chmod(0o600)
+            with patch.object(MODULE.subprocess, "run", return_value=result):
+                self.assertEqual(MODULE.key_fingerprint(key), fingerprint)
 
     def test_key_fingerprint_parser_rejects_missing_fingerprint(self):
         result = SimpleNamespace(returncode=0, stdout="pub:::::::::\nuid:::::::::no fingerprint:\n", stderr="")
-        with patch.object(MODULE.subprocess, "run", return_value=result):
-            with self.assertRaises(SystemExit):
-                MODULE.key_fingerprint(Path("/tmp/key.gpg"))
+        with tempfile.TemporaryDirectory(prefix="sekaipop-copr-key-") as temporary:
+            key = Path(temporary) / "key.gpg"
+            key.write_bytes(b"fixture signing key")
+            key.chmod(0o600)
+            with patch.object(MODULE.subprocess, "run", return_value=result):
+                with self.assertRaises(SystemExit):
+                    MODULE.key_fingerprint(key)
 
     def test_repo_file_accepts_exact_managed_policy(self):
         with tempfile.TemporaryDirectory(prefix="sekaipop-copr-repo-") as temporary:
@@ -78,7 +86,7 @@ class FedoraCoprProviderTests(unittest.TestCase):
         ):
             self.assertEqual(
                 MODULE.installed_package_query("hyprland", "44"),
-                "0.57.1-1.fc44.x86_64",
+                "0:0.57.1-1.fc44.x86_64",
             )
 
     def test_installed_package_rejects_wrong_signing_key(self):
