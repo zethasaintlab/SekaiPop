@@ -27,6 +27,7 @@ def main():
         assert data["events"][0]["name"] == "transaction_started"
         assert data["metadata"]["release"] == "45"
         assert journal.stat().st_mode & 0o777 == 0o600
+        run("recover-check", journal.parent)
 
         run("event", journal, "provider.preflight", "Fedora 45 supported")
         run("event", journal, "podman.validated", "rootless=true")
@@ -69,6 +70,16 @@ def main():
         malformed.write_text('{"schema_version":999}')
         malformed.chmod(0o600)
         run("event", malformed, "unsafe", expected=1)
+
+        stale = base / "state" / "installer-transactions" / "tx-stale.json"
+        run("init", stale, "tx-stale")
+        stale_data = json.loads(stale.read_text())
+        stale_data["pid"] = 99999999
+        stale_data["pid_start_time"] = "1"
+        stale.write_text(json.dumps(stale_data))
+        stale.chmod(0o600)
+        run("recover-check", stale.parent, expected=1)
+        assert json.loads(stale.read_text())["status"] == "needs_recovery"
 
     print("Durable transaction journal fixtures passed.")
 
