@@ -3,6 +3,37 @@
 # This module is intentionally read-only: it never installs Podman, changes repositories,
 # modifies host paths, or starts a privileged container.
 
+SP_FEDORA_HYPRLAND_RELEASE_ID="0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18"
+SP_FEDORA_HYPRLAND_RELEASE_PREFIX="/opt/sekaipop/providers/hyprland/releases/$SP_FEDORA_HYPRLAND_RELEASE_ID"
+SP_FEDORA_HOST_PROVIDER_REQUIRED=0
+SP_FEDORA_HOST_PROVIDER_INSTALLED_BY_TRANSACTION=0
+
+sp_fedora_host_provider_release_exists() {
+    [[ -d "$SP_FEDORA_HYPRLAND_RELEASE_PREFIX" && ! -L "$SP_FEDORA_HYPRLAND_RELEASE_PREFIX" ]]
+}
+
+sp_fedora_host_provider_user_unit_dir() {
+    printf '%s/systemd/user\\n' "$SP_CONFIG_HOME"
+}
+
+sp_fedora_host_provider_ready() {
+    local prefix="$SP_FEDORA_HYPRLAND_RELEASE_PREFIX"
+    local session="/usr/share/wayland-sessions/sekaipop-hyprland.desktop"
+    local unit_dir target portal
+    unit_dir="$(sp_fedora_host_provider_user_unit_dir)"
+    target="$unit_dir/hyprland-session.target"
+    portal="$unit_dir/xdg-desktop-portal-hyprland.service"
+    sp_fedora_host_provider_release_exists || return 1
+    [[ -x "$prefix/bin/Hyprland" && -x "$prefix/bin/sekaipop-hyprland-session" ]] || return 1
+    [[ -f "$prefix/BUILD-PROVENANCE" && -f "$prefix/INSTALL-MANIFEST.json" ]] || return 1
+    [[ -f "$session" && ! -L "$session" ]] || return 1
+    grep -Fxq "Exec=$prefix/bin/sekaipop-hyprland-session" "$session" || return 1
+    grep -Fxq "TryExec=$prefix/bin/sekaipop-hyprland-session" "$session" || return 1
+    [[ -L "$target" && "$(readlink -- "$target")" == "$prefix/lib64/systemd/user/hyprland-session.target" ]] || return 1
+    [[ -L "$portal" && "$(readlink -- "$portal")" == "$prefix/lib/systemd/user/xdg-desktop-portal-hyprland.service" ]] || return 1
+    return 0
+}
+
 sp_fedora_host_provider_supported() {
     [[ "${SP_DISTRO_ID:-}" == fedora &&
        "${SP_DISTRO_VERSION:-}" =~ ^(44|45)$ &&
