@@ -103,5 +103,6 @@ if python3 "$ROOT/tests/test-fedora-hyprland-copr-provider.py"; then pass 'Fedor
 if python3 -m py_compile "$ROOT/tools/fedora-hyprland-copr-provider.py"; then pass 'Fedora COPR provider helper compiles'; else fail 'Fedora COPR provider helper compiles'; fi
 if bash "$ROOT/tests/test-fedora-host-prepare-session.sh"; then pass 'Fedora host session launcher is validated and collision-safe'; else fail 'Fedora host session launcher is validated and collision-safe'; fi
 if bash "$ROOT/tests/test-fedora-host-user-integration.sh"; then pass 'Fedora Hyprland user systemd integration is idempotent and collision-safe'; else fail 'Fedora Hyprland user systemd integration is idempotent and collision-safe'; fi
+if bash "$ROOT/tests/test-source-build-authorization.sh"; then pass 'Source-build authorization is explicit and independent of --yes'; else fail 'Source-build authorization is explicit and independent of --yes'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))
