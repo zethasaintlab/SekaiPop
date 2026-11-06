@@ -9,7 +9,7 @@ sp_transaction_journal_begin() {
         sp_die "An earlier installer transaction is unfinished or requires recovery. Inspect journals in $SP_TRANSACTION_JOURNAL_DIR before retrying."
     SP_TRANSACTION_JOURNAL="$SP_TRANSACTION_JOURNAL_DIR/$SP_TIMESTAMP.journal"
     bash "$SP_ROOT/tools/transaction-journal.sh" init "$SP_TRANSACTION_JOURNAL" "$SP_TIMESTAMP" "$$" \
-        "$SP_DISTRO_ID" "$SP_DISTRO_VERSION" "$SP_BACKEND" "$SP_PROFILE" "$SP_HYPR" ||
+        "${SP_DISTRO_ID:-unknown}" "${SP_DISTRO_VERSION:-unknown}" "${SP_BACKEND:-unknown}" "${SP_PROFILE:-unknown}" "${SP_HYPR:-unknown}" ||
         sp_die 'Could not initialize a durable installer transaction journal.'
     sp_info "Transaction journal: $SP_TRANSACTION_JOURNAL"
 }
