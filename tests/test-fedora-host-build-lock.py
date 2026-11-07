@@ -28,6 +28,8 @@ def main() -> None:
         assert re.fullmatch(r"[0-9a-f]{40}", commit)
         assert commit in builder
         assert commit in fetcher
+    assert r'Refusing existing Lua partial archive: %s\n' in fetcher
+    assert r'Refusing existing Lua partial archive: %s\\n' not in fetcher
     assert "BASE_TAG=" not in builder
     assert "source \"$ROOT/installer/providers/fedora/host-provider.sh\"" in builder
     assert "sp_fedora_host_provider_preflight /var/tmp" in builder
