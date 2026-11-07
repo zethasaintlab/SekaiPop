@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Experimental Fedora host-provider capability checks.
-# This module is intentionally read-only: it never installs Podman, changes repositories,
-# modifies host paths, or starts a privileged container.
+# This module never installs Podman, changes repositories, or modifies host paths.
+# The build driver may run one disposable rootless container against its pinned image.
 
 SP_FEDORA_HYPRLAND_RELEASE_ID="0.57.1-acc1aa0bfd4b-portal-1.5.0-d1467fea8d18"
 SP_FEDORA_HYPRLAND_RELEASE_PREFIX="/opt/sekaipop/providers/hyprland/releases/$SP_FEDORA_HYPRLAND_RELEASE_ID"
@@ -43,9 +43,32 @@ sp_fedora_host_provider_supported() {
 
 sp_fedora_host_provider_rootless_podman() {
     command -v podman >/dev/null 2>&1 || return 1
-    local rootless
+    local rootless helper
     rootless="$(podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null)" || return 1
-    [[ "$rootless" == true ]]
+    [[ "$rootless" == true ]] || return 1
+    for helper in newuidmap newgidmap; do
+        command -v "$helper" >/dev/null 2>&1 || {
+            printf 'Rootless Podman requires %s (provided by Fedora shadow-utils).\n' "$helper" >&2
+            return 1
+        }
+    done
+}
+
+sp_fedora_host_provider_rootless_container_smoke() {
+    local image="${1:-}"
+    [[ "$image" =~ ^docker\.io/library/fedora@sha256:[0-9a-f]{64}$ ]] || {
+        printf 'Refusing a non-immutable or non-official Fedora image for the rootless runtime probe.\n' >&2
+        return 1
+    }
+    command -v podman >/dev/null 2>&1 || {
+        printf 'Podman is unavailable for the rootless runtime probe.\n' >&2
+        return 1
+    }
+    if ! podman run --rm --pull=never --network none --entrypoint /usr/bin/true "$image"; then
+        printf 'Rootless Podman could not execute the pinned Fedora image. Verify /etc/subuid, /etc/subgid, newuidmap/newgidmap, and the rootless storage driver.\n' >&2
+        return 1
+    fi
+    printf 'FEDORA_ROOTLESS_PODMAN_SMOKE_OK\t%s\n' "$image"
 }
 
 sp_fedora_host_provider_free_space_kib() {

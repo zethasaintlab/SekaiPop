@@ -44,6 +44,7 @@ BASE_IMAGE_REF="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1], enc
 }
 podman pull --tls-verify=true --platform linux/amd64 "$BASE_IMAGE_REF"
 podman image inspect "$BASE_IMAGE_REF" >/dev/null
+sp_fedora_host_provider_rootless_container_smoke "$BASE_IMAGE_REF"
 
 command -v git >/dev/null 2>&1 || {
     printf 'Git is required to record the exact SekaiPop build revision.\n' >&2
