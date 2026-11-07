@@ -45,7 +45,7 @@ def main() -> None:
         (prefix / "lib").symlink_to("lib64", target_is_directory=True)
         result = run(prefix)
         assert result.returncode == 0, result.stderr
-        assert "\\t" in result.stdout and "\\\\t" not in result.stdout
+        assert "\t" in result.stdout and "\\t" not in result.stdout
         manifest = json.loads((prefix / "INSTALL-MANIFEST.json").read_text(encoding="utf-8"))
         assert manifest["prefix"] == str(RUNTIME_PREFIX)
         assert manifest["fedora_release"] == "44"
@@ -70,7 +70,7 @@ def main() -> None:
         ]
         verified = subprocess.run(verify_command, text=True, capture_output=True, check=False)
         assert verified.returncode == 0, verified.stderr
-        assert "\\t" in verified.stdout and "\\\\t" not in verified.stdout
+        assert "\t" in verified.stdout and "\\t" not in verified.stdout
         (prefix / "bin" / "Hyprland").write_text("tampered\\n", encoding="utf-8")
         tampered = subprocess.run(verify_command, text=True, capture_output=True, check=False)
         assert tampered.returncode != 0
