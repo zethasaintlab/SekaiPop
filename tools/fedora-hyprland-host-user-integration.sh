@@ -129,9 +129,29 @@ for index in "${!sources[@]}"; do
     source="${sources[index]}"
     destination="${destinations[index]}"
     if [[ -L "$destination" && "$(readlink -- "$destination")" == "$source" ]]; then
-        rm -f -- "$destination"
         REMOVED_DESTS+=("$destination")
         REMOVED_SOURCES+=("$source")
+        if ! rm -f -- "$destination"; then
+            rollback_failed=0
+            for rollback_index in "${!REMOVED_DESTS[@]}"; do
+                rollback_destination="${REMOVED_DESTS[rollback_index]}"
+                rollback_source="${REMOVED_SOURCES[rollback_index]}"
+                if [[ -L "$rollback_destination" && "$(readlink -- "$rollback_destination")" == "$rollback_source" ]]; then
+                    continue
+                fi
+                if [[ -e "$rollback_destination" || -L "$rollback_destination" ]] || ! ln -s -- "$rollback_source" "$rollback_destination"; then
+                    printf 'Could not restore managed systemd user unit link after removal failure: %s\n' "$rollback_destination" >&2
+                    rollback_failed=1
+                fi
+            done
+            systemctl --user daemon-reload >/dev/null 2>&1 || rollback_failed=1
+            if (( rollback_failed )); then
+                printf 'User unit removal failed and rollback was incomplete; inspect %s manually.\n' "$UNIT_DIR" >&2
+            else
+                printf 'User unit removal failed; managed links were restored.\n' >&2
+            fi
+            exit 1
+        fi
     fi
 done
 
