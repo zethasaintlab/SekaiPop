@@ -90,4 +90,28 @@ unset SEKAIPOP_TEST_SYSTEMCTL_FAIL
 [[ -L "$ROLLBACK_CONFIG/systemd/user/xdg-desktop-portal-hyprland.service" ]]
 [[ "$(readlink "$ROLLBACK_CONFIG/systemd/user/xdg-desktop-portal-hyprland.service")" == "$PREFIX/lib/systemd/user/xdg-desktop-portal-hyprland.service" ]]
 
+PARTIAL_CONFIG="$TMP/partial-config"
+export XDG_CONFIG_HOME="$PARTIAL_CONFIG"
+bash "$SCRIPT" install "$PREFIX" >/dev/null
+cat > "$TMP/bin/rm" <<'RM'
+#!/usr/bin/env bash
+for argument in "$@"; do
+    if [[ "$argument" == "\${SEKAIPOP_TEST_RM_FAIL:-}" && -n "\${SEKAIPOP_TEST_RM_FAIL:-}" ]]; then
+        exit 1
+    fi
+done
+exec /usr/bin/rm "$@"
+RM
+chmod +x "$TMP/bin/rm"
+export SEKAIPOP_TEST_RM_FAIL="$PARTIAL_CONFIG/systemd/user/xdg-desktop-portal-hyprland.service"
+if bash "$SCRIPT" remove "$PREFIX" >/dev/null 2>&1; then
+    echo '[FAIL] partial user unit removal failure was accepted'
+    exit 1
+fi
+unset SEKAIPOP_TEST_RM_FAIL
+[[ -L "$PARTIAL_CONFIG/systemd/user/hyprland-session.target" ]]
+[[ "$(readlink "$PARTIAL_CONFIG/systemd/user/hyprland-session.target")" == "$PREFIX/lib64/systemd/user/hyprland-session.target" ]]
+[[ -L "$PARTIAL_CONFIG/systemd/user/xdg-desktop-portal-hyprland.service" ]]
+[[ "$(readlink "$PARTIAL_CONFIG/systemd/user/xdg-desktop-portal-hyprland.service")" == "$PREFIX/lib/systemd/user/xdg-desktop-portal-hyprland.service" ]]
+
 echo '[PASS] Fedora Hyprland user systemd integration is idempotent, conflict-safe, and all-or-nothing on removal'
