@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+. /etc/os-release
+FEDORA_RELEASE="${VERSION_ID:-}"
+[[ "${ID:-}" == fedora && "$FEDORA_RELEASE" =~ ^(44|45)$ ]] || {
+    printf 'The managed Hyprland builder supports only Fedora 44/45 hosts.\n' >&2
+    exit 2
+}
+[[ "$(uname -m)" == x86_64 ]] || {
+    printf 'The managed Hyprland builder supports x86_64 only.\n' >&2
+    exit 2
+}
+(( EUID != 0 )) || {
+    printf 'Run the builder as a normal user; rootless Podman is mandatory.\n' >&2
+    exit 2
+}
+command -v podman >/dev/null 2>&1 || {
+    printf 'Podman is not installed. The installer must provision it before invoking this builder.\n' >&2
+    exit 2
+}
+rootless="$(podman info --format '{{.Host.Security.Rootless}}')"
+[[ "$rootless" == true ]] || {
+    printf 'Refusing to build with rootful Podman.\n' >&2
+    exit 2
+}
+
+source "$ROOT/installer/providers/fedora/host-provider.sh"
+SP_DISTRO_ID="$ID"
+SP_DISTRO_VERSION="$FEDORA_RELEASE"
+SP_ARCH="$(uname -m)"
+SP_INIT=systemd
+sp_fedora_host_provider_preflight /var/tmp
+
+HYPRLAND_VERSION=0.57.1
+HYPRLAND_COMMIT=acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9
+PORTAL_VERSION=1.5.0
+PORTAL_COMMIT=d1467fea8d1895cb7835829c2fbb271a0d37760a
+BASE_IMAGE_REF="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); s=d.get("source", {}); expected=("sekaipop-fedora-hyprland-base-image-lock-v1", "0.57.1", "acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9", "1.5.0", "d1467fea8d1895cb7835829c2fbb271a0d37760a"); actual=(d.get("schema"), s.get("hyprland_version"), s.get("hyprland_commit"), s.get("portal_version"), s.get("portal_commit")); sys.exit("base-image lock source identity mismatch") if actual != expected else None; print(d["targets"][sys.argv[2]]["image"])' "$ROOT/tools/fedora-hyprland-base-images.lock.json" "$FEDORA_RELEASE")"
+[[ "$BASE_IMAGE_REF" =~ ^docker\.io/library/fedora@sha256:[0-9a-f]{64}$ ]] || {
+    printf 'Pinned Fedora base-image lock is missing or invalid.\n' >&2
+    exit 1
+}
+podman pull --tls-verify=true --platform linux/amd64 "$BASE_IMAGE_REF"
+podman image inspect "$BASE_IMAGE_REF" >/dev/null
+sp_fedora_host_provider_rootless_container_smoke "$BASE_IMAGE_REF"
+
+command -v git >/dev/null 2>&1 || {
+    printf 'Git is required to record the exact SekaiPop build revision.\n' >&2
+    exit 2
+}
+BUILD_GIT_COMMIT="$(git -C "$ROOT" rev-parse --verify HEAD)"
+[[ "$BUILD_GIT_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
+    printf 'Could not determine the full SekaiPop source commit.\n' >&2
+    exit 1
+}
+
+IMAGE_TAG="localhost/sekaipop-fedora-hyprland:$FEDORA_RELEASE-${BASE_IMAGE_REF##*@sha256:}"
+podman build --platform linux/amd64 --pull=never \
+    --build-arg "FEDORA_BASE_IMAGE=$BASE_IMAGE_REF" \
+    --file "$ROOT/tools/fedora-hyprland-build-smoke.Dockerfile" \
+    --tag "$IMAGE_TAG" "$ROOT"
+
+RELEASE_ID="$HYPRLAND_VERSION-${HYPRLAND_COMMIT:0:12}-portal-$PORTAL_VERSION-${PORTAL_COMMIT:0:12}"
+STAGE_PARENT="/var/tmp/sekaipop-fedora-provider-$UID"
+[[ ! -L "$STAGE_PARENT" ]] || {
+    printf 'Refusing symlinked provider staging directory: %s\n' "$STAGE_PARENT" >&2
+    exit 1
+}
+mkdir -p -- "$STAGE_PARENT"
+[[ -d "$STAGE_PARENT" && -O "$STAGE_PARENT" ]] || {
+    printf 'Provider staging directory must be owned by the current user: %s\n' "$STAGE_PARENT" >&2
+    exit 1
+}
+chmod 0700 "$STAGE_PARENT"
+STAGE_ROOT="$(mktemp -d "$STAGE_PARENT/build.XXXXXX")"
+chmod 0700 "$STAGE_ROOT"
+CONTAINER_RELEASE_ROOT=/opt/sekaipop/providers/hyprland/releases
+CONTAINER_PREFIX="$CONTAINER_RELEASE_ROOT/$RELEASE_ID"
+
+printf 'Building Hyprland %s (%s) for Fedora %s in a rootless, network-isolated container.\n' \
+    "$HYPRLAND_VERSION" "$HYPRLAND_COMMIT" "$FEDORA_RELEASE"
+BUILD_LOG="$STAGE_ROOT/build.log"
+CONTAINER_NAME="sekaipop-hyprland-build-${UID}-${BASHPID}"
+podman create --name "$CONTAINER_NAME" --network none \
+    --env "SEKAIPOP_HYPR_PREFIX=$CONTAINER_PREFIX" \
+    --env "SEKAIPOP_PROVENANCE_OUTPUT=$CONTAINER_PREFIX/BUILD-PROVENANCE" \
+    --env "SEKAIPOP_BUILD_GIT_COMMIT=$BUILD_GIT_COMMIT" \
+    "$IMAGE_TAG" >/dev/null
+if podman start --attach "$CONTAINER_NAME" 2>&1 | tee "$BUILD_LOG"; then
+    mkdir -m 0755 "$STAGE_ROOT/$RELEASE_ID"
+    podman cp "$CONTAINER_NAME:$CONTAINER_PREFIX/." "$STAGE_ROOT/$RELEASE_ID"
+    podman rm "$CONTAINER_NAME" >/dev/null
+else
+    status=$?
+    printf 'Hyprland build container failed (exit %s); container %s and log %s were retained for diagnostics.\n' \
+        "$status" "$CONTAINER_NAME" "$BUILD_LOG" >&2
+    exit "$status"
+fi
+
+bash "$ROOT/tools/fedora-hyprland-host-prepare-session.sh" \
+    "$STAGE_ROOT/$RELEASE_ID" "$CONTAINER_PREFIX"
+
+python3 "$ROOT/tools/fedora-hyprland-host-manifest.py" \
+    "$STAGE_ROOT/$RELEASE_ID" \
+    --fedora-release "$FEDORA_RELEASE" \
+    --hyprland-version "$HYPRLAND_VERSION" \
+    --hyprland-commit "$HYPRLAND_COMMIT" \
+    --portal-version "$PORTAL_VERSION" \
+    --portal-commit "$PORTAL_COMMIT" \
+    --runtime-prefix "$CONTAINER_PREFIX"
+
+printf 'FEDORA_HYPRLAND_HOST_BUILD_READY\t%s\t%s\n' "$RELEASE_ID" "$STAGE_ROOT/$RELEASE_ID"
+printf 'Build output is staged for the separate privileged publication phase; no host files or packages were changed.\n'

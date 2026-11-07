@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Durable installer journal shared by native dependencies and desktop deployment.
+SP_TRANSACTION_JOURNAL=''
+SP_TRANSACTION_FINALIZED=0
+
+sp_transaction_journal_begin() {
+    SP_TRANSACTION_JOURNAL_DIR="$SP_STATE_DIR/installer-transactions"
+    bash "$SP_ROOT/tools/transaction-journal.sh" recover-check "$SP_TRANSACTION_JOURNAL_DIR" ||
+        sp_die "An earlier installer transaction is unfinished or requires recovery. Inspect journals in $SP_TRANSACTION_JOURNAL_DIR before retrying."
+    SP_TRANSACTION_JOURNAL="$SP_TRANSACTION_JOURNAL_DIR/$SP_TIMESTAMP.journal"
+    bash "$SP_ROOT/tools/transaction-journal.sh" init "$SP_TRANSACTION_JOURNAL" "$SP_TIMESTAMP" "$$" \
+        "${SP_DISTRO_ID:-unknown}" "${SP_DISTRO_VERSION:-unknown}" "${SP_BACKEND:-unknown}" "${SP_PROFILE:-unknown}" "${SP_HYPR:-unknown}" ||
+        sp_die 'Could not initialize a durable installer transaction journal.'
+    sp_info "Transaction journal: $SP_TRANSACTION_JOURNAL"
+}
+
+sp_transaction_event() {
+    local name="$1" detail="${2:-}"
+    [[ -n "$SP_TRANSACTION_JOURNAL" ]] || return 0
+    bash "$SP_ROOT/tools/transaction-journal.sh" event "$SP_TRANSACTION_JOURNAL" "$name" "$detail" ||
+        sp_die "Could not persist installer transaction event: $name"
+}
+
+sp_transaction_finish() {
+    local status="$1" detail="${2:-}"
+    [[ -n "$SP_TRANSACTION_JOURNAL" ]] || return 0
+    bash "$SP_ROOT/tools/transaction-journal.sh" finish "$SP_TRANSACTION_JOURNAL" "$status" "$detail" ||
+        sp_die "Could not finalize installer transaction as $status."
+    SP_TRANSACTION_FINALIZED=1
+}
+

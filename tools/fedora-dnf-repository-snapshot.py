@@ -33,7 +33,6 @@ def atomic_create(path, content):
             stream.write(content)
             stream.flush()
             os.fsync(stream.fileno())
-        # Hard-link publication is atomic and fails if another writer won.
         os.link(temporary, path)
     except FileExistsError:
         fail(f"refusing concurrent output collision: {path}")
@@ -44,7 +43,63 @@ def atomic_create(path, content):
             pass
 
 
-def snapshot(repo_info_path, inventory_path, hashes_path):
+OFFICIAL_REPO_CONFIG_ROOTS = ("/etc/yum.repos.d/", "/usr/share/dnf5/repos.d/")
+OFFICIAL_GPG_KEY_ROOTS = ("/etc/pki/rpm-gpg/", "/usr/share/pki/rpm-gpg/")
+
+
+def validate_official_fedora_repositories(enabled, release):
+    allowed_ids = {"fedora", "updates", "fedora-cisco-openh264"}
+    required_ids = {"fedora", "updates"}
+    ids = {item.get("id") for item in enabled}
+    if not required_ids.issubset(ids) or not ids.issubset(allowed_ids):
+        fail(f"unexpected enabled Fedora repository set: {sorted(str(item) for item in ids)}")
+
+    key_name = f"RPM-GPG-KEY-fedora-{release}-x86_64"
+    key_hashes = {}
+    for repo in enabled:
+        repo_id = repo.get("id")
+        if repo.get("pkg_gpgcheck") is not True:
+            fail(f"package signature verification is not enabled for {repo_id}")
+        expected_repo = {
+            "fedora": f"fedora-{release}",
+            "updates": f"updates-released-f{release}",
+            "fedora-cisco-openh264": f"fedora-cisco-openh264-{release}",
+        }[repo_id]
+        metalink = repo.get("metalink")
+        if metalink != f"https://mirrors.fedoraproject.org/metalink?repo={expected_repo}&arch=x86_64":
+            fail(f"repository {repo_id} does not use the expected official Fedora metalink")
+        if repo.get("base_url") not in ([], None) or repo.get("mirrorlist") not in ("", None):
+            fail(f"repository {repo_id} contains an unexpected baseurl or mirrorlist")
+        config_path = repo.get("repo_file_path", "")
+        resolved_config = os.path.realpath(config_path)
+        if not any(resolved_config.startswith(root) for root in OFFICIAL_REPO_CONFIG_ROOTS):
+            fail(f"repository {repo_id} configuration is outside Fedora repository directories")
+        keys = repo.get("gpg_key")
+        if not isinstance(keys, list) or not keys:
+            fail(f"repository {repo_id} has no Fedora signing key")
+        for key_uri in keys:
+            if not isinstance(key_uri, str) or not key_uri.startswith("file://"):
+                fail(f"repository {repo_id} uses a non-local or untrusted signing key")
+            configured_key_path = os.path.abspath(key_uri[7:])
+            if os.path.basename(configured_key_path) != key_name:
+                fail(f"repository {repo_id} uses an unexpected Fedora signing key: {configured_key_path}")
+            key_path = os.path.realpath(configured_key_path)
+            if not any(key_path.startswith(root) for root in OFFICIAL_GPG_KEY_ROOTS):
+                fail(f"repository {repo_id} signing key resolves outside Fedora key directories: {key_path}")
+            try:
+                metadata = os.stat(key_path)
+            except OSError as error:
+                fail(f"Fedora signing key for {repo_id} cannot be read: {error}")
+            if not stat.S_ISREG(metadata.st_mode):
+                fail(f"Fedora signing key for {repo_id} is not a regular file")
+            key_hashes[key_path] = sha256_file(key_path)
+    return [
+        {"resolved_path": path, "sha256": digest}
+        for path, digest in sorted(key_hashes.items())
+    ]
+
+
+def snapshot(repo_info_path, inventory_path, hashes_path, fedora_release=None):
     with open(repo_info_path, "r", encoding="utf-8") as stream:
         records = json.load(stream)
     if not isinstance(records, list):
@@ -91,6 +146,12 @@ def snapshot(repo_info_path, inventory_path, hashes_path):
                     item["repository_ids"].append(repo_id)
                     break
 
+    gpg_keys = []
+    if fedora_release is not None:
+        if fedora_release not in {"44", "45"}:
+            fail("strict official Fedora repository validation supports only releases 44 and 45")
+        gpg_keys = validate_official_fedora_repositories(enabled, fedora_release)
+
     inventory = {
         "schema": "sekaipop-dnf5-repository-inventory-v1",
         "repositories": enabled,
@@ -98,19 +159,18 @@ def snapshot(repo_info_path, inventory_path, hashes_path):
     hash_inventory = {
         "schema": "sekaipop-dnf-repository-config-hashes-v1",
         "files": sorted(hashes, key=lambda item: item["resolved_path"]),
+        "gpg_keys": gpg_keys,
     }
     atomic_create(inventory_path, json.dumps(inventory, indent=2, sort_keys=True) + "\n")
     try:
         atomic_create(hashes_path, json.dumps(hash_inventory, indent=2, sort_keys=True) + "\n")
     except BaseException:
-        # atomic_create reports expected validation/collision failures via SystemExit,
-        # which does not derive from Exception. Remove only the first output we created.
         try:
             os.unlink(inventory_path)
         except FileNotFoundError:
             pass
         raise
-    print(f"DNF_REPOSITORY_PROVENANCE_OK\t{len(enabled)} repositories\t{len(hashes)} config files")
+    print(f"DNF_REPOSITORY_PROVENANCE_OK\t{len(enabled)} repositories\t{len(hashes)} config files\t{len(gpg_keys)} signing keys")
 
 
 def main():
@@ -118,8 +178,9 @@ def main():
     parser.add_argument("--repo-info", required=True)
     parser.add_argument("--inventory", required=True)
     parser.add_argument("--hashes", required=True)
+    parser.add_argument("--fedora-release", choices=("44", "45"))
     args = parser.parse_args()
-    snapshot(args.repo_info, args.inventory, args.hashes)
+    snapshot(args.repo_info, args.inventory, args.hashes, args.fedora_release)
 
 
 if __name__ == "__main__":

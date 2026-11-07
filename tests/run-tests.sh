@@ -7,7 +7,7 @@ pass() { printf '[PASS] %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf '[FAIL] %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 contains() { grep -Fq -- "$2" "$1"; }
 not_contains() { ! grep -RFq -- "$2" "$1"; }
-for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-quickshell-activation.sh "$ROOT"/tests/test-fedora-power-provider.sh "$ROOT"/tests/test-deployment-transaction.sh "$ROOT"/tests/test-pacman-safety.sh "$ROOT"/tests/test-installer-lock.sh "$ROOT"/tests/test-shader-plan.sh "$ROOT"/tests/test-power-profile-api.sh "$ROOT"/tests/test-hyprland-touchpad-key.sh "$ROOT"/tests/test-dependency-failure-gate.sh "$ROOT"/tests/test-private-prefix-validation.sh "$ROOT"/tests/test-fedora-hyprland-source-fetch-safety.sh "$ROOT"/tests/test-fedora-hyprland-build-provenance.sh; do
+for script in "$ROOT"/install.sh "$ROOT"/install-deps.sh "$ROOT"/check-deps.sh "$ROOT"/install-multi.sh "$ROOT"/tests/test-hyprland-autostart.sh "$ROOT"/tests/test-quickshell-activation.sh "$ROOT"/tests/test-fedora-power-provider.sh "$ROOT"/tests/test-deployment-transaction.sh "$ROOT"/tests/test-pacman-safety.sh "$ROOT"/tests/test-installer-lock.sh "$ROOT"/tests/test-shader-plan.sh "$ROOT"/tests/test-power-profile-api.sh "$ROOT"/tests/test-hyprland-touchpad-key.sh "$ROOT"/tests/test-dependency-failure-gate.sh "$ROOT"/tests/test-private-prefix-validation.sh "$ROOT"/tests/test-fedora-hyprland-source-fetch-safety.sh "$ROOT"/tests/test-fedora-hyprland-build-provenance.sh "$ROOT"/tests/test-fedora-host-provider.sh "$ROOT"/tools/fedora-hyprland-host-build.sh "$ROOT"/tools/fedora-hyprland-host-prepare-session.sh "$ROOT"/tools/fedora-hyprland-host-user-integration.sh "$ROOT"/tools/transaction-journal.sh "$ROOT"/tests/test-transaction-journal.sh "$ROOT"/tests/test-fedora-host-prepare-session.sh "$ROOT"/tests/test-fedora-host-user-integration.sh "$ROOT"/tests/test-source-build-authorization.sh; do
     if bash -n "$script"; then pass "Bash syntax: $(basename "$script")"; else fail "Bash syntax: $(basename "$script")"; fi
 done
 if env SEKAIPOP_INSTALLER_ROOT="$ROOT" "$ROOT/install.sh" --help >/dev/null; then pass 'Help works without distro detection'; else fail 'Help works without distro detection'; fi
@@ -82,6 +82,7 @@ if bash "$ROOT/tests/test-fedora-power-provider.sh"; then pass 'Fedora power-pro
 if bash "$ROOT/tests/test-deployment-transaction.sh"; then pass 'Deployment staging and rollback regression fixtures'; else fail 'Deployment staging and rollback regression fixtures'; fi
 if bash "$ROOT/tests/test-pacman-safety.sh"; then pass 'Arch pacman synchronization and authorization fixtures'; else fail 'Arch pacman synchronization and authorization fixtures'; fi
 if bash "$ROOT/tests/test-installer-lock.sh"; then pass 'Installer concurrency lock fixtures'; else fail 'Installer concurrency lock fixtures'; fi
+if bash "$ROOT/tests/test-transaction-journal.sh"; then pass 'Durable installer journal integrity and concurrency fixtures'; else fail 'Durable installer journal integrity and concurrency fixtures'; fi
 if bash "$ROOT/tests/test-shader-plan.sh"; then pass 'Qt Shader Tools planning fixtures'; else fail 'Qt Shader Tools planning fixtures'; fi
 if bash "$ROOT/tests/test-power-profile-api.sh"; then pass 'PowerProfiles D-Bus API fixtures'; else fail 'PowerProfiles D-Bus API fixtures'; fi
 if bash "$ROOT/tests/test-hyprland-touchpad-key.sh"; then pass 'Hyprland Lua touchpad key fixtures'; else fail 'Hyprland Lua touchpad key fixtures'; fi
@@ -93,5 +94,15 @@ if bash "$ROOT/tests/test-private-prefix-validation.sh"; then pass 'CMake instal
 if bash "$ROOT/tests/test-fedora-hyprland-source-fetch-safety.sh"; then pass 'Fedora source fetch preserves pre-existing archive files'; else fail 'Fedora source fetch preserves pre-existing archive files'; fi
 if bash "$ROOT/tests/test-fedora-hyprland-build-provenance.sh"; then pass 'Fedora source-build provenance is immutable and complete'; else fail 'Fedora source-build provenance is immutable and complete'; fi
 if python3 "$ROOT/tests/test-fedora-dnf-repository-snapshot.py"; then pass 'DNF5 repository provenance resolves real config files and symlinks'; else fail 'DNF5 repository provenance resolves real config files and symlinks'; fi
+if bash "$ROOT/tests/test-fedora-host-provider.sh"; then pass 'Fedora host-provider preflight rejects unsupported and unsafe environments'; else fail 'Fedora host-provider preflight rejects unsupported and unsafe environments'; fi
+if python3 "$ROOT/tests/test-fedora-host-manifest.py"; then pass 'Fedora host artifact manifest verifies ownership and path containment'; else fail 'Fedora host artifact manifest verifies ownership and path containment'; fi
+if python3 "$ROOT/tests/test-fedora-host-deploy.py"; then pass 'Fedora host publication uses atomic no-replace directory rename'; else fail 'Fedora host publication uses atomic no-replace directory rename'; fi
+if python3 "$ROOT/tests/test-fedora-host-build-lock.py"; then pass 'Fedora host build lock pins images and source identities'; else fail 'Fedora host build lock pins images and source identities'; fi
+if python3 "$ROOT/tests/test-fedora-copr-provider-lock.py"; then pass 'Fedora COPR provider lock pins trust and package provenance'; else fail 'Fedora COPR provider lock pins trust and package provenance'; fi
+if python3 "$ROOT/tests/test-fedora-hyprland-copr-provider.py"; then pass 'Fedora COPR provider validates repository, key and RPM ownership'; else fail 'Fedora COPR provider validates repository, key and RPM ownership'; fi
+if python3 -m py_compile "$ROOT/tools/fedora-hyprland-copr-provider.py"; then pass 'Fedora COPR provider helper compiles'; else fail 'Fedora COPR provider helper compiles'; fi
+if bash "$ROOT/tests/test-fedora-host-prepare-session.sh"; then pass 'Fedora host session launcher is validated and collision-safe'; else fail 'Fedora host session launcher is validated and collision-safe'; fi
+if bash "$ROOT/tests/test-fedora-host-user-integration.sh"; then pass 'Fedora Hyprland user systemd integration is idempotent and collision-safe'; else fail 'Fedora Hyprland user systemd integration is idempotent and collision-safe'; fi
+if bash "$ROOT/tests/test-source-build-authorization.sh"; then pass 'Source-build authorization is explicit and independent of --yes'; else fail 'Source-build authorization is explicit and independent of --yes'; fi
 printf '\nSmoke assertions: %d passed, %d failed\n' "$PASS" "$FAIL"
 (( FAIL == 0 ))

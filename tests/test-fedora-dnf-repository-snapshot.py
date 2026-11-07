@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -8,6 +10,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "tools" / "fedora-dnf-repository-snapshot.py"
+SPEC = importlib.util.spec_from_file_location("sekaipop_dnf_snapshot", SCRIPT)
+assert SPEC and SPEC.loader
+SNAPSHOT = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(SNAPSHOT)
 
 
 class DnfRepositorySnapshotTests(unittest.TestCase):
@@ -82,6 +88,59 @@ class DnfRepositorySnapshotTests(unittest.TestCase):
         self.assertIn("no metadata revision", result.stderr)
         self.assertFalse(self.inventory.exists())
         self.assertFalse(self.hashes.exists())
+
+    def test_official_fedora_repository_policy_requires_signature_checks_and_fedora_keys(self):
+        key = self.root / "RPM-GPG-KEY-fedora-44-x86_64"
+        key.write_text("fedora signing key fixture\\n", encoding="utf-8")
+        SNAPSHOT.OFFICIAL_REPO_CONFIG_ROOTS = (str(self.root) + os.sep,)
+        SNAPSHOT.OFFICIAL_GPG_KEY_ROOTS = (str(self.root) + os.sep,)
+        repositories = []
+        for repo_id, metalink_repo in (
+            ("fedora", "fedora-44"),
+            ("updates", "updates-released-f44"),
+        ):
+            repositories.append({
+                "id": repo_id,
+                "pkg_gpgcheck": True,
+                "gpg_key": [f"file://{key}"],
+                "metalink": f"https://mirrors.fedoraproject.org/metalink?repo={metalink_repo}&arch=x86_64",
+                "base_url": [],
+                "mirrorlist": "",
+                "repo_file_path": str(self.config),
+            })
+        result = SNAPSHOT.validate_official_fedora_repositories(repositories, "44")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["resolved_path"], str(key))
+        self.assertEqual(len(result[0]["sha256"]), 64)
+
+        repositories[0]["pkg_gpgcheck"] = False
+        with self.assertRaises(SystemExit) as error:
+            SNAPSHOT.validate_official_fedora_repositories(repositories, "44")
+        self.assertIn("signature verification", str(error.exception))
+
+    def test_official_fedora_repository_policy_rejects_unknown_repo(self):
+        key = self.root / "RPM-GPG-KEY-fedora-44-x86_64"
+        key.write_text("fedora signing key fixture\\n", encoding="utf-8")
+        SNAPSHOT.OFFICIAL_REPO_CONFIG_ROOTS = (str(self.root) + os.sep,)
+        repositories = [
+            {
+                "id": repo_id,
+                "pkg_gpgcheck": True,
+                "gpg_key": [f"file://{key}"],
+                "metalink": f"https://mirrors.fedoraproject.org/metalink?repo={metalink_repo}&arch=x86_64",
+                "base_url": [],
+                "mirrorlist": "",
+                "repo_file_path": str(self.config),
+            }
+            for repo_id, metalink_repo in (
+                ("fedora", "fedora-44"),
+                ("updates", "updates-released-f44"),
+                ("untrusted-copr", "fedora-44"),
+            )
+        ]
+        with self.assertRaises(SystemExit) as error:
+            SNAPSHOT.validate_official_fedora_repositories(repositories, "44")
+        self.assertIn("unexpected enabled Fedora repository set", str(error.exception))
 
     def test_existing_inventory_output_is_never_overwritten(self):
         self.inventory.write_text("preserve inventory", encoding="utf-8")
