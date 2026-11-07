@@ -96,7 +96,7 @@ bash "$SCRIPT" install "$PREFIX" >/dev/null
 cat > "$TMP/bin/rm" <<'RM'
 #!/usr/bin/env bash
 for argument in "$@"; do
-    if [[ "$argument" == "\${SEKAIPOP_TEST_RM_FAIL:-}" && -n "\${SEKAIPOP_TEST_RM_FAIL:-}" ]]; then
+    if [[ "$argument" == "${SEKAIPOP_TEST_RM_FAIL:-}" && -n "${SEKAIPOP_TEST_RM_FAIL:-}" ]]; then
         exit 1
     fi
 done
