@@ -7,8 +7,8 @@ mkdir -p -- "$DEST"
 
 LUA_ARCHIVE="$DEST/lua-5.5.1.tar.gz"
 LUA_PART="$LUA_ARCHIVE.part"
-[[ ! -e "$LUA_ARCHIVE" && ! -L "$LUA_ARCHIVE" ]] || { printf "Refusing existing Lua archive: %s\\n" "$LUA_ARCHIVE" >&2; exit 2; }
-[[ ! -e "$LUA_PART" && ! -L "$LUA_PART" ]] || { printf "Refusing existing Lua partial archive: %s\\n" "$LUA_PART" >&2; exit 2; }
+[[ ! -e "$LUA_ARCHIVE" && ! -L "$LUA_ARCHIVE" ]] || { printf "Refusing existing Lua archive: %s\n" "$LUA_ARCHIVE" >&2; exit 2; }
+[[ ! -e "$LUA_PART" && ! -L "$LUA_PART" ]] || { printf "Refusing existing Lua partial archive: %s\n" "$LUA_PART" >&2; exit 2; }
 
 fetch_tagged_repo() {
     local name="$1" owner="$2" repository="$3" tag="$4" expected="$5" destination="$DEST/$1" actual
