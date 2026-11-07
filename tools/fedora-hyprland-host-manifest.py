@@ -155,7 +155,7 @@ def main() -> None:
 
     if args.verify:
         count = verify(root, runtime_prefix, args.fedora_release, args.hyprland_version, args.hyprland_commit, args.portal_version, args.portal_commit)
-        print(f"FEDORA_HOST_MANIFEST_VERIFIED\\t{count} entries\\t{root}")
+        print(f"FEDORA_HOST_MANIFEST_VERIFIED\t{count} entries\t{root}")
         return
 
     output = root / "INSTALL-MANIFEST.json"
